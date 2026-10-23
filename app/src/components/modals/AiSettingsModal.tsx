@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { presetFor, type AiSettings } from "../../ai/review";
+import { DEFAULT_OPENAI_MODEL, presetFor, type AiSettings } from "../../ai/review";
 import { useStore } from "../../store";
 
 export function AiSettingsModal() {
@@ -36,7 +36,7 @@ export function AiSettingsModal() {
                 <label>Model {draft.provider === "lmstudio" && <small>(blank = whichever model is loaded)</small>}</label>
                 <input
                   value={draft.model}
-                  placeholder={draft.provider === "openai" ? "gpt-4o-mini" : "loaded model"}
+                  placeholder={draft.provider === "openai" ? DEFAULT_OPENAI_MODEL : "loaded model"}
                   onChange={(e) => patch({ model: e.target.value })}
                 />
               </div>
@@ -63,8 +63,8 @@ export function AiSettingsModal() {
                     autoComplete="off"
                   />
                   <small className="muted">
-                    Kept in memory for this tab only (not written to disk). With the backend running it is sent to your own server, not to a
-                    third party. Leave blank to use OPENAI_API_KEY on the server.
+                    Stays in this tab&apos;s memory only — never written to disk, and never sent to our server. Requests go straight to
+                    api.openai.com (check the Network tab). Leave blank only if the backend has OPENAI_API_KEY set for signed-in use.
                   </small>
                 </div>
               )}
