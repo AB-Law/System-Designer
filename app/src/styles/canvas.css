@@ -1,0 +1,167 @@
+/* ---------- canvas ---------- */
+.canvas {
+  position: relative;
+  min-width: 0;
+  background: var(--bg);
+}
+.react-flow {
+  --xy-background-color-default: var(--bg);
+  --xy-background-pattern-dots-color-default: #35312a;
+  --xy-edge-stroke-default: var(--gold);
+  --xy-minimap-background-color-default: var(--panel);
+  --xy-minimap-mask-background-color-default: rgba(8, 8, 10, 0.75);
+  --xy-connectionline-stroke-default: var(--gold);
+}
+.react-flow__attribution {
+  display: none;
+}
+.minimap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  right: 12px !important;
+  bottom: 12px !important;
+}
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--gold);
+  border: 2px solid var(--bg);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.bnode:hover .react-flow__handle,
+.bnode.sel .react-flow__handle,
+.react-flow.connecting .react-flow__handle {
+  opacity: 1;
+}
+.bnode {
+  position: relative;
+  min-width: 96px;
+  padding: 9px 16px;
+  text-align: center;
+  border-radius: 10px;
+  border: 1.5px solid rgba(212, 180, 90, 0.5);
+  color: var(--gold-hi);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.bnode.sel {
+  border-color: var(--gold-hi);
+  box-shadow: 0 0 0 3px rgba(212, 180, 90, 0.28), 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+.bn-label {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.bn-resp {
+  max-width: 130px;
+  margin: 1px auto 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.75;
+}
+.bn-util {
+  position: absolute;
+  top: -9px;
+  right: -10px;
+  padding: 0 6px;
+  font: 600 10px/17px var(--mono);
+  border-radius: 99px;
+  background: var(--bg);
+  border: 1px solid var(--green-hi);
+  color: var(--green-hi);
+}
+.bnode.warm .bn-util {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.bnode.hot,
+.bnode.down {
+  border-color: var(--bad);
+}
+.bnode.hot .bn-util,
+.bnode.down .bn-util {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.toolbar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(18, 17, 20, 0.92);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  z-index: 5;
+}
+.toolbar button {
+  min-width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+}
+.toolbar button:hover {
+  background: var(--raise);
+  color: var(--text);
+}
+.toolbar button.active {
+  background: var(--gold-wash);
+  color: var(--gold-hi);
+  box-shadow: inset 0 0 0 1px var(--gold-lo);
+}
+.toolbar i {
+  width: 1px;
+  height: 18px;
+  margin: 0 6px;
+  background: var(--line);
+}
+.toolbar .zoom {
+  min-width: 46px;
+  text-align: center;
+  font: 500 12px var(--mono);
+  color: var(--muted);
+}
+.empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 40px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.empty > div {
+  max-width: 420px;
+  text-align: left;
+  padding: 18px 22px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.empty b {
+  font: 400 24px var(--display);
+  color: var(--gold-hi);
+}
+.empty ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+

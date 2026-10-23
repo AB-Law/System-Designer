@@ -1,0 +1,298 @@
+{
+  "id": "news_feed",
+  "title": "Design a News Feed",
+  "difficulty": "medium",
+  "brief": "People follow each other and open an app to see a feed of recent posts. Reading the feed is by far the most common action. When someone posts, the post has to appear in every follower's feed, and when a celebrity posts that means millions of copies at once. Ranking makes the feed better but must never stop it from loading.",
+  "constraints": [
+    "Opening a feed must take under 120 ms",
+    "About 8,000 feed reads per second at peak, and about 1 new post for every 30 reads",
+    "A new post is copied into followers' feeds in the background, and never twice",
+    "A celebrity post can multiply the fan-out work by ten",
+    "Feeds are ranked by a model, but a slow model must not slow the feed",
+    "Keep infrastructure under $16,500 a month",
+    "About 10 billion feed entries are stored, one per post per follower, and people scroll a long way back"
+  ],
+  "traffic": {
+    "users": 2000000,
+    "reqPerUser": 0.004,
+    "writeShare": 0.03
+  },
+  "latencyTargetMs": 120,
+  "budget": 16500,
+  "capabilities": [
+    {
+      "id": "read_feed",
+      "label": "Show a feed",
+      "hint": "Return the newest posts for the person opening the app",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 0,
+      "uses": [
+        "database"
+      ]
+    },
+    {
+      "id": "post",
+      "label": "Publish a post",
+      "hint": "Accept a new post and record it",
+      "share": 0.03,
+      "work": 3,
+      "critical": false,
+      "writes": 1
+    },
+    {
+      "id": "fanout",
+      "label": "Copy posts into feeds",
+      "hint": "Add each new post to the feed of everyone who follows the author. Running a job twice must not add the post twice.",
+      "share": 0.03,
+      "work": 8,
+      "critical": false,
+      "requires": [
+        "idempotent"
+      ],
+      "writes": 1,
+      "uses": [
+        "database"
+      ]
+    },
+    {
+      "id": "rank",
+      "label": "Rank the feed",
+      "hint": "Order the posts with a relevance model for 60% of feeds. Without it the feed is simply newest first.",
+      "share": 0.6,
+      "work": 1.5,
+      "critical": false,
+      "writes": 0
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "feed_items",
+        "label": "Feed entries",
+        "rows": 10000000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 10000000000,
+            "label": "Entry id",
+            "pk": true
+          },
+          {
+            "name": "user_id",
+            "distinct": 2000000,
+            "label": "Reader"
+          },
+          {
+            "name": "post_id",
+            "distinct": 3000000000,
+            "label": "Post"
+          },
+          {
+            "name": "created_at",
+            "distinct": 10000000000,
+            "label": "Created",
+            "monotonic": true
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "read_feed",
+        "label": "Read the top of a reader's feed, newest first",
+        "capability": "read_feed",
+        "table": "feed_items",
+        "op": "read",
+        "where": [
+          "user_id"
+        ],
+        "orderBy": [
+          "created_at"
+        ],
+        "page": 20,
+        "depth": 400,
+        "matches": 5000
+      },
+      {
+        "id": "copy_post",
+        "label": "Copy a post into a follower's feed",
+        "capability": "fanout",
+        "table": "feed_items",
+        "op": "write"
+      }
+    ]
+  },
+  "regions": {
+    "home": "us"
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady reading with a normal posting rate.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Why is a feed read-heavy, and what do you precompute so that opening the app is cheap?",
+      "debrief": "A feed read is one cache lookup; the heavy work was done when the posts were written."
+    },
+    {
+      "id": "peak",
+      "title": "Event night (2x)",
+      "description": "A big event doubles the feed reads.",
+      "trafficMultiplier": 2,
+      "interviewQuestion": "Which component feels double the reads first, and how do you scale it cheaply?",
+      "debrief": "Reads scale on the feed servers and the cache, which are cheap per request."
+    },
+    {
+      "id": "celebrity",
+      "title": "A celebrity posts",
+      "description": "Posting and the copy work behind it jump tenfold for a few minutes.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "One post becomes millions of feed writes. Where does that work queue up, and what do you do so readers do not notice?",
+      "capabilityLoad": {
+        "post": 10,
+        "fanout": 10
+      },
+      "debrief": "Fan-out workers autoscale to chew through the burst. Readers are unaffected because the work waits on the stream, not in their path."
+    },
+    {
+      "id": "rank_slow",
+      "title": "The ranking model slows",
+      "description": "Whatever runs ranking becomes 8x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Ranking is slow. What does the reader see, and where do you cut the model off?",
+      "failure": {
+        "target": {
+          "capability": "rank"
+        },
+        "mode": "slow",
+        "factor": 8
+      },
+      "debrief": "The breaker gives up on ranking after 40 ms and the feed is served newest-first."
+    },
+    {
+      "id": "global",
+      "title": "Readers on every continent",
+      "description": "The same number of feed reads, but 60% of them now come from Europe and Asia.",
+      "trafficMultiplier": 1,
+      "regionMix": {
+        "us": 0.4,
+        "eu": 0.3,
+        "ap": 0.3
+      },
+      "interviewQuestion": "A reader in Tokyo opens their feed. Which parts of the answer can come from Tokyo, and which cannot?",
+      "debrief": "Feeds are mostly reads, so each region has its own feed servers, cache and ranking service, with a read copy of the database. Posting and the fan-out work stay in the home region, because they write."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Feeds open within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 120
+      }
+    },
+    {
+      "id": "r-peak",
+      "text": "At least 98% of reads are served at double the load",
+      "check": {
+        "type": "scenario",
+        "scenario": "peak",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $16,500",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-cache",
+      "text": "Feeds are read from a precomputed cache",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "cache",
+          "stream"
+        ]
+      }
+    },
+    {
+      "id": "r-fanout",
+      "text": "Something copies posts into feeds",
+      "check": {
+        "type": "hosted",
+        "capability": "fanout"
+      }
+    },
+    {
+      "id": "r-celeb",
+      "text": "The celebrity post is absorbed without readers noticing",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "celebrity"
+      }
+    },
+    {
+      "id": "r-rank",
+      "text": "A slow ranking model cannot slow feeds",
+      "check": {
+        "type": "scenario",
+        "scenario": "rank_slow",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 120
+      }
+    },
+    {
+      "id": "r-hybrid",
+      "text": "The design explains when a post is copied at write time and when it is fetched at read time",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    },
+    {
+      "id": "r-global",
+      "text": "Readers on every continent open their feed within the target",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "global"
+      }
+    }
+  ],
+  "rubric": [
+    "Feeds are precomputed and kept in a cache, so a read is one lookup rather than a query over everyone you follow.",
+    "Posting goes through a Stream or queue, and workers copy the post into feeds in the background (fan-out on write).",
+    "Fan-out is idempotent and scales out under load; a celebrity spike builds a backlog in the stream, not slow reads.",
+    "The design mentions pulling celebrity posts at read time instead of copying them to millions of feeds.",
+    "Ranking runs behind a timeout with a plain newest-first fallback."
+  ],
+  "reference": {
+    "summary": "Precompute feeds with fan-out on write, read from a cache, and keep ranking behind a breaker.",
+    "design": [
+      "User, then a Load Balancer, then a Feed Server (10 replicas, autoscale to 24, circuit breaker) running 'Show a feed'. It reads a timeline Cache (95% hit) in front of a document Database.",
+      "Ranking is a separate Service (5 replicas, autoscale) called behind the breaker, with newest-first as the fallback.",
+      "Posting goes Post Service, then a Stream (asynchronously), then Fan-out Workers (idempotent, batch 20, autoscale to 80) writing into the timeline cache."
+    ],
+    "tradeoffs": [
+      "Fan-out on write makes reads cheap, but a celebrity post becomes a huge burst of writes. The stream absorbs it as a backlog instead of slow reads.",
+      "Ranking as its own service adds cost and a hop but cannot stall the feed."
+    ]
+  }
+}

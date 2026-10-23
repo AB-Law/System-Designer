@@ -1,0 +1,207 @@
+import { useCallback, useEffect } from "react";
+import {
+  Background,
+  BackgroundVariant,
+  ConnectionMode,
+  Handle,
+  MiniMap,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  useViewport,
+  type NodeProps,
+} from "@xyflow/react";
+import { BLOCK_MAP } from "../../blocks";
+import { useRun } from "../../hooks";
+import { useProblem, useStore, type RFNode } from "../../store";
+import { capIdsOf } from "../../sim/caps";
+import { isPlaceable, regionId, regionShort } from "../../sim/regions";
+import { ChatDock } from "./ChatDock";
+import type { EdgeKind } from "../../types";
+
+function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
+  const def = BLOCK_MAP[data.blockId];
+  const run = useRun();
+  const simScenario = useStore((s) => s.simScenario);
+  const problem = useProblem();
+  const capNames = capIdsOf(data.blockId, data.capabilities, problem)
+    .map((cid) => problem?.capabilities?.find((c) => c.id === cid)?.label)
+    .filter((x): x is string => !!x);
+  const res = run?.scenarios.find((s) => s.scenarioId === simScenario)?.nodes[id];
+  const u = res && res.incoming > 0 ? res.utilization : undefined;
+  const status = res?.down ? "down" : u === undefined ? "" : u >= 1 ? "hot" : u >= 0.8 ? "warm" : "ok";
+  return (
+    <div className={`bnode cat-${def.category} ${selected ? "sel" : ""} ${status}`}>
+      {([Position.Top, Position.Right, Position.Bottom, Position.Left] as const).map((p) => (
+        <Handle key={p} id={p} type="source" position={p} />
+      ))}
+      {problem?.regions && isPlaceable(data.blockId) && (
+        <div className={"bn-region r-" + regionId(data.cfg.region, regionId(problem.regions.home))} title="The region this block runs in">
+          {regionShort(regionId(data.cfg.region, regionId(problem.regions.home)))}
+        </div>
+      )}
+      <div className="bn-label">{def.label}</div>
+      {capNames.length > 0 && (
+        <div className="bn-resp" title={capNames.join(", ")}>
+          {capNames[0]}
+          {capNames.length > 1 && ` +${capNames.length - 1}`}
+        </div>
+      )}
+      {capNames.length === 0 && data.responsibilities[0] && <div className="bn-resp">{data.responsibilities[0]}</div>}
+      {res?.down ? (
+        <div className="bn-util">down</div>
+      ) : u !== undefined && data.blockId !== "user" ? (
+        <div className="bn-util">{Math.round(u * 100)}%</div>
+      ) : null}
+    </div>
+  );
+}
+
+const nodeTypes = { block: BlockNode };
+
+const EDGE_BUTTONS: { kind: EdgeKind; label: string; title: string }[] = [
+  { kind: "sync", label: "→", title: "Synchronous call" },
+  { kind: "async", label: "⇢", title: "Asynchronous (queue / fire-and-forget)" },
+  { kind: "both", label: "↔", title: "Two-way" },
+];
+
+function Inner() {
+  const nodes = useStore((s) => s.nodes);
+  const edges = useStore((s) => s.edges);
+  const onNodesChange = useStore((s) => s.onNodesChange);
+  const onEdgesChange = useStore((s) => s.onEdgesChange);
+  const connect = useStore((s) => s.connect);
+  const addNode = useStore((s) => s.addNode);
+  const select = useStore((s) => s.select);
+  const beginDrag = useStore((s) => s.beginDrag);
+  const edgeMode = useStore((s) => s.edgeMode);
+  const selectedEdgeId = useStore((s) => s.selectedEdgeId);
+  const setEdgeKind = useStore((s) => s.setEdgeKind);
+  const undo = useStore((s) => s.undo);
+  const redo = useStore((s) => s.redo);
+  const clearAll = useStore((s) => s.clearAll);
+  const autoLayout = useStore((s) => s.autoLayout);
+  const setShareOpen = useStore((s) => s.setShareOpen);
+  const problem = useProblem();
+  const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoom } = useViewport();
+  const fitTick = useStore((s) => s.fitTick);
+  useEffect(() => {
+    // minZoom keeps block labels readable when a problem opens; the toolbar fit button still shows everything
+    if (fitTick > 0) setTimeout(() => fitView({ padding: 0.25, minZoom: 0.6, maxZoom: 1, duration: 250 }), 80);
+  }, [fitTick, fitView]);
+  const selectedKind = edges.find((e) => e.id === selectedEdgeId)?.data?.kind ?? edgeMode;
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("application/x-block");
+      if (!id || !BLOCK_MAP[id]) return;
+      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      addNode(id, { x: p.x - 45, y: p.y - 20 });
+    },
+    [screenToFlowPosition, addNode],
+  );
+
+  return (
+    <div className="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={connect}
+        onNodeDragStart={beginDrag}
+        onNodeClick={() => useStore.setState({ selectedEdgeId: undefined })}
+        onEdgeClick={(_, e) => select(undefined, e.id)}
+        multiSelectionKeyCode={["Control", "Meta"]}
+        selectionKeyCode="Shift"
+        onPaneClick={() => select()}
+        connectionMode={ConnectionMode.Loose}
+        deleteKeyCode={["Backspace", "Delete"]}
+        snapToGrid
+        snapGrid={[10, 10]}
+        fitView
+        fitViewOptions={{ minZoom: 0.6, maxZoom: 1, padding: 0.25 }}
+        minZoom={0.3}
+        maxZoom={2}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
+        <MiniMap
+          pannable
+          zoomable
+          className="minimap"
+          style={{ width: 150, height: 96 }}
+          nodeColor={(n) => BLOCK_MAP[(n.data as { blockId: string }).blockId]?.color ?? "#888"}
+        />
+      </ReactFlow>
+      <div className="toolbar">
+        <button title="Undo (Ctrl+Z)" onClick={undo}>
+          ↶
+        </button>
+        <button title="Redo (Ctrl+Shift+Z)" onClick={redo}>
+          ↷
+        </button>
+        <i />
+        <button onClick={() => zoomOut()}>−</button>
+        <span className="zoom">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => zoomIn()}>+</button>
+        <button title="Fit to screen" onClick={() => fitView({ padding: 0.25, maxZoom: 1 })}>
+          ⛶
+        </button>
+        <button
+          title="Tidy: arrange the blocks left to right along their connections"
+          onClick={() => {
+            autoLayout();
+            setTimeout(() => fitView({ padding: 0.25, maxZoom: 1, duration: 250 }), 60);
+          }}
+        >
+          ⊞
+        </button>
+        <button title="Share or export this design" onClick={() => setShareOpen(true)}>
+          ⇪
+        </button>
+        <i />
+        {EDGE_BUTTONS.map((b) => (
+          <button
+            key={b.kind}
+            title={selectedEdgeId ? `Set selected connection: ${b.title}` : `New connections: ${b.title}`}
+            className={selectedKind === b.kind ? "active" : ""}
+            onClick={() => setEdgeKind(b.kind)}
+          >
+            {b.label}
+          </button>
+        ))}
+        <i />
+        <button title="Clear canvas" onClick={() => nodes.length && confirm("Clear the whole canvas?") && clearAll()}>
+          🗑
+        </button>
+      </div>
+      <ChatDock />
+      {nodes.length === 0 && (
+        <div className="empty">
+          <div>
+            <b>Start here</b>
+            <ol>
+              <li>Drag a User block from the left onto the canvas. It is where the traffic comes from.</li>
+              <li>Add blocks that handle it, such as an API Gateway and a Database.</li>
+              <li>Drag from a dot on one block to a dot on the next to connect them.</li>
+              <li>Press Simulate to watch the traffic, then Preview score.</li>
+            </ol>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CanvasView() {
+  return (
+    <ReactFlowProvider>
+      <Inner />
+    </ReactFlowProvider>
+  );
+}

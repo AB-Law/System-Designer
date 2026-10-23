@@ -1,0 +1,287 @@
+{
+  "id": "library_management",
+  "title": "Design a Library System",
+  "difficulty": "easy",
+  "brief": "A university library lets members search the catalogue, check books out and return them, and get reminders about due dates. Searching dominates, but a checkout must never hand the same copy to two people. At the start of each semester traffic multiplies, and a reminder job emails members through an outside provider.",
+  "constraints": [
+    "Search and checkout must respond within 200 ms",
+    "About 3,000 requests per second at peak, and about 1 in 8 is a checkout or return",
+    "The same copy of a book must never be checked out to two people",
+    "The semester rush is about three times the normal load",
+    "Overdue reminders go out through an external email provider",
+    "Keep infrastructure under $4,000 a month",
+    "The catalogue holds about 2 million books and 8 million loan records, for about 60,000 members"
+  ],
+  "traffic": {
+    "users": 60000,
+    "reqPerUser": 0.05,
+    "writeShare": 0.15
+  },
+  "latencyTargetMs": 200,
+  "budget": 4000,
+  "capabilities": [
+    {
+      "id": "search",
+      "label": "Search the catalogue",
+      "hint": "Find books by title, author or subject",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "uses": [
+        "search_index"
+      ],
+      "writes": 0
+    },
+    {
+      "id": "checkout",
+      "label": "Check out or return a book",
+      "hint": "Mark a copy as lent or returned. Two people asking for the last copy at the same moment must not both get it.",
+      "share": 0.12,
+      "work": 3,
+      "critical": true,
+      "requires": [
+        "exclusive_access"
+      ],
+      "uses": [
+        "database"
+      ],
+      "writes": 0.3333333333333333
+    },
+    {
+      "id": "reminders",
+      "label": "Send overdue reminders",
+      "hint": "Email members whose books are overdue, about 150 per second during the sweep",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 150,
+      "needs": [
+        "third_party:messaging"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "books",
+        "label": "Books",
+        "rows": 2000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 2000000,
+            "label": "Book id",
+            "pk": true
+          },
+          {
+            "name": "isbn",
+            "distinct": 2000000,
+            "label": "ISBN"
+          },
+          {
+            "name": "title",
+            "distinct": 1800000,
+            "label": "Title"
+          },
+          {
+            "name": "author",
+            "distinct": 300000,
+            "label": "Author"
+          },
+          {
+            "name": "genre",
+            "distinct": 40,
+            "label": "Genre"
+          }
+        ]
+      },
+      {
+        "id": "loans",
+        "label": "Loans",
+        "rows": 8000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 8000000,
+            "label": "Loan id",
+            "pk": true
+          },
+          {
+            "name": "member_id",
+            "distinct": 60000,
+            "label": "Member"
+          },
+          {
+            "name": "book_id",
+            "distinct": 2000000,
+            "label": "Book"
+          },
+          {
+            "name": "due_date",
+            "distinct": 400,
+            "label": "Due date",
+            "monotonic": true
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "find_book",
+        "label": "Look up the book by its ISBN",
+        "capability": "checkout",
+        "table": "books",
+        "op": "read",
+        "where": [
+          "isbn"
+        ]
+      },
+      {
+        "id": "my_loans",
+        "label": "List the member's open loans, soonest due first",
+        "capability": "checkout",
+        "table": "loans",
+        "op": "read",
+        "where": [
+          "member_id"
+        ],
+        "orderBy": [
+          "due_date"
+        ],
+        "page": 20
+      },
+      {
+        "id": "new_loan",
+        "label": "Record the loan",
+        "capability": "checkout",
+        "table": "loans",
+        "op": "write"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Regular term",
+      "description": "Normal term-time traffic.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Searching and checking out have very different needs. How does that change where each one runs and what it talks to?",
+      "debrief": "Search hits the index, not the database, which is kept for the few checkouts and returns."
+    },
+    {
+      "id": "rush",
+      "title": "Semester rush (3x)",
+      "description": "The first week of term triples traffic.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "Locks protect checkouts but slow writes. How do you keep searching fast while checkouts queue behind locks?",
+      "debrief": "Autoscaling covers the extra volume. The cache and index take the search load, so the locked database never sees it."
+    },
+    {
+      "id": "db_down",
+      "title": "Primary database fails",
+      "description": "The main catalogue database loses a node.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "database"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "Which requests can still be served from a replica or a search index, and which must stop to stay correct?",
+      "debrief": "A read replica keeps reads alive, and searches never needed the primary at all."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Requests meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 200
+      }
+    },
+    {
+      "id": "r-rush",
+      "text": "At least 98% of requests are served during the semester rush",
+      "check": {
+        "type": "scenario",
+        "scenario": "rush",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $4,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-search",
+      "text": "Searching uses a search index, not the main database",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "search_index"
+        ]
+      }
+    },
+    {
+      "id": "r-checkout",
+      "text": "Something handles checkouts, and never lends one copy twice",
+      "check": {
+        "type": "hosted",
+        "capability": "checkout"
+      }
+    },
+    {
+      "id": "r-reminders",
+      "text": "Something sends overdue reminders",
+      "check": {
+        "type": "hosted",
+        "capability": "reminders"
+      }
+    },
+    {
+      "id": "r-consistency",
+      "text": "The design explains how the search index stays in step with checkouts",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    }
+  ],
+  "rubric": [
+    "Search is served from a search index, with the database reserved for checkouts and returns.",
+    "Checkouts are protected by a lock or a transaction so one copy cannot be lent twice, and the throughput cost is understood.",
+    "The search index is allowed to lag slightly behind checkouts, and the design says how it catches up.",
+    "Reminders run in the background apart from request servers, behind a provider call with a timeout.",
+    "A replica or index lets search keep working if the primary database has a problem."
+  ],
+  "reference": {
+    "summary": "Search through an index, protect checkouts with row locks, and keep reminders in a background worker.",
+    "design": [
+      "User, then a Load Balancer, then a Server (6 replicas, autoscale to 18) running both 'Search the catalogue' and 'Check out or return a book'.",
+      "Searches go through a Cache (80% hit) to a Search Index (2 replicas). Checkouts go to a Database with a read replica and Row locks.",
+      "A Worker sends overdue reminders through a Third-party API set to Email / SMS."
+    ],
+    "tradeoffs": [
+      "One server for both is cheapest at this size, but a heavy search burst and a checkout share capacity.",
+      "Row locks protect the last copy of a book at the price of slower writes on a small share of traffic."
+    ]
+  }
+}

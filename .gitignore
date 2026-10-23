@@ -1,0 +1,29 @@
+# dependencies and build output
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# env (keep examples)
+.env
+.env.*
+!.env.example
+!backend/.env.example
+
+# local data
+backend/data.sqlite3
+*.sqlite3
+
+# private reference data: used only by tools/copycheck.py, never copied into the app or committed
+system_design_full_data.json
+
+# local design notes (kept on disk, not in the repo)
+DESIGN.md
+
+# editor / tool state
+.claude/settings.local.json
+
+backend/invite_code.txt
+backend/server.log

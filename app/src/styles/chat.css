@@ -1,0 +1,245 @@
+/* ---------- chat coach ---------- */
+.chat-fab {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px 9px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--gold);
+  background: linear-gradient(180deg, #1a1608, var(--panel));
+  color: var(--gold-hi);
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+.chat-fab:hover {
+  background: var(--gold-wash);
+}
+.chat-fab span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1405;
+  font-weight: 800;
+}
+.chat {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 7;
+  width: min(380px, calc(100% - 28px));
+  height: min(540px, calc(100% - 90px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid var(--gold-lo);
+  background: var(--panel);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.chat-head b {
+  display: block;
+  font: 400 20px/1.1 var(--display);
+  color: var(--gold-hi);
+}
+.chat-head small {
+  display: block;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+}
+.chat-x:hover {
+  color: var(--text);
+}
+.chat-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.chat-empty p {
+  color: var(--muted);
+  margin: 4px 0 10px;
+}
+.chat-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chat-starters button {
+  padding: 6px 11px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--gold);
+  font-size: 12.5px;
+}
+.chat-starters button:hover {
+  border-color: var(--gold-lo);
+  background: var(--gold-wash);
+}
+.msg {
+  max-width: 92%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  line-height: 1.45;
+}
+.msg p {
+  margin: 0 0 6px;
+}
+.msg p:last-child {
+  margin-bottom: 0;
+}
+.msg ul {
+  margin: 4px 0 6px;
+  padding-left: 18px;
+}
+.msg.user {
+  align-self: flex-end;
+  background: var(--navy-deep);
+  border: 1px solid var(--navy);
+}
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.msg.typing {
+  color: var(--muted);
+  font-style: italic;
+}
+.proposal {
+  margin-top: 8px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px dashed var(--gold-lo);
+  background: var(--gold-wash);
+}
+.proposal.applied {
+  border-color: var(--green);
+  background: rgba(26, 90, 67, 0.2);
+}
+.proposal.dismissed {
+  opacity: 0.6;
+}
+.proposal small {
+  display: block;
+  font: 600 10px var(--body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.proposal ul {
+  margin: 6px 0 8px;
+}
+.proposal li {
+  margin: 3px 0;
+  font-size: 12.5px;
+}
+.proposal-actions {
+  display: flex;
+  gap: 8px;
+}
+.proposal-state {
+  color: var(--muted) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500 !important;
+}
+.chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  align-items: flex-end;
+}
+.chat-input textarea {
+  flex: 1;
+  resize: none;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font: inherit;
+}
+.chat-input textarea:focus {
+  border-color: var(--gold);
+}
+@media (max-width: 900px) {
+  .chat {
+    height: min(460px, calc(100% - 70px));
+  }
+}
+
+/* notes on a block: cards, not pills, so a long explanation wraps cleanly */
+.resp {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+.resp .link {
+  align-self: flex-start;
+}
+.resp-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px 8px 11px;
+  border-radius: 10px;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-lo);
+  color: var(--gold-hi);
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.resp-chip span {
+  flex: 1;
+  min-width: 0;
+}
+.resp-chip button {
+  flex: none;
+  margin-top: -1px;
+}
+textarea.resp-input {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.45;
+}
+

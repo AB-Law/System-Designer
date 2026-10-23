@@ -1,0 +1,304 @@
+{
+  "id": "ticket_booking",
+  "title": "Design a Ticket Booking Service",
+  "difficulty": "medium",
+  "brief": "Fans buy seats for concerts. When a popular show goes on sale far more people arrive than there are seats, so buyers wait in a line and are let in one at a time in the order they arrived. A seat can only be sold once: it is held for a few minutes while the buyer pays through an outside processor, and released if they do not.",
+  "constraints": [
+    "Browsing seats must respond within 250 ms",
+    "About 4,000 requests per second normally, and a hot on-sale makes the demand to buy several times higher",
+    "A seat can never be sold to two people",
+    "Buyers are admitted from the waiting line in the order they arrived",
+    "Payment goes through an external processor, and a failed or abandoned payment releases the seat",
+    "Keep infrastructure under $8,000 a month",
+    "About 4 million seats are on sale across 2,000 events"
+  ],
+  "traffic": {
+    "users": 400000,
+    "reqPerUser": 0.01,
+    "writeShare": 0.15
+  },
+  "latencyTargetMs": 250,
+  "budget": 8000,
+  "capabilities": [
+    {
+      "id": "browse",
+      "label": "Browse events and seats",
+      "hint": "Show events and which seats are still free",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 0
+    },
+    {
+      "id": "admit",
+      "label": "Admit buyers in order",
+      "hint": "Let people through from the waiting line in the order they arrived",
+      "share": 0.12,
+      "work": 1,
+      "critical": false,
+      "requires": [
+        "ordered_delivery"
+      ],
+      "writes": 1
+    },
+    {
+      "id": "hold",
+      "label": "Hold a seat",
+      "hint": "Reserve a seat for a few minutes. Two buyers asking for the same seat at once must not both get it.",
+      "share": 0.1,
+      "work": 3,
+      "critical": true,
+      "requires": [
+        "exclusive_access"
+      ],
+      "uses": [
+        "database"
+      ],
+      "writes": 0.5
+    },
+    {
+      "id": "pay",
+      "label": "Take payment for held seats",
+      "hint": "Charge the buyer through the processor. A double click must not charge twice.",
+      "share": 0.05,
+      "work": 2,
+      "critical": false,
+      "requires": [
+        "idempotent"
+      ],
+      "needs": [
+        "third_party:payment"
+      ],
+      "writes": 1
+    },
+    {
+      "id": "release",
+      "label": "Release expired holds",
+      "hint": "Free seats whose hold ran out, about 150 per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 150,
+      "uses": [
+        "database"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "seats",
+        "label": "Seats",
+        "rows": 4000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 4000000,
+            "label": "Seat id",
+            "pk": true
+          },
+          {
+            "name": "event_id",
+            "distinct": 2000,
+            "label": "Event"
+          },
+          {
+            "name": "status",
+            "distinct": 3,
+            "label": "Status"
+          },
+          {
+            "name": "seat_no",
+            "distinct": 2000,
+            "label": "Seat number"
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "free_seats",
+        "label": "Find free seats for an event, in seat order",
+        "capability": "hold",
+        "table": "seats",
+        "op": "read",
+        "where": [
+          "event_id",
+          "status"
+        ],
+        "orderBy": [
+          "seat_no"
+        ],
+        "page": 20,
+        "matches": 300
+      },
+      {
+        "id": "hold_seat",
+        "label": "Hold a seat for the buyer",
+        "capability": "hold",
+        "table": "seats",
+        "op": "write"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical day",
+      "description": "Steady browsing and a normal rate of purchases.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Browsing and buying have very different needs. How do you stop a rush of buyers from slowing down people who are just looking?",
+      "debrief": "Browsing is served from a cache, and the booking path only sees the few buyers who proceed."
+    },
+    {
+      "id": "onsale",
+      "title": "A hot on-sale",
+      "description": "Three times the traffic, and holds, payments and the waiting line are several times busier still.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "More people want seats than exist. What limits how fast you let buyers through, and what happens to the rest?",
+      "capabilityLoad": {
+        "admit": 4,
+        "hold": 6,
+        "pay": 4
+      },
+      "debrief": "Admit workers batch buyers through at a rate the lock-protected hold service can sustain; the rest wait in the stream."
+    },
+    {
+      "id": "processor_down",
+      "title": "Payment processor outage",
+      "description": "The external payment processor stops answering.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Payments cannot go through. What happens to held seats and to buyers who are mid-checkout?",
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ],
+          "kind": "payment"
+        },
+        "mode": "down"
+      },
+      "debrief": "Browsing and the line keep working. Only the final payment step fails, and the hold expires and is released."
+    },
+    {
+      "id": "db_down",
+      "title": "Seat database loses a node",
+      "description": "The database holding seat holds loses a node.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "The seat store loses a node. Can you still guarantee no seat is sold twice?",
+      "failure": {
+        "target": {
+          "types": [
+            "database"
+          ]
+        },
+        "mode": "down"
+      },
+      "debrief": "Losing a database node cuts capacity but the replica keeps holds consistent, and browsing is cache-served."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Browsing meets the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 250
+      }
+    },
+    {
+      "id": "r-onsale",
+      "text": "The hot on-sale passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "onsale"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $8,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-line",
+      "text": "Buyers are admitted through a Stream, in arrival order",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "stream"
+        ]
+      }
+    },
+    {
+      "id": "r-hold",
+      "text": "Something holds seats, and never to two buyers",
+      "check": {
+        "type": "hosted",
+        "capability": "hold"
+      }
+    },
+    {
+      "id": "r-pay",
+      "text": "Something takes payment",
+      "check": {
+        "type": "hosted",
+        "capability": "pay"
+      }
+    },
+    {
+      "id": "r-release",
+      "text": "Something releases expired holds",
+      "check": {
+        "type": "hosted",
+        "capability": "release"
+      }
+    },
+    {
+      "id": "r-out",
+      "text": "Browsing keeps working when the payment processor is down",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "processor_down"
+      }
+    },
+    {
+      "id": "r-fair",
+      "text": "The design explains how the waiting line stays fair",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    }
+  ],
+  "rubric": [
+    "A waiting line (a Stream keyed by event) admits buyers at a rate the booking service can sustain; browsers are not slowed by it.",
+    "Holding a seat uses a lock or a conditional write, so two buyers cannot take the same seat, and the throughput cost of that lock is understood.",
+    "A hold has an expiry, released by a background job or a TTL, so abandoned checkouts free their seats.",
+    "Payment is idempotent and behind a timeout; a processor outage fails checkouts, not browsing.",
+    "Browsing is served from a cache so it scales apart from the booking path."
+  ],
+  "reference": {
+    "summary": "Meter buyers through a waiting line, hold seats with row locks, and keep browsing apart from the booking path.",
+    "design": [
+      "User, then a Load Balancer, then a Web Server (autoscale) running 'Browse events and seats', reading a Cache (95% hit) in front of the Database.",
+      "Buyers join a line: the Web Server appends to a Stream asynchronously, Admit Workers (batched) read it in order, then a Hold Service (Row locks) takes the seat and a Payment Service (idempotency keys) charges through a Third-party API set to Payment processor.",
+      "A Worker releases expired holds."
+    ],
+    "tradeoffs": [
+      "The waiting line meters demand into the booking path, so an on-sale becomes a line instead of an outage.",
+      "Row locks stop a seat selling twice but limit how fast holds can be taken, which is exactly what the line protects."
+    ]
+  }
+}

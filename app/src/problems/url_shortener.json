@@ -1,0 +1,239 @@
+{
+  "id": "url_shortener",
+  "title": "Design a Short Link Service",
+  "difficulty": "easy",
+  "brief": "People turn long web addresses into short links and share them. Visitors who open a short link are sent on to the original address, which is by far the most common request. Owners see how many times their link was opened, and links nobody uses eventually expire. How you place link creation, click counting and the clean-up job decides how robust the service is.",
+  "constraints": [
+    "A redirect must complete within 100 ms",
+    "About 4,000 redirects per second at peak, and about 1 new link for every 50 redirects",
+    "A short code must never be issued twice",
+    "Counting clicks must never slow down or block a redirect",
+    "Unused links are removed by a background job",
+    "Keep infrastructure under $7,000 a month"
+  ],
+  "traffic": {
+    "users": 2000000,
+    "reqPerUser": 0.002,
+    "writeShare": 0.02
+  },
+  "latencyTargetMs": 100,
+  "budget": 7000,
+  "capabilities": [
+    {
+      "id": "redirect",
+      "label": "Redirect a visitor",
+      "hint": "Look up a short code and send the visitor to the original address",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 0
+    },
+    {
+      "id": "create_link",
+      "label": "Create a short link",
+      "hint": "Issue a new short code for an address. Two creations at the same moment must never get the same code.",
+      "share": 0.02,
+      "work": 3,
+      "critical": true,
+      "requires": [
+        "unique_ids"
+      ],
+      "writes": 1
+    },
+    {
+      "id": "click_count",
+      "label": "Count clicks",
+      "hint": "Add one to the link's total for the owner's dashboard",
+      "share": 1,
+      "work": 0.3,
+      "critical": false,
+      "writes": 1
+    },
+    {
+      "id": "expiry",
+      "label": "Remove unused links",
+      "hint": "A sweep that deletes links nobody has opened for a long time, about 200 per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 200
+    }
+  ],
+  "regions": {
+    "home": "us"
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Regular day",
+      "description": "Steady, read-heavy traffic.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Why does a redirect service cache so well, and what do you do about the one request in fifty that writes?",
+      "debrief": "Almost every redirect is a cache hit; the database sees misses, creations and batched click counts."
+    },
+    {
+      "id": "viral",
+      "title": "A link goes viral (3x)",
+      "description": "One short link is posted somewhere huge and traffic triples.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "Almost all of the extra traffic is for a single code. Which component feels it first, and what absorbs it?",
+      "debrief": "One link means one hot key, which the cache absorbs. The servers autoscale for the extra volume and the queue buffers click counts."
+    },
+    {
+      "id": "counter_slow",
+      "title": "The click counter hangs",
+      "description": "Whatever runs click counting becomes 25x slower.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "capability": "click_count"
+        },
+        "mode": "slow",
+        "factor": 25
+      },
+      "interviewQuestion": "Counting is slow. Should a visitor wait for it? Where would you count so that this cannot happen?",
+      "debrief": "Counting happens in workers behind the queue, so a hung counter only delays counts, not redirects."
+    },
+    {
+      "id": "cache_loss",
+      "title": "The cache is lost",
+      "description": "Every lookup falls through to the database.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "cache"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "With the cache gone, can the database carry the redirect load alone? What would you do first?",
+      "debrief": "Two cache replicas mean losing one only reduces capacity. With a single replica the database would take every redirect."
+    },
+    {
+      "id": "global",
+      "title": "Readers on every continent",
+      "description": "The same number of requests, but 60% of them now come from Europe and Asia.",
+      "trafficMultiplier": 1,
+      "regionMix": {
+        "us": 0.4,
+        "eu": 0.3,
+        "ap": 0.3
+      },
+      "interviewQuestion": "A link is opened in Singapore. What has to cross the ocean to answer it, and what does not?",
+      "debrief": "Opening a link is a read, so every region runs its own servers and cache and the database keeps a read copy there. Only creating a link has to reach the primary, and that is rare enough to be slower."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Redirects meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 100
+      }
+    },
+    {
+      "id": "r-viral",
+      "text": "At least 98% of redirects are served when traffic is three times higher",
+      "check": {
+        "type": "scenario",
+        "scenario": "viral",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $7,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-cache",
+      "text": "Redirects are served from a cache in front of storage",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "cache"
+        ]
+      }
+    },
+    {
+      "id": "r-create",
+      "text": "Something creates links, and never issues the same code twice",
+      "check": {
+        "type": "hosted",
+        "capability": "create_link"
+      }
+    },
+    {
+      "id": "r-count",
+      "text": "Something counts clicks",
+      "check": {
+        "type": "hosted",
+        "capability": "click_count"
+      }
+    },
+    {
+      "id": "r-count-iso",
+      "text": "A hung click counter cannot slow redirects",
+      "check": {
+        "type": "scenario",
+        "scenario": "counter_slow",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 100
+      }
+    },
+    {
+      "id": "r-expiry",
+      "text": "Something removes unused links",
+      "check": {
+        "type": "hosted",
+        "capability": "expiry"
+      }
+    },
+    {
+      "id": "r-code",
+      "text": "The design explains how short codes are generated",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-global",
+      "text": "People on every continent get their redirect within the target",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "global"
+      }
+    }
+  ],
+  "rubric": [
+    "Redirects are served from a cache or in-memory store; the database sees only misses and writes.",
+    "Code generation avoids collisions on purpose (a counter range, a key service, or a locked write), and the trade-off is stated.",
+    "Click counting is moved off the redirect path (a queue and a worker, or batched updates) so it cannot slow a redirect.",
+    "Expiry runs in the background or as a TTL, not inside the redirect servers.",
+    "Writes and reads are scaled separately; one failed component does not stop redirects."
+  ],
+  "reference": {
+    "summary": "Redirect from a cache, count clicks off the request path, and issue codes from leased counter ranges.",
+    "design": [
+      "User, then a Load Balancer, then a Server (7 replicas, autoscale to 16) running 'Redirect a visitor' and 'Create a short link', ID strategy Counter range per server.",
+      "The Server reads a Cache (2 replicas, 97% hit) in front of a Database with a read replica and Row locks.",
+      "Clicks are counted asynchronously: Server to a Queue to Workers (batch 100, idempotent) to the Database.",
+      "A separate Worker runs 'Remove unused links'."
+    ],
+    "tradeoffs": [
+      "Counting through a queue costs a queue and workers, but a slow counter can never delay a redirect.",
+      "Row locks cost write throughput; at one write per 50 reads that is a small price for never issuing a code twice."
+    ]
+  }
+}

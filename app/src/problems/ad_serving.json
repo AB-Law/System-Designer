@@ -1,0 +1,213 @@
+{
+  "id": "ad_serving",
+  "title": "Design an Ad Serving System",
+  "difficulty": "hard",
+  "brief": "A publisher network needs a service that picks one ad for every page view in well under a tenth of a second. Each pick must respect advertiser targeting and budgets, and every impression and click has to be recorded for billing without slowing the page down.",
+  "constraints": [
+    "Return an ad within 80 ms at p99",
+    "Peak of 60,000 ad requests per second (1.2M visitors, about one request every 20 seconds each)",
+    "Choose ads using the visitor's context: location, device, page topic",
+    "Never lose an impression or click event, but never block the ad response on recording it",
+    "Let the ranking logic be rolled out to a slice of traffic first (A/B test)",
+    "Keep infrastructure under $65,000 a month"
+  ],
+  "traffic": {
+    "users": 1200000,
+    "reqPerUser": 0.05,
+    "writeShare": 0.02
+  },
+  "latencyTargetMs": 80,
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak hour",
+      "description": "The expected 60K requests per second arrive steadily.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Walk through one ad request from the page to the response. Which hops are on the critical path and which can be moved off it?",
+      "debrief": "The ad server does cached lookups and calls ranking; event recording happens off the request path."
+    },
+    {
+      "id": "spike",
+      "title": "Big event traffic (2x)",
+      "description": "A major live event doubles the request rate within minutes.",
+      "trafficMultiplier": 2,
+      "interviewQuestion": "Which component saturates first when traffic doubles, and how would you scale it without re-architecting?",
+      "debrief": "Autoscaling widens the ad server, ranking and workers, and the queue's partitions take the doubled event rate."
+    },
+    {
+      "id": "slow_ranking",
+      "title": "Ranking model slows down",
+      "description": "The component that scores and ranks candidate ads becomes 6x slower.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "capability": "ranking",
+          "responsibility": "rank|match|score|model|select",
+          "types": [
+            "service",
+            "server"
+          ]
+        },
+        "mode": "slow",
+        "factor": 6
+      },
+      "interviewQuestion": "The ranking step is suddenly slow. What does the visitor see, and how does your design protect the 80 ms budget?",
+      "debrief": "The breaker cuts ranking off at its timeout and a simpler rule picks the ad, so the 80 ms budget holds."
+    },
+    {
+      "id": "cache_loss",
+      "title": "Campaign cache is lost",
+      "description": "The hot campaign data store disappears and every lookup falls through to the database.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "cache"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "With the cache gone, what absorbs the read load? Would you rather serve stale campaigns or fail?",
+      "debrief": "Three cache replicas mean losing one reduces capacity, and the database with read replicas covers the extra misses."
+    },
+    {
+      "id": "pipeline_down",
+      "title": "Event pipeline outage",
+      "description": "The queue that carries impression and click events goes offline.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "queue"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "Events cannot be queued. Do ads keep serving? Where are events held until the pipeline returns?",
+      "debrief": "Spare queue partitions keep accepting events, and the ad response never waited on them."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-latency",
+      "text": "Ads are returned within the latency budget at peak load",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 80
+      }
+    },
+    {
+      "id": "r-served",
+      "text": "At least 99% of requests are served during the 2x spike",
+      "check": {
+        "type": "scenario",
+        "scenario": "spike",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.99
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $65,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-async",
+      "text": "Impression and click events are recorded asynchronously (queue plus consumer)",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "queue",
+          "worker"
+        ]
+      }
+    },
+    {
+      "id": "r-events",
+      "text": "Something records impressions and clicks",
+      "check": {
+        "type": "hosted",
+        "capability": "event_logging"
+      }
+    },
+    {
+      "id": "r-rank",
+      "text": "A slow ranking model cannot push responses past the latency target",
+      "check": {
+        "type": "scenario",
+        "scenario": "slow_ranking",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 80
+      }
+    },
+    {
+      "id": "r-edge",
+      "text": "Event recording is decoupled from the ad response with an async link",
+      "check": {
+        "type": "asyncEdge"
+      }
+    },
+    {
+      "id": "r-ab",
+      "text": "The design explains how ranking changes can be tested on part of the traffic",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "The ad response path avoids the primary database on every request (cache, in-memory index, or precomputed candidates).",
+    "Impression and click logging goes through a queue so it cannot slow or fail the response.",
+    "Budget and pacing are handled without a synchronous global lock on the hot path.",
+    "A slow ranking step has a timeout and a cheaper fallback.",
+    "Components on the hot path run as multiple instances behind a balancer.",
+    "Ranking runs apart from the core ad pick, or is called behind a timeout, so a slow model degrades quality instead of availability."
+  ],
+  "budget": 65000,
+  "capabilities": [
+    {
+      "id": "pick_ad",
+      "label": "Pick an ad",
+      "hint": "Filter campaigns by targeting and choose the best bid for this page view",
+      "share": 1,
+      "work": 1,
+      "critical": true
+    },
+    {
+      "id": "ranking",
+      "label": "Rank with the model",
+      "hint": "Score candidate ads with the relevance model for 70% of requests. Without it a simpler rule picks the ad.",
+      "share": 0.7,
+      "work": 1.5,
+      "critical": false
+    },
+    {
+      "id": "event_logging",
+      "label": "Record impressions and clicks",
+      "hint": "Persist billing events. Belongs off the request path.",
+      "share": 1,
+      "work": 1,
+      "critical": false
+    }
+  ],
+  "reference": {
+    "summary": "Pick ads from cached campaigns, keep the ranking model behind a breaker, and record events asynchronously.",
+    "design": [
+      "User, then a Load Balancer (3 instances), then an Ad Server (56 replicas, autoscale to 130, circuit breaker, 50 ms timeout) running 'Pick an ad'.",
+      "It reads a Cache (3 replicas, 97% hit, request coalescing) in front of a Database with 2 read replicas.",
+      "Ranking runs in a separate Service (40 replicas, autoscale) behind the breaker.",
+      "Impressions and clicks go to a Queue (8 partitions) asynchronously, read by Workers (batch 40, idempotent, autoscale)."
+    ],
+    "tradeoffs": [
+      "Ranking as its own service costs about $5K more a month than running it inside the ad server, but a slow model degrades quality, not availability.",
+      "Autoscaling pays for spike capacity only part of the time."
+    ]
+  }
+}

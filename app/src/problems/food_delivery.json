@@ -1,0 +1,326 @@
+{
+  "id": "food_delivery",
+  "title": "Design a Meal Delivery Service",
+  "difficulty": "hard",
+  "brief": "Customers find restaurants near them, order food, pay, and watch a courier approach on a map. Couriers report their position constantly, and each restaurant gets the order on a tablet. Dinner time is several times busier than the afternoon, and a dish that is nearly sold out must not be sold to two people.",
+  "constraints": [
+    "Finding restaurants and placing an order must each respond within 400 ms; the payment processor alone takes about a quarter of a second",
+    "About 6,000 requests per second at peak, and three times that at dinner",
+    "Placing an order twice by accident (a double tap) creates one order",
+    "A dish with one portion left is sold to one person",
+    "Customers are charged through an external payment processor, and restaurants are told through an external messaging provider",
+    "Live courier tracking is nice to have, but ordering must work without it",
+    "Keep infrastructure under $14,000 a month",
+    "About 3 million dishes from 100,000 restaurants, and 150 million orders from 20 million customers"
+  ],
+  "traffic": {
+    "users": 600000,
+    "reqPerUser": 0.01,
+    "writeShare": 0.25
+  },
+  "latencyTargetMs": 400,
+  "budget": 14000,
+  "capabilities": [
+    {
+      "id": "browse",
+      "label": "Find restaurants nearby",
+      "hint": "List open restaurants close to the customer, with their menus",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "uses": [
+        "geo_index"
+      ]
+    },
+    {
+      "id": "order",
+      "label": "Place an order",
+      "hint": "Create the order and take the dishes out of stock. A double tap must make one order, and the last portion must go to one person.",
+      "share": 0.06,
+      "work": 2.5,
+      "critical": true,
+      "requires": [
+        "idempotent",
+        "exclusive_access"
+      ],
+      "uses": [
+        "database"
+      ],
+      "writes": 0.5
+    },
+    {
+      "id": "payment",
+      "label": "Charge the customer",
+      "hint": "Take payment through the processor when an order is placed",
+      "share": 0.06,
+      "work": 1.5,
+      "critical": true,
+      "requires": [
+        "idempotent"
+      ],
+      "needs": [
+        "third_party:payment"
+      ]
+    },
+    {
+      "id": "track",
+      "label": "Record courier positions",
+      "hint": "Keep the courier's position current so the customer can watch the map",
+      "share": 0.35,
+      "work": 0.4,
+      "critical": false,
+      "uses": [
+        "geo_index"
+      ]
+    },
+    {
+      "id": "notify",
+      "label": "Send the order to the restaurant",
+      "hint": "Tell the restaurant's tablet about the new order",
+      "share": 0.06,
+      "work": 0.5,
+      "critical": false,
+      "needs": [
+        "third_party:messaging"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "dishes",
+        "label": "Dishes",
+        "rows": 3000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 3000000,
+            "label": "Dish id",
+            "pk": true
+          },
+          {
+            "name": "restaurant_id",
+            "distinct": 100000,
+            "label": "Restaurant"
+          },
+          {
+            "name": "portions_left",
+            "distinct": 50,
+            "label": "Portions left"
+          }
+        ]
+      },
+      {
+        "id": "orders",
+        "label": "Orders",
+        "rows": 150000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 150000000,
+            "label": "Order id",
+            "pk": true
+          },
+          {
+            "name": "customer_id",
+            "distinct": 20000000,
+            "label": "Customer"
+          },
+          {
+            "name": "status",
+            "distinct": 5,
+            "label": "Status"
+          },
+          {
+            "name": "placed_at",
+            "distinct": 150000000,
+            "label": "Placed",
+            "monotonic": true
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "stock",
+        "label": "Check how many portions of the dish are left",
+        "capability": "order",
+        "table": "dishes",
+        "op": "read",
+        "where": [
+          "id"
+        ]
+      },
+      {
+        "id": "open_orders",
+        "label": "Look for the customer's open order, in case of a double tap",
+        "capability": "order",
+        "table": "orders",
+        "op": "read",
+        "where": [
+          "customer_id",
+          "status"
+        ]
+      },
+      {
+        "id": "reserve",
+        "label": "Reserve the portion",
+        "capability": "order",
+        "table": "dishes",
+        "op": "write"
+      },
+      {
+        "id": "new_order",
+        "label": "Record the order",
+        "capability": "order",
+        "table": "orders",
+        "op": "write"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady browsing with the usual rate of orders.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Browsing near me, ordering, and courier tracking behave very differently. Which of them share a service and which should not?",
+      "debrief": "Browsing is cache and index reads; ordering is a small, locked, idempotent write path."
+    },
+    {
+      "id": "dinner",
+      "title": "Dinner rush (3x)",
+      "description": "Everything triples at dinner time.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "Which part feels the dinner rush first, and which parts can wait a few seconds?",
+      "debrief": "Autoscaling widens the busy services, and the queue keeps restaurant notification from blocking orders."
+    },
+    {
+      "id": "track_slow",
+      "title": "Courier tracking hangs",
+      "description": "Whatever runs courier tracking becomes 15x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Tracking hangs. Should an order wait for it, and what happens to the map the customer sees?",
+      "failure": {
+        "target": {
+          "capability": "track"
+        },
+        "mode": "slow",
+        "factor": 15
+      },
+      "debrief": "Courier tracking is its own service, so its slowdown never touches browsing or ordering."
+    },
+    {
+      "id": "notify_down",
+      "title": "Restaurant messaging outage",
+      "description": "The external messaging provider stops answering.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Restaurants cannot be told about orders. Do you still accept orders, and how do restaurants find out?",
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ],
+          "kind": "messaging"
+        },
+        "mode": "down"
+      },
+      "debrief": "Orders succeed regardless, because notification is asynchronous and optional."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Browsing and ordering meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 400
+      }
+    },
+    {
+      "id": "r-dinner",
+      "text": "The dinner rush passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "dinner"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $14,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-geo",
+      "text": "Restaurants and couriers are in a geographic index",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "geo_index"
+        ]
+      }
+    },
+    {
+      "id": "r-order",
+      "text": "Something places orders, once, and never oversells a dish",
+      "check": {
+        "type": "hosted",
+        "capability": "order"
+      }
+    },
+    {
+      "id": "r-track",
+      "text": "A hung courier tracker does not slow ordering",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "track_slow"
+      }
+    },
+    {
+      "id": "r-notify",
+      "text": "Ordering keeps working when restaurant messaging is down",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "notify_down"
+      }
+    },
+    {
+      "id": "r-stock",
+      "text": "The design explains how the last portion of a dish is protected",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    }
+  ],
+  "rubric": [
+    "Restaurants and courier positions are in a geographic index; browsing reads it through a cache.",
+    "Placing an order is idempotent (an order key) and decrements stock with a lock or conditional write.",
+    "Payment and restaurant notification are separate steps; the payment is essential and idempotent, while restaurant notification is optional and isolated so its outage does not stop orders.",
+    "Courier tracking is high volume and optional, isolated so it cannot slow ordering.",
+    "Dinner-time scaling uses autoscaling on the busy parts rather than permanent capacity everywhere."
+  ],
+  "reference": {
+    "summary": "Separate browsing, ordering and tracking, protect orders with idempotency and stock locks, and keep restaurant messaging optional.",
+    "design": [
+      "User, then a Load Balancer that routes by request class: a Browse Server (7 replicas, autoscale) reading a Cache in front of a Geo Index (quadtree, 3 areas); an Order Service (idempotency keys, Row locks) writing the Database; a Tracking Service updating the Geo Index.",
+      "The Order Service calls a Payment Service (idempotency keys) that charges through a Third-party API set to Payment processor.",
+      "It also sends the order to a Queue asynchronously; a Worker tells the restaurant through a Third-party API set to Email / SMS."
+    ],
+    "tradeoffs": [
+      "Tracking in its own service costs a little and keeps a hung tracker from slowing orders.",
+      "Payment is essential and has no fallback; restaurant notification is optional and can fail without losing orders."
+    ]
+  }
+}

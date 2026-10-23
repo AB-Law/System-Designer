@@ -1,0 +1,350 @@
+{
+  "id": "payment",
+  "title": "Design a Payment Service",
+  "difficulty": "hard",
+  "brief": "Online shops send us their customers' payments. Each payment must be charged exactly once even when the shop retries after a timeout, recorded in a ledger whose books always balance, and settled through an outside payment processor that is slow and rate limited. A fraud score is wanted on every payment, receipts go out afterwards, and every day the ledger is checked against the processor's own report.",
+  "constraints": [
+    "A payment request must finish within 800 ms",
+    "About 1,500 payments per second at peak, and twice that during a big sale",
+    "A payment is charged exactly once, even when the caller retries it",
+    "Every payment is written to a ledger, and all of its entries succeed together or not at all",
+    "Cards are charged through an external payment processor with a rate limit you buy by the plan",
+    "A fraud score is wanted, but a slow fraud check must not stop payments",
+    "Keep infrastructure under $16,500 a month",
+    "The ledger holds about 2 billion entries across 40 million accounts, and every payment carries a unique key chosen by the caller"
+  ],
+  "traffic": {
+    "users": 500000,
+    "reqPerUser": 0.003,
+    "writeShare": 0.9
+  },
+  "latencyTargetMs": 800,
+  "budget": 16500,
+  "capabilities": [
+    {
+      "id": "charge",
+      "label": "Take a payment",
+      "hint": "Receive the payment request and see it through. A retried request must not charge the customer again.",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "requires": [
+        "idempotent"
+      ]
+    },
+    {
+      "id": "ledger",
+      "label": "Write the ledger entries",
+      "hint": "Record the debit and the credit for the payment. They must succeed or fail together, or the books stop balancing.",
+      "share": 1,
+      "work": 1.5,
+      "critical": true,
+      "requires": [
+        "transactions"
+      ],
+      "uses": [
+        "database"
+      ],
+      "writes": 0.5
+    },
+    {
+      "id": "processor",
+      "label": "Charge the card",
+      "hint": "Ask the payment processor to move the money. It answers in a quarter of a second and limits how many calls you may make.",
+      "share": 1,
+      "work": 0.5,
+      "critical": true,
+      "needs": [
+        "third_party:payment"
+      ]
+    },
+    {
+      "id": "fraud",
+      "label": "Score for fraud",
+      "hint": "Rate how risky the payment looks. Without a score, simple rules decide.",
+      "share": 1,
+      "work": 1.5,
+      "critical": false
+    },
+    {
+      "id": "receipt",
+      "label": "Send the receipt",
+      "hint": "Email the customer after the payment succeeds. It can happen a little later.",
+      "share": 1,
+      "work": 0.3,
+      "critical": false,
+      "needs": [
+        "third_party:messaging"
+      ]
+    },
+    {
+      "id": "reconcile",
+      "label": "Reconcile with the processor",
+      "hint": "Compare the ledger with the processor's daily report and flag differences, about 200 operations per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 200,
+      "needs": [
+        "third_party:payment"
+      ],
+      "uses": [
+        "database"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "ledger_entries",
+        "label": "Ledger entries",
+        "rows": 2000000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 2000000000,
+            "label": "Entry id",
+            "pk": true
+          },
+          {
+            "name": "account_id",
+            "distinct": 40000000,
+            "label": "Account"
+          },
+          {
+            "name": "idem_key",
+            "distinct": 1000000000,
+            "label": "Payment key"
+          },
+          {
+            "name": "created_at",
+            "distinct": 2000000000,
+            "label": "Created",
+            "monotonic": true
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "dup_check",
+        "label": "Look the payment up by its key, in case it was already charged",
+        "capability": "ledger",
+        "table": "ledger_entries",
+        "op": "read",
+        "where": [
+          "idem_key"
+        ]
+      },
+      {
+        "id": "balance",
+        "label": "Add up the account's recent entries to check its balance",
+        "capability": "ledger",
+        "table": "ledger_entries",
+        "op": "read",
+        "where": [
+          "account_id"
+        ],
+        "page": 200,
+        "matches": 200
+      },
+      {
+        "id": "post",
+        "label": "Post the debit and the credit",
+        "capability": "ledger",
+        "table": "ledger_entries",
+        "op": "write",
+        "perRequest": 2
+      }
+    ]
+  },
+  "regions": {
+    "home": "us"
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady payments at the usual peak.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "A payment touches a fraud check, the ledger and the processor. Which of those must happen before you answer the shop, and in what order?",
+      "debrief": "The request does only the essential steps in order: idempotency check, fraud score, processor charge, ledger write."
+    },
+    {
+      "id": "sale",
+      "title": "Big sale (2x)",
+      "description": "A shopping event doubles the number of payments.",
+      "trafficMultiplier": 2,
+      "interviewQuestion": "Which component hits its limit first when payments double, and which limit can you not buy your way past?",
+      "debrief": "Autoscaling and a second ledger shard cover double the payments, within the processor plan's limit."
+    },
+    {
+      "id": "fraud_slow",
+      "title": "Fraud scoring hangs",
+      "description": "Whatever runs fraud scoring becomes 40x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "The fraud check hangs. Do you wait, skip it, or decide with simple rules, and who decides?",
+      "failure": {
+        "target": {
+          "capability": "fraud"
+        },
+        "mode": "slow",
+        "factor": 40
+      },
+      "debrief": "The breaker gives up on fraud scoring after its timeout and rules decide, so payments keep flowing."
+    },
+    {
+      "id": "ledger_down",
+      "title": "A ledger database node fails",
+      "description": "The ledger database loses a node.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "The ledger store loses a node in the middle of a payment. How do you know whether the customer was charged?",
+      "failure": {
+        "target": {
+          "types": [
+            "database"
+          ]
+        },
+        "mode": "down"
+      },
+      "debrief": "A replica keeps the ledger available at reduced capacity, and idempotency keys make retries safe."
+    },
+    {
+      "id": "region_down",
+      "title": "A whole region goes down",
+      "description": "The region that holds your main servers and ledger is unreachable. Payments keep arriving from the US and Europe.",
+      "trafficMultiplier": 1,
+      "regionMix": {
+        "us": 0.6,
+        "eu": 0.4
+      },
+      "failure": {
+        "target": {
+          "region": "us"
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "US East is gone. What keeps taking payments, where is the ledger now, and what happened to payments that were in flight?",
+      "debrief": "A second region holds a full stack and a copy of the ledger. When the first goes, the ledger copy is promoted and the second region takes all the traffic, so it has to be sized for everything, not half."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Payments finish within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 800
+      }
+    },
+    {
+      "id": "r-sale",
+      "text": "The big sale passes without failed payments",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "sale"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $16,500",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-fraud",
+      "text": "A hung fraud check does not stop payments",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "fraud_slow"
+      }
+    },
+    {
+      "id": "r-ledger",
+      "text": "Something writes the ledger, and it is all-or-nothing",
+      "check": {
+        "type": "hosted",
+        "capability": "ledger"
+      }
+    },
+    {
+      "id": "r-processor",
+      "text": "Something takes the money from the card using the processor",
+      "check": {
+        "type": "hosted",
+        "capability": "processor"
+      }
+    },
+    {
+      "id": "r-receipt",
+      "text": "Something sends receipts",
+      "check": {
+        "type": "hosted",
+        "capability": "receipt"
+      }
+    },
+    {
+      "id": "r-reconcile",
+      "text": "Something reconciles the ledger with the processor",
+      "check": {
+        "type": "hosted",
+        "capability": "reconcile"
+      }
+    },
+    {
+      "id": "r-db",
+      "text": "The ledger survives losing a database node",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "ledger_down"
+      }
+    },
+    {
+      "id": "r-key",
+      "text": "The design explains how a retried request is recognised",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    },
+    {
+      "id": "r-region",
+      "text": "Payments keep working when a whole region is lost",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "region_down"
+      }
+    }
+  ],
+  "rubric": [
+    "Each payment request carries an idempotency key stored with the result, so a retry returns the first outcome instead of charging again.",
+    "The ledger uses a relational store with serializable transactions, so the debit and credit commit together.",
+    "The processor call is the slow, rate-limited step; it is made once per payment, with the key forwarded to the processor, and its limit is respected.",
+    "Fraud scoring is optional: a timeout and a rule-based fallback keep payments flowing.",
+    "Receipts and reconciliation are off the request path, as queue consumers and a background job."
+  ],
+  "reference": {
+    "summary": "Make each request idempotent, write the ledger in serializable transactions, and treat the processor as the rate-limited essential step.",
+    "design": [
+      "User, then a Load Balancer, then a Payment API (5 replicas, autoscale to 12, idempotency keys, circuit breaker) running 'Take a payment'.",
+      "It calls a Ledger Service that writes a relational Database (2 shards, Serializable) so debit and credit commit together, and a Processor Service that calls a Third-party API set to Payment processor.",
+      "Fraud scoring is a separate Service behind the breaker, with simple rules as the fallback.",
+      "Receipts go through a Queue to Workers that call a Third-party API set to Email / SMS. A Reconcile Worker compares the ledger with the processor's report."
+    ],
+    "tradeoffs": [
+      "Serializable transactions cost write throughput, which is why the ledger needs two shards at peak.",
+      "The processor call is essential, so it has no fallback: its rate limit is the ceiling you plan around."
+    ]
+  }
+}

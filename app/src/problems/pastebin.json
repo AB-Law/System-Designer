@@ -1,0 +1,244 @@
+{
+  "id": "pastebin",
+  "title": "Design a Paste Sharing Service",
+  "difficulty": "easy",
+  "brief": "People paste snippets of text, get a short link back, and share it. Most links are read many times after being written once, and a few go viral. Every paste page also shows a sponsored ad, and pastes expire, so something has to find and delete the old ones. How you split those jobs across servers is part of the design.",
+  "constraints": [
+    "Reading a paste should take under 150 ms",
+    "About 15,000 reads per second at peak, with roughly 1 write for every 20 reads",
+    "Half of the pages show an ad, but the page must still load if the ad lookup is slow or down",
+    "Ads come from an external ad network: about 120 ms per call, and a rate limit you buy by the plan",
+    "Expired pastes stop being served and are deleted by a background job",
+    "Short links must never collide",
+    "Keep infrastructure under $10,000 a month"
+  ],
+  "traffic": {
+    "users": 1500000,
+    "reqPerUser": 0.01,
+    "writeShare": 0.05
+  },
+  "latencyTargetMs": 150,
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Regular day",
+      "description": "Steady read-heavy traffic.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Why is this workload a good fit for caching, and where would you run the ad lookup and the expiry sweep?",
+      "debrief": "The CDN and cache answer most reads, so the servers and database only see misses and the few writes."
+    },
+    {
+      "id": "viral",
+      "title": "A paste goes viral (3x)",
+      "description": "One link is shared on social media and traffic triples.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "One key receives most of the extra traffic. How do you keep that single key from overloading a node?",
+      "debrief": "A viral paste is a handful of hot keys. The CDN and cache serve them, so tripling traffic mostly needs headroom on the servers."
+    },
+    {
+      "id": "db_down",
+      "title": "Primary store fails",
+      "description": "The main database node is lost.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "database"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "What can still be served while the database recovers, and what is lost?",
+      "debrief": "Two read replicas mean losing a node reduces capacity but not service, and the cache covers most reads meanwhile."
+    },
+    {
+      "id": "ads_slow",
+      "title": "Ad lookups time out",
+      "description": "Whatever runs the ad lookup becomes 20x slower.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "capability": "ads"
+        },
+        "mode": "slow",
+        "factor": 20
+      },
+      "interviewQuestion": "The ad lookup hangs. What does a reader see, and why does or doesn't it matter where the ad code runs?",
+      "debrief": "Ads are in their own service called behind a circuit breaker with a 60 ms timeout, so a 20x slowdown is cut off and the paste still loads."
+    },
+    {
+      "id": "ad_network_down",
+      "title": "Ad network outage",
+      "description": "The external ad network stops answering.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "You do not control the ad network. What does a reader see when it is down, and how do you avoid waiting on it?",
+      "debrief": "The breaker skips the ad when the provider is down, and the paste is served without it."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Reads meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 150
+      }
+    },
+    {
+      "id": "r-viral",
+      "text": "At least 98% of requests are served when traffic triples",
+      "check": {
+        "type": "scenario",
+        "scenario": "viral",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $10,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-cache",
+      "text": "Reads are served from a cache or CDN in front of storage",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "cache"
+        ]
+      }
+    },
+    {
+      "id": "r-ads",
+      "text": "Something shows the ad",
+      "check": {
+        "type": "hosted",
+        "capability": "ads"
+      }
+    },
+    {
+      "id": "r-ads-iso",
+      "text": "A slow ad lookup cannot slow down reading a paste",
+      "check": {
+        "type": "scenario",
+        "scenario": "ads_slow",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 150
+      }
+    },
+    {
+      "id": "r-ad-outage",
+      "text": "Pastes still load when the ad network is down",
+      "check": {
+        "type": "scenario",
+        "scenario": "ad_network_down",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-expiry",
+      "text": "Something runs the expiry job",
+      "check": {
+        "type": "hosted",
+        "capability": "retention"
+      }
+    },
+    {
+      "id": "r-id",
+      "text": "Something issues short links, and never gives two pastes the same one",
+      "check": {
+        "type": "hosted",
+        "capability": "issue_link"
+      }
+    }
+  ],
+  "rubric": [
+    "Paste bodies and metadata are stored durably; reads are mostly served from cache or CDN.",
+    "A strategy for unique short ids is described (counter ranges, random ids with check, or a key service).",
+    "Expiry is handled by a TTL or a background cleanup worker.",
+    "The primary store has at least a replica so one failure does not take reads down.",
+    "The ad lookup and the expiry sweep are placed deliberately: either inside the paste server (simple, shared fate) or apart (isolated, extra hop and cost), with the trade-off stated.",
+    "A failing or slow ad lookup is cut off with a timeout or circuit breaker so reads still succeed.",
+    "Expiry is handled by a worker or a TTL on the store, not by competing with user requests on the read servers."
+  ],
+  "budget": 10000,
+  "capabilities": [
+    {
+      "id": "serve_paste",
+      "label": "Serve a paste",
+      "hint": "Read a paste, or create one and its short link",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 0
+    },
+    {
+      "id": "issue_link",
+      "label": "Issue a unique short link",
+      "hint": "Give each new paste a short code that no other paste has. Two creations at the same moment must never get the same code.",
+      "share": 0.05,
+      "work": 2,
+      "critical": true,
+      "requires": [
+        "unique_ids"
+      ],
+      "uses": [
+        "database"
+      ],
+      "writes": 1
+    },
+    {
+      "id": "ads",
+      "label": "Show an ad",
+      "hint": "Ask the ad network for an ad to show beside half of the pastes. The page works without it.",
+      "share": 0.5,
+      "work": 0.5,
+      "critical": false,
+      "needs": [
+        "third_party:ad_network"
+      ],
+      "writes": 0
+    },
+    {
+      "id": "retention",
+      "label": "Expire old pastes",
+      "hint": "A sweep that finds pastes past their expiry and deletes them, about 600 per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 600
+    }
+  ],
+  "reference": {
+    "summary": "Serve reads from a CDN and a cache, keep ads and expiry out of the read path, and issue short links from leased counter ranges.",
+    "design": [
+      "User, then a CDN (cache API responses, 90% hit), then a Load Balancer (2 instances), then a Server with 8 replicas running 'Serve a paste' and 'Issue a unique short link'. Circuit breaker on, 60 ms timeout, ID strategy Counter range per server.",
+      "The Server reads a Cache (2 replicas, 95% hit) in front of a Database with 2 read replicas and Row locks. The lock is what lets servers lease id ranges safely.",
+      "Ads run in a separate Service (2 replicas) with its own Cache (90% hit) in front of a Third-party API set to Ad network.",
+      "A Worker (4 replicas, idempotent) runs 'Expire old pastes' against the Database."
+    ],
+    "tradeoffs": [
+      "The separate ad service costs about $400 a month and one more hop, but a slow or dead ad network cannot slow paste reads.",
+      "Counter ranges need the database to lock, which costs some write throughput. With one write for every 20 reads that is cheap."
+    ]
+  }
+}

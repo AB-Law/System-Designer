@@ -1,0 +1,230 @@
+{
+  "id": "maps",
+  "title": "Design a Nearby Places Service",
+  "difficulty": "hard",
+  "brief": "People open a map and ask what is nearby: coffee, fuel, a pharmacy. The service answers from an index of millions of places, shows details and photos for the ones they tap, and accepts edits from business owners that must reach the index soon. Lunchtime and big events push huge numbers of searches into the same few areas.",
+  "constraints": [
+    "Showing nearby places must take under 150 ms",
+    "About 8,000 searches per second at peak, and three times that at lunchtime",
+    "Place photos are large and must never slow searching down",
+    "Owner edits reach the index within minutes, and two edits to one place never silently overwrite each other",
+    "The index is updated in the background as places change",
+    "Keep infrastructure under $13,500 a month"
+  ],
+  "traffic": {
+    "users": 2000000,
+    "reqPerUser": 0.004,
+    "writeShare": 0.02
+  },
+  "latencyTargetMs": 150,
+  "budget": 13500,
+  "capabilities": [
+    {
+      "id": "nearby",
+      "label": "Find places near a point",
+      "hint": "Search the geographic index for places close to where the person is looking",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "uses": [
+        "geo_index"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Show a place's details",
+      "hint": "Opening hours, address and rating for a place someone tapped",
+      "share": 0.4,
+      "work": 0.6,
+      "critical": false,
+      "uses": [
+        "database"
+      ]
+    },
+    {
+      "id": "photos",
+      "label": "Load place photos",
+      "hint": "Fetch the large images for a place",
+      "share": 0.3,
+      "work": 0.3,
+      "critical": false,
+      "uses": [
+        "blob_storage"
+      ]
+    },
+    {
+      "id": "edit",
+      "label": "Save an owner's edit",
+      "hint": "Change a place's details. Two edits at the same moment must not overwrite each other.",
+      "share": 0.01,
+      "work": 5,
+      "critical": false,
+      "requires": [
+        "exclusive_access"
+      ],
+      "uses": [
+        "database"
+      ]
+    },
+    {
+      "id": "reindex",
+      "label": "Update the index for changed places",
+      "hint": "Re-index places whose details changed, about 400 per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 400,
+      "uses": [
+        "geo_index"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady searching with the usual photo and detail views.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Most searches are repeats for the same busy areas. What can you answer without touching the index?",
+      "debrief": "Repeat searches for busy areas come from the cache, so the index sees misses and re-indexing."
+    },
+    {
+      "id": "lunch",
+      "title": "Lunchtime (3x)",
+      "description": "Searches triple, mostly in city centres.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "All the extra load lands on a few dense areas. How do you stop one area from overloading one node?",
+      "debrief": "The cache absorbs repeats and the area split spreads the dense centres across three nodes."
+    },
+    {
+      "id": "photos_slow",
+      "title": "Photo storage slows down",
+      "description": "The blob storage becomes 6x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Photos are slow. Should that be able to slow a search, and what keeps the two apart?",
+      "failure": {
+        "target": {
+          "types": [
+            "blob_storage"
+          ]
+        },
+        "mode": "slow",
+        "factor": 6
+      },
+      "debrief": "Photos are a separate path, so a slow blob store never reaches a search."
+    },
+    {
+      "id": "index_node",
+      "title": "An index node fails",
+      "description": "The geographic index loses a node.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "A node holding part of the map is gone. Which searches still work, and what does a replica buy you?",
+      "failure": {
+        "target": {
+          "types": [
+            "geo_index"
+          ]
+        },
+        "mode": "down"
+      },
+      "debrief": "Each area has two copies, so losing a node reduces capacity but still answers searches."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Searches meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 150
+      }
+    },
+    {
+      "id": "r-lunch",
+      "text": "The lunchtime peak passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "lunch"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $13,500",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-geo",
+      "text": "Places live in a geographic index with a cache in front",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "geo_index",
+          "cache"
+        ]
+      }
+    },
+    {
+      "id": "r-edit",
+      "text": "Something saves owner edits without overwriting",
+      "check": {
+        "type": "hosted",
+        "capability": "edit"
+      }
+    },
+    {
+      "id": "r-reindex",
+      "text": "Something keeps the index up to date",
+      "check": {
+        "type": "hosted",
+        "capability": "reindex"
+      }
+    },
+    {
+      "id": "r-photos",
+      "text": "Slow photo storage cannot slow searches",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "photos_slow"
+      }
+    },
+    {
+      "id": "r-node",
+      "text": "Searches survive losing an index node",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "index_node"
+      }
+    },
+    {
+      "id": "r-area",
+      "text": "The design explains how the map is split and how dense areas are handled",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "Places are in a geographic index split by area, with copies so a node can fail; the structure suits a read-heavy workload.",
+    "Popular areas are answered from a cache keyed by map cell, so the index sees only misses.",
+    "Photos are served from blob storage (ideally through a CDN) by a separate path so they cannot slow searches.",
+    "Edits take a lock or a version check, and flow to the index through a background update, not synchronously.",
+    "Dense areas are handled by smaller cells or more shards, not only by adding copies."
+  ],
+  "reference": {
+    "summary": "Answer nearby searches from a cache over a sharded geo index, and isolate photos, details and edits.",
+    "design": [
+      "User, then a Load Balancer that routes by request class: a Search Server (12 replicas, autoscale) reading a Cache (80% hit) in front of a Geo Index (quadtree, 3 areas, 2 copies); a Details Service with its own Cache; a Photo Service reading Blob Storage; an Edit Service (Row locks) writing the Database.",
+      "A Worker re-indexes changed places in the background."
+    ],
+    "tradeoffs": [
+      "Photos in their own service cost a little and stop a slow blob store from touching search.",
+      "Smaller areas or more shards spread a dense city across nodes. Extra copies only help reads."
+    ]
+  }
+}

@@ -1,0 +1,89 @@
+/*
+  Layout: a three-column workbench. Blocks and settings on the left, the canvas in the middle,
+  problem / simulation / submissions on the right. Black ground, gold for emphasis and action,
+  navy and green for the blocks themselves so the canvas reads as the colourful part.
+*/
+:root {
+  --bg: #08080a;
+  --bg-2: #0d0d10;
+  --panel: #121114;
+  --panel-2: #19171b;
+  --raise: #201e22;
+  --line: #2b2822;
+  --line-soft: #1f1d19;
+
+  --gold: #d4b45a;
+  --gold-hi: #ecd48a;
+  --gold-lo: #8f7633;
+  --gold-wash: rgba(212, 180, 90, 0.1);
+
+  --navy: #1f3f78;
+  --navy-deep: #0f2145;
+  --navy-hi: #6fa0e8;
+  --green: #1a5a43;
+  --green-deep: #0c2e22;
+  --green-hi: #4fb58a;
+  --bronze: #8a6a1c;
+
+  --text: #ece6d4;
+  --muted: #a39b84;
+  --faint: #6d6755;
+
+  --good: #4fb58a;
+  --warn: #e39a3d;
+  --bad: #e0675d;
+
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13.5px/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+::selection {
+  background: var(--gold-lo);
+  color: #000;
+}
+.scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.pad {
+  padding: 4px 18px 28px;
+}
+.muted {
+  color: var(--muted);
+}
+small {
+  color: var(--muted);
+}
+

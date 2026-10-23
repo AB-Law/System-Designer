@@ -1,0 +1,276 @@
+{
+  "id": "metrics_monitoring",
+  "title": "Design a Metrics Monitoring Service",
+  "difficulty": "medium",
+  "brief": "Thousands of servers send small measurements, a few numbers each, many times a minute. The service has to take them in without dropping any, store them cheaply, answer dashboard queries, roll old data up into coarser summaries, and page someone through an outside provider when a rule trips. During an incident, dashboard queries spike at the very moment the data is least reliable.",
+  "constraints": [
+    "Acknowledging a batch of measurements must take under 100 ms",
+    "About 20,000 data points per second at peak, almost all of them writes",
+    "No data point may be lost, and storage can be rebuilt by reading the stream again",
+    "Dashboard queries are rare but expensive, and ten times busier during an incident",
+    "Alerts go out through an external paging provider",
+    "Keep infrastructure under $14,000 a month",
+    "About 20 billion data points are kept, from 2 million separate series"
+  ],
+  "traffic": {
+    "users": 100000,
+    "reqPerUser": 0.2,
+    "writeShare": 0.95
+  },
+  "latencyTargetMs": 100,
+  "budget": 14000,
+  "capabilities": [
+    {
+      "id": "ingest",
+      "label": "Accept data points",
+      "hint": "Receive measurements from agents and acknowledge them",
+      "share": 1,
+      "work": 1,
+      "critical": true
+    },
+    {
+      "id": "write",
+      "label": "Write to storage",
+      "hint": "Append the points to the metrics store",
+      "share": 1,
+      "work": 0.5,
+      "critical": true,
+      "uses": [
+        "database"
+      ],
+      "writes": 1
+    },
+    {
+      "id": "query",
+      "label": "Answer dashboard queries",
+      "hint": "Read and aggregate a time range for a chart. Rare, about 100 per second, but expensive.",
+      "share": 0.002,
+      "work": 25,
+      "critical": false,
+      "uses": [
+        "database"
+      ],
+      "writes": 0
+    },
+    {
+      "id": "rollup",
+      "label": "Roll up old data",
+      "hint": "Turn old points into hourly summaries, about 800 operations per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 800,
+      "requires": [
+        "replay"
+      ],
+      "uses": [
+        "database"
+      ]
+    },
+    {
+      "id": "alert",
+      "label": "Evaluate alert rules",
+      "hint": "Check rules against fresh data and page someone when one trips",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 400,
+      "needs": [
+        "third_party:messaging"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "points",
+        "label": "Data points",
+        "rows": 20000000000,
+        "columns": [
+          {
+            "name": "metric_id",
+            "distinct": 2000000,
+            "label": "Series"
+          },
+          {
+            "name": "ts",
+            "distinct": 20000000000,
+            "label": "Time",
+            "monotonic": true
+          },
+          {
+            "name": "value",
+            "distinct": 1000000,
+            "label": "Value"
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "append",
+        "label": "Append a measurement",
+        "capability": "write",
+        "table": "points",
+        "op": "write"
+      },
+      {
+        "id": "read_series",
+        "label": "Read one series over a time range",
+        "capability": "query",
+        "table": "points",
+        "op": "read",
+        "where": [
+          "metric_id"
+        ],
+        "orderBy": [
+          "ts"
+        ],
+        "page": 500
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady ingestion from every agent.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Why does acknowledging a data point not need to wait for it to be stored?",
+      "debrief": "Ingest returns as soon as the point is on the stream; storage writes are batched behind it."
+    },
+    {
+      "id": "deploy",
+      "title": "A deploy storm (2x)",
+      "description": "A rollout makes every server report twice as fast.",
+      "trafficMultiplier": 2,
+      "interviewQuestion": "Where does the extra data wait, and what stops it from slowing the agents?",
+      "debrief": "Autoscaling widens ingest and the writers, and the stream holds the surplus without dropping points."
+    },
+    {
+      "id": "incident",
+      "title": "Incident dashboards (10x queries)",
+      "description": "Everyone opens dashboards at once and queries multiply by ten.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Expensive queries and constant writes share a store. How do you keep one from starving the other?",
+      "capabilityLoad": {
+        "query": 10
+      },
+      "debrief": "Dashboard queries run in their own service against the store, so ten times the queries do not touch ingestion."
+    },
+    {
+      "id": "store_down",
+      "title": "A storage node fails",
+      "description": "The metrics store loses a node.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "The store loses a node. What happens to incoming data, and how do you catch up afterwards?",
+      "failure": {
+        "target": {
+          "types": [
+            "database"
+          ]
+        },
+        "mode": "down"
+      },
+      "debrief": "A replica keeps the store available, and the stream retains points so the writers can catch up."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Data points are acknowledged within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 100
+      }
+    },
+    {
+      "id": "r-deploy",
+      "text": "The deploy storm passes without losing data",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "deploy"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $14,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-stream",
+      "text": "Data goes through a Stream before storage",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "stream",
+          "database"
+        ]
+      }
+    },
+    {
+      "id": "r-incident",
+      "text": "Dashboards under incident load do not stop ingestion",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "incident"
+      }
+    },
+    {
+      "id": "r-rollup",
+      "text": "Something rolls up old data and can rebuild it from the stream",
+      "check": {
+        "type": "hosted",
+        "capability": "rollup"
+      }
+    },
+    {
+      "id": "r-alert",
+      "text": "Something evaluates alert rules",
+      "check": {
+        "type": "hosted",
+        "capability": "alert"
+      }
+    },
+    {
+      "id": "r-engine",
+      "text": "The design explains why the store is built for appends and time ranges",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    }
+  ],
+  "rubric": [
+    "Ingestion acknowledges into a Stream and storage writers consume it in batches; no point depends on a synchronous database write.",
+    "The store is a time-series or append-friendly engine, sharded by metric and time, rather than a single relational primary.",
+    "Queries are served from a separate service or replicas so expensive reads cannot starve writes.",
+    "Roll-ups and alerts run as background jobs reading the stream, apart from the ingestion path.",
+    "Because the stream retains data, storage can be rebuilt or caught up after a failure."
+  ],
+  "reference": {
+    "summary": "Acknowledge into a stream, write in batches to a time-series store, and keep queries, rollups and alerts apart from ingestion.",
+    "design": [
+      "Agents, then a Load Balancer, then Ingest Servers (26 replicas, autoscale to 56) running 'Accept data points', separate from a Query Service.",
+      "Ingest appends to a Stream (4 partitions, 48 hour retention) asynchronously. Writer Workers (batch 50) write to a time-series Database with a read replica.",
+      "Rollup Workers read the same stream, so they can replay it. Alert Workers evaluate rules and page through a Third-party API set to Email / SMS."
+    ],
+    "tradeoffs": [
+      "A time-series engine takes the constant appends a relational store cannot, but is poor at ad-hoc reads.",
+      "A separate query service costs a little and stops expensive dashboards from starving ingestion."
+    ]
+  }
+}

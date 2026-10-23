@@ -1,0 +1,225 @@
+{
+  "id": "ride_sharing",
+  "title": "Design a Ride Hailing Service",
+  "difficulty": "hard",
+  "brief": "Drivers send their position every few seconds, and riders ask for a car close by. Each request must find nearby drivers, assign exactly one of them, and keep the rider updated as the car approaches. Arrival estimates come from an outside maps provider. When a concert lets out, demand in one small area explodes.",
+  "constraints": [
+    "Updating a driver's position must take under 150 ms",
+    "Roughly 30,000 position updates and ride requests arrive every second at the busiest time, most of them updates",
+    "One driver is never matched to two riders",
+    "Arrival estimates come from an external maps provider; a ride must still be matched without one",
+    "Demand in one area can jump eight-fold for a few minutes",
+    "Keep infrastructure under $22,000 a month"
+  ],
+  "traffic": {
+    "users": 300000,
+    "reqPerUser": 0.1,
+    "writeShare": 0.7
+  },
+  "latencyTargetMs": 150,
+  "budget": 22000,
+  "capabilities": [
+    {
+      "id": "locate",
+      "label": "Record a driver's position",
+      "hint": "Take a position update and keep the map of drivers current",
+      "share": 1,
+      "work": 0.5,
+      "critical": true,
+      "uses": [
+        "geo_index"
+      ]
+    },
+    {
+      "id": "match",
+      "label": "Match a rider to one driver",
+      "hint": "Find drivers near the rider and assign exactly one. Two riders must never get the same driver.",
+      "share": 0.01,
+      "work": 3,
+      "critical": true,
+      "requires": [
+        "exclusive_access"
+      ],
+      "uses": [
+        "geo_index",
+        "database"
+      ]
+    },
+    {
+      "id": "eta",
+      "label": "Estimate arrival time",
+      "hint": "Ask the maps provider how long the drive will take. A rough estimate is fine without it.",
+      "share": 0.01,
+      "work": 2,
+      "critical": false,
+      "needs": [
+        "third_party:maps"
+      ]
+    },
+    {
+      "id": "trip",
+      "label": "Push live trip updates",
+      "hint": "Tell the rider where the car is, over a live connection",
+      "share": 0.05,
+      "work": 0.5,
+      "critical": false
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady position updates with the usual number of ride requests.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Position updates and ride requests are different kinds of load on the same map. How do you keep one from hurting the other?",
+      "debrief": "Almost all traffic is cheap position updates going to the area that owns them."
+    },
+    {
+      "id": "rush",
+      "title": "Evening rush (2x)",
+      "description": "Traffic doubles across the city.",
+      "trafficMultiplier": 2,
+      "interviewQuestion": "Which part of the location system hits its limit first, and what does adding nodes to it actually buy?",
+      "debrief": "More areas and copies spread the extra updates and queries across nodes."
+    },
+    {
+      "id": "concert",
+      "title": "A concert lets out",
+      "description": "In one area, ride requests jump eight-fold for a few minutes.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "All the extra requests land on one small part of the map. How do you stop one hot area from overloading one node?",
+      "capabilityLoad": {
+        "match": 8
+      },
+      "debrief": "Matching autoscales for the surge in one area, and the area split stops a single node taking the whole hot spot."
+    },
+    {
+      "id": "maps_down",
+      "title": "Maps provider outage",
+      "description": "The external maps provider stops answering.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "No arrival estimates. What do riders see, and does matching still work?",
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ],
+          "kind": "maps"
+        },
+        "mode": "down"
+      },
+      "debrief": "Matching never depends on the estimate, so riders are matched and see a rough ETA."
+    },
+    {
+      "id": "eta_slow",
+      "title": "Estimates hang",
+      "description": "Whatever runs arrival estimates becomes 12x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Estimates hang instead of failing. Where do you cut them off?",
+      "failure": {
+        "target": {
+          "capability": "eta"
+        },
+        "mode": "slow",
+        "factor": 12
+      },
+      "debrief": "The breaker cuts the estimate off at its timeout, so matching latency is unaffected."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Position updates meet the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 150
+      }
+    },
+    {
+      "id": "r-rush",
+      "text": "The evening rush passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "rush"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $22,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-geo",
+      "text": "Positions live in a geographic index",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "geo_index"
+        ]
+      }
+    },
+    {
+      "id": "r-match",
+      "text": "Something matches riders to drivers, never twice",
+      "check": {
+        "type": "hosted",
+        "capability": "match"
+      }
+    },
+    {
+      "id": "r-concert",
+      "text": "The concert hot spot passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "concert"
+      }
+    },
+    {
+      "id": "r-maps",
+      "text": "Matching keeps working when the maps provider is down",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "maps_down"
+      }
+    },
+    {
+      "id": "r-eta",
+      "text": "A hung estimate does not slow matching",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "eta_slow"
+      }
+    },
+    {
+      "id": "r-area",
+      "text": "The design explains how the map is split across nodes",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "Driver positions live in a geographic index split by area; updates go to the node that owns the area.",
+    "Matching reads the index and assigns a driver with a lock or conditional write, so one driver cannot be assigned twice.",
+    "The index structure is chosen for the workload: cheap updates dominate, so a grid-like structure suits, with sharding to spread dense areas.",
+    "The maps provider is optional: a timeout and a rough estimate keep matching working.",
+    "Live trip updates use persistent connections and are optional."
+  ],
+  "reference": {
+    "summary": "Index positions by area in a grid, match with a lock per driver, and keep estimates and trip updates optional.",
+    "design": [
+      "User, then a Load Balancer (4 instances) that routes by request class to a Location Server (10 replicas, autoscale), a Match Service (circuit breaker, Row locks on a key-value Database) and a WebSocket Server for trip updates.",
+      "Positions and matching share a Geo Index (geohash grid, 6 areas, 2 copies).",
+      "An ETA Service sits behind the breaker and calls a Third-party API set to Maps / geo."
+    ],
+    "tradeoffs": [
+      "A grid takes constant position updates cheaply but crowds in dense areas, which sharding by area relieves.",
+      "Matching holds a lock per driver at a throughput cost, but it handles only a small share of traffic."
+    ]
+  }
+}

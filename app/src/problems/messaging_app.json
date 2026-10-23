@@ -1,0 +1,268 @@
+{
+  "id": "messaging_app",
+  "title": "Design a Chat Service",
+  "difficulty": "medium",
+  "brief": "People send short messages to friends and groups over a live connection. Every message must reach the other side in the order it was sent, be kept in the conversation history, and, if a recipient is offline, trigger a push notification through an outside provider. Evenings are much busier than the rest of the day.",
+  "constraints": [
+    "Accepting a message must take under 150 ms",
+    "About 5,000 messages per second at peak, and three times that on a busy evening",
+    "Messages in one conversation are delivered in the order they were sent",
+    "Every message is kept in the conversation history",
+    "About 3 in 10 recipients are offline and get a push notification from an external provider",
+    "Keep infrastructure under $6,000 a month",
+    "About 5 billion messages are stored, and people scroll back through long conversations"
+  ],
+  "traffic": {
+    "users": 1000000,
+    "reqPerUser": 0.005,
+    "writeShare": 0.8
+  },
+  "latencyTargetMs": 150,
+  "budget": 6000,
+  "capabilities": [
+    {
+      "id": "send",
+      "label": "Accept a message",
+      "hint": "Hold the live connection and accept what the user sends",
+      "share": 1,
+      "work": 1,
+      "critical": true
+    },
+    {
+      "id": "deliver",
+      "label": "Deliver in order",
+      "hint": "Hand each message to its recipients, in the order the sender sent them",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "requires": [
+        "ordered_delivery"
+      ]
+    },
+    {
+      "id": "history",
+      "label": "Save the history",
+      "hint": "Store every message so the conversation can be read later",
+      "share": 1,
+      "work": 0.5,
+      "critical": false,
+      "uses": [
+        "database"
+      ],
+      "writes": 0
+    },
+    {
+      "id": "push",
+      "label": "Push to offline devices",
+      "hint": "Ask the push provider to notify recipients who are not connected",
+      "share": 0.3,
+      "work": 1,
+      "critical": false,
+      "needs": [
+        "third_party:messaging"
+      ]
+    }
+  ],
+  "dataModel": {
+    "tables": [
+      {
+        "id": "messages",
+        "label": "Messages",
+        "rows": 5000000000,
+        "columns": [
+          {
+            "name": "id",
+            "distinct": 5000000000,
+            "label": "Message id",
+            "pk": true
+          },
+          {
+            "name": "conversation_id",
+            "distinct": 200000000,
+            "label": "Conversation"
+          },
+          {
+            "name": "sender_id",
+            "distinct": 50000000,
+            "label": "Sender"
+          },
+          {
+            "name": "sent_at",
+            "distinct": 5000000000,
+            "label": "Sent at",
+            "monotonic": true
+          }
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "id": "load_chat",
+        "label": "Load a page of a conversation, newest first",
+        "capability": "history",
+        "table": "messages",
+        "op": "read",
+        "where": [
+          "conversation_id"
+        ],
+        "orderBy": [
+          "sent_at"
+        ],
+        "page": 50,
+        "depth": 2000,
+        "matches": 150
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady messaging at the usual peak.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Which parts of sending a message must finish before you acknowledge it, and which can happen after?",
+      "debrief": "The chat server only accepts and appends. Delivery, history and push all happen after the acknowledgement."
+    },
+    {
+      "id": "evening",
+      "title": "Busy evening (3x)",
+      "description": "Evening traffic triples the message rate.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "What gives first when the rate triples, and how do you add capacity without breaking per-conversation order?",
+      "debrief": "Partitions spread conversations across consumers, and autoscaling widens the workers for the busy evening."
+    },
+    {
+      "id": "deliver_down",
+      "title": "Delivery workers fail",
+      "description": "Whatever runs delivery loses an instance.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "A delivery worker dies in the middle of a conversation. How do you avoid losing or reordering messages?",
+      "failure": {
+        "target": {
+          "capability": "deliver"
+        },
+        "mode": "down"
+      },
+      "debrief": "Another delivery worker takes over the partition and continues from its last position, so order is kept."
+    },
+    {
+      "id": "push_outage",
+      "title": "Push provider outage",
+      "description": "The external push provider stops answering.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "You cannot control the push provider. What happens to messages and to offline users when it is down?",
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ]
+        },
+        "mode": "down"
+      },
+      "debrief": "Push is an optional consumer. When the provider is down, messages are still delivered and stored."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Messages are accepted within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 150
+      }
+    },
+    {
+      "id": "r-evening",
+      "text": "The busy evening passes without losing messages",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "evening"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $6,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-stream",
+      "text": "Messages travel through a Stream, so order is kept per conversation",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "stream"
+        ]
+      }
+    },
+    {
+      "id": "r-deliver",
+      "text": "Something delivers messages in order",
+      "check": {
+        "type": "hosted",
+        "capability": "deliver"
+      }
+    },
+    {
+      "id": "r-history",
+      "text": "Something saves the history",
+      "check": {
+        "type": "hosted",
+        "capability": "history"
+      }
+    },
+    {
+      "id": "r-push",
+      "text": "Something sends push notifications",
+      "check": {
+        "type": "hosted",
+        "capability": "push"
+      }
+    },
+    {
+      "id": "r-push-out",
+      "text": "Messaging keeps working when the push provider is down",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "push_outage"
+      }
+    },
+    {
+      "id": "r-order",
+      "text": "The design explains how order is kept per conversation, and what the partition key is",
+      "check": {
+        "type": "ai"
+      }
+    },
+    {
+      "id": "r-queries",
+      "text": "Every query is answered through a key or an index, never by reading a whole table",
+      "check": {
+        "type": "queryPlans"
+      }
+    }
+  ],
+  "rubric": [
+    "Messages are appended to a Stream keyed by conversation, so each conversation is ordered while different conversations spread across partitions.",
+    "Acknowledging a message does not wait for delivery, history or push; those are separate consumers of the stream.",
+    "History uses a store suited to heavy appends (key-value or document), not a single relational primary.",
+    "Push is optional and isolated: a provider outage costs notifications, not messages.",
+    "Delivery workers can fail without reordering or dropping messages (offsets, idempotent handling)."
+  ],
+  "reference": {
+    "summary": "Acknowledge fast, put every message on a stream keyed by conversation, and let separate consumers deliver, store and push.",
+    "design": [
+      "User, then a Load Balancer, then a WebSocket Server (2 replicas) running 'Accept a message'.",
+      "It appends each message to a Stream (4 partitions, keyed by conversation, 24 hour retention) asynchronously.",
+      "Three consumers read the stream: Workers for 'Deliver in order', Workers for 'Save the history' into a key-value Database, and Workers for 'Push to offline devices' that call a Third-party API set to Email / SMS."
+    ],
+    "tradeoffs": [
+      "A Stream (not a Queue) keeps order per conversation and lets new consumers replay, at a higher cost than a plain queue.",
+      "A key-value store handles heavy appends cheaply but gives up joins and multi-row transactions."
+    ]
+  }
+}

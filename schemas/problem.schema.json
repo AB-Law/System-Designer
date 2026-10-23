@@ -1,0 +1,685 @@
+{
+  "$defs": {
+    "Capability": {
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9_\\-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hint"
+        },
+        "mode": {
+          "default": "request",
+          "enum": [
+            "request",
+            "background"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share",
+          "type": "number"
+        },
+        "work": {
+          "exclusiveMinimum": 0,
+          "title": "Work",
+          "type": "number"
+        },
+        "critical": {
+          "title": "Critical",
+          "type": "boolean"
+        },
+        "jobsPerSec": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jobspersec"
+        },
+        "needs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Needs",
+          "type": "array"
+        },
+        "uses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Uses",
+          "type": "array"
+        },
+        "writes": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Writes"
+        },
+        "requires": {
+          "items": {
+            "enum": [
+              "exclusive_access",
+              "idempotent",
+              "ordered_delivery",
+              "replay",
+              "transactions",
+              "unique_ids"
+            ],
+            "type": "string"
+          },
+          "title": "Requires",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "share",
+        "work",
+        "critical"
+      ],
+      "title": "Capability",
+      "type": "object"
+    },
+    "DataColumn": {
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z0-9_]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "distinct": {
+          "exclusiveMinimum": 0,
+          "title": "Distinct",
+          "type": "number"
+        },
+        "pk": {
+          "default": false,
+          "title": "Pk",
+          "type": "boolean"
+        },
+        "monotonic": {
+          "default": false,
+          "title": "Monotonic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "distinct"
+      ],
+      "title": "DataColumn",
+      "type": "object"
+    },
+    "DataModel": {
+      "properties": {
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/DataTable"
+          },
+          "minItems": 1,
+          "title": "Tables",
+          "type": "array"
+        },
+        "queries": {
+          "items": {
+            "$ref": "#/$defs/DataQuery"
+          },
+          "minItems": 1,
+          "title": "Queries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tables",
+        "queries"
+      ],
+      "title": "DataModel",
+      "type": "object"
+    },
+    "DataQuery": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "capability": {
+          "title": "Capability",
+          "type": "string"
+        },
+        "table": {
+          "title": "Table",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "read",
+            "write"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "where": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Where",
+          "type": "array"
+        },
+        "orderBy": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Orderby",
+          "type": "array"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "depth": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Depth"
+        },
+        "joins": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Joins"
+        },
+        "matches": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matches"
+        },
+        "perRequest": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Perrequest"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "capability",
+        "table",
+        "op"
+      ],
+      "title": "DataQuery",
+      "type": "object"
+    },
+    "DataTable": {
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9_\\-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "rows": {
+          "exclusiveMinimum": 0,
+          "title": "Rows",
+          "type": "number"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/DataColumn"
+          },
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "rows",
+        "columns"
+      ],
+      "title": "DataTable",
+      "type": "object"
+    },
+    "Failure": {
+      "properties": {
+        "target": {
+          "additionalProperties": true,
+          "title": "Target",
+          "type": "object"
+        },
+        "mode": {
+          "enum": [
+            "down",
+            "slow"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "factor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Factor"
+        }
+      },
+      "required": [
+        "target",
+        "mode"
+      ],
+      "title": "Failure",
+      "type": "object"
+    },
+    "Reference": {
+      "properties": {
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "design": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Design",
+          "type": "array"
+        },
+        "tradeoffs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tradeoffs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary",
+        "design",
+        "tradeoffs"
+      ],
+      "title": "Reference",
+      "type": "object"
+    },
+    "Requirement": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "check": {
+          "additionalProperties": true,
+          "title": "Check",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "check"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "Scenario": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "trafficMultiplier": {
+          "exclusiveMinimum": 0,
+          "title": "Trafficmultiplier",
+          "type": "number"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Failure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "capabilityLoad": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capabilityload"
+        },
+        "regionMix": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Regionmix"
+        },
+        "debrief": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Debrief"
+        },
+        "interviewQuestion": {
+          "title": "Interviewquestion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "trafficMultiplier",
+        "interviewQuestion"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
+    "Traffic": {
+      "properties": {
+        "users": {
+          "exclusiveMinimum": 0,
+          "title": "Users",
+          "type": "number"
+        },
+        "reqPerUser": {
+          "exclusiveMinimum": 0,
+          "title": "Reqperuser",
+          "type": "number"
+        },
+        "writeShare": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Writeshare",
+          "type": "number"
+        }
+      },
+      "required": [
+        "users",
+        "reqPerUser",
+        "writeShare"
+      ],
+      "title": "Traffic",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "pattern": "^[a-z0-9_\\-]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "brief": {
+      "title": "Brief",
+      "type": "string"
+    },
+    "constraints": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "traffic": {
+      "$ref": "#/$defs/Traffic"
+    },
+    "latencyTargetMs": {
+      "exclusiveMinimum": 0,
+      "title": "Latencytargetms",
+      "type": "number"
+    },
+    "budget": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Budget"
+    },
+    "cacheHitCap": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cachehitcap"
+    },
+    "reference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Reference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "capabilities": {
+      "items": {
+        "$ref": "#/$defs/Capability"
+      },
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "dataModel": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataModel"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "regions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Regions"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/Scenario"
+      },
+      "minItems": 1,
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "requirements": {
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "title": "Requirements",
+      "type": "array"
+    },
+    "rubric": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rubric",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "difficulty",
+    "brief",
+    "constraints",
+    "traffic",
+    "latencyTargetMs",
+    "scenarios",
+    "requirements",
+    "rubric"
+  ],
+  "title": "Problem",
+  "type": "object"
+}

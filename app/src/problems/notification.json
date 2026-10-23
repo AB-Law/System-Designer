@@ -1,0 +1,206 @@
+{
+  "id": "notification",
+  "title": "Design a Notification Service",
+  "difficulty": "easy",
+  "brief": "Other teams call this service to send emails, push messages and texts to users. Requests arrive in sharp bursts, such as a marketing blast. Users can opt out, so every request checks their preferences first. The actual sending is done by an external provider that is slow and rate limited, and a message must never be delivered twice, even if a worker retries.",
+  "constraints": [
+    "Accepting a send request must take under 200 ms",
+    "About 5,000 send requests per second at peak, and bursts of three times that",
+    "Opted-out users must never be messaged",
+    "A message is delivered at most once, even when a delivery is retried",
+    "Delivery goes through an external provider with a rate limit you buy by the plan",
+    "Old delivery logs are purged by a background job",
+    "Keep infrastructure under $6,500 a month"
+  ],
+  "traffic": {
+    "users": 200000,
+    "reqPerUser": 0.025,
+    "writeShare": 0.5
+  },
+  "latencyTargetMs": 200,
+  "budget": 6500,
+  "capabilities": [
+    {
+      "id": "accept",
+      "label": "Accept a send request",
+      "hint": "Validate the request and record it",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 1
+    },
+    {
+      "id": "prefs",
+      "label": "Check preferences",
+      "hint": "Look up whether the user has opted out of this channel",
+      "share": 1,
+      "work": 0.4,
+      "critical": true,
+      "writes": 0
+    },
+    {
+      "id": "deliver",
+      "label": "Deliver through the provider",
+      "hint": "Hand the message to the external provider. About 15% of requests become a real send.",
+      "share": 0.15,
+      "work": 1,
+      "critical": false,
+      "needs": [
+        "third_party:messaging"
+      ],
+      "requires": [
+        "idempotent"
+      ],
+      "writes": 0
+    },
+    {
+      "id": "purge",
+      "label": "Purge old delivery logs",
+      "hint": "A sweep that deletes logs older than the retention period, about 300 per second",
+      "mode": "background",
+      "share": 0,
+      "work": 1,
+      "critical": false,
+      "jobsPerSec": 300
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady send requests at the usual peak.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Which parts of sending a message must happen before you answer the caller, and which can wait?",
+      "debrief": "The API does only the quick part (validate, check preferences, enqueue) and returns; the provider's slowness is hidden behind the queue."
+    },
+    {
+      "id": "blast",
+      "title": "Marketing blast (3x)",
+      "description": "A campaign triples the request rate for a few minutes.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "Where does the burst pile up, and how do you keep the provider's rate limit from becoming your outage?",
+      "debrief": "Autoscaling widens the API and workers, and the queue buffers the extra sends so the provider's rate limit is respected."
+    },
+    {
+      "id": "delivery_down",
+      "title": "Delivery workers crash",
+      "description": "Whatever runs delivery loses an instance.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "capability": "deliver"
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "Workers die mid-send. How do you make sure the message goes out exactly once?",
+      "debrief": "A second worker keeps draining the queue, and idempotent handling means a retried message is not sent twice."
+    },
+    {
+      "id": "prefs_slow",
+      "title": "Preference lookups slow down",
+      "description": "Whatever runs the preference check becomes 10x slower.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "capability": "prefs"
+        },
+        "mode": "slow",
+        "factor": 10
+      },
+      "interviewQuestion": "You cannot skip the opt-out check. What do you do instead to keep requests fast?",
+      "debrief": "Opt-outs cannot be skipped, so preferences sit behind a cache and have their own service sized well above the request rate."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Requests are accepted within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 200
+      }
+    },
+    {
+      "id": "r-blast",
+      "text": "At least 98% of requests are accepted during the blast",
+      "check": {
+        "type": "scenario",
+        "scenario": "blast",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $6,500",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-queue",
+      "text": "Delivery is decoupled from accepting requests (queue plus worker)",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "queue",
+          "worker"
+        ]
+      }
+    },
+    {
+      "id": "r-async",
+      "text": "The hand-off to delivery is an async connection",
+      "check": {
+        "type": "asyncEdge"
+      }
+    },
+    {
+      "id": "r-deliver",
+      "text": "Something delivers messages",
+      "check": {
+        "type": "hosted",
+        "capability": "deliver"
+      }
+    },
+    {
+      "id": "r-purge",
+      "text": "Something purges old logs",
+      "check": {
+        "type": "hosted",
+        "capability": "purge"
+      }
+    },
+    {
+      "id": "r-optout",
+      "text": "The design explains how opt-outs are enforced",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "Sending is asynchronous: the API accepts, records and queues, and workers deliver at the provider's pace.",
+    "Delivery is idempotent (a message id or a dedupe check), so a retry cannot send twice.",
+    "The opt-out check is on the request path and fast (cached preferences), and is never skipped.",
+    "The queue buffers bursts so the provider rate limit does not drop messages.",
+    "Log purging runs apart from the API servers."
+  ],
+  "reference": {
+    "summary": "Accept requests quickly, check opt-outs from a cache, and deliver asynchronously through idempotent workers behind a queue.",
+    "design": [
+      "User, then a Load Balancer, then an API Server (7 replicas, autoscale to 20, idempotency keys, circuit breaker) running 'Accept a send request'.",
+      "A Preferences Service (2 replicas) reads a Cache (90% hit) in front of the Database to check opt-outs on every request.",
+      "The API Server sends work asynchronously to a Queue (2 partitions) read by Delivery Workers (idempotent, batched, autoscale) that call a Third-party API set to Email / SMS.",
+      "A separate Worker purges old delivery logs."
+    ],
+    "tradeoffs": [
+      "Asynchronous delivery turns a blast into a queue instead of errors, but messages lag while the queue drains.",
+      "Idempotent workers make retries safe at the cost of a duplicate check per message."
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+@media (max-width: 1200px) {
+  .main {
+    grid-template-columns: 260px minmax(0, 1fr) 340px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* the workspace is built for a larger screen; on a phone it stacks and says so */
+.small-screen-note {
+  display: none;
+}
+/* narrow laptops: the problem title gets its own row so it is never cut off */
+@media (max-width: 1280px) {
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 14px;
+  }
+  .brand {
+    font-size: 22px;
+  }
+  .problem-pick {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .problem-pick select {
+    width: 100%;
+    min-width: 0;
+  }
+  .actions {
+    order: 2;
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+}
+@media (max-width: 900px) {
+  .brand {
+    flex: 1;
+    text-align: left;
+  }
+  .actions {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+  .problem-pick {
+    order: 4;
+  }
+  .canvas .toolbar {
+    max-width: calc(100% - 16px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-group {
+    border-left: 0;
+    padding-left: 0;
+    margin-left: 0;
+  }
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .main > * {
+    flex: none;
+  }
+  .small-screen-note {
+    display: block;
+    order: 0;
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--gold-wash);
+    border-bottom: 1px solid var(--gold-lo);
+    font-size: 14px;
+  }
+  .right {
+    order: 1;
+  }
+  .canvas {
+    order: 2;
+    height: 60vh;
+  }
+  .left {
+    order: 3;
+  }
+  .left .scroll,
+  .right .scroll {
+    overflow: visible;
+  }
+  .cost-chip {
+    display: none;
+  }
+}

@@ -1,0 +1,10 @@
+# Used only when LITESTREAM_ENABLED=1 (see deploy/entrypoint.sh).
+# Env vars are expanded by Litestream. Omit account-key to use Managed Identity
+# (or Azure CLI / DefaultAzureCredential) when running on Azure.
+dbs:
+  - path: ${DB_PATH}
+    replica:
+      type: abs
+      account-name: ${LITESTREAM_AZURE_ACCOUNT_NAME}
+      bucket: ${LITESTREAM_AZURE_CONTAINER}
+      path: ${LITESTREAM_AZURE_PATH}

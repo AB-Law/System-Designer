@@ -1,0 +1,206 @@
+{
+  "id": "video_streaming",
+  "title": "Design a Video Streaming Service",
+  "difficulty": "hard",
+  "brief": "People watch videos on every kind of device, and a small number of creators upload new ones. Watching means fetching many short pieces of the video, which a CDN should serve. Every upload has to be converted into several qualities before it can play, which is slow and heavy, and a new episode of a popular show sends viewers all at once.",
+  "constraints": [
+    "Each video piece must start arriving within 250 ms",
+    "About 10,000 piece requests per second at peak, and three times that at a premiere",
+    "Pieces are served from a CDN, and storage should see only the misses",
+    "Uploads are converted to several qualities in the background, and a burst of uploads must not slow viewers",
+    "Recommendations help viewers but are optional",
+    "Keep infrastructure under $14,000 a month"
+  ],
+  "traffic": {
+    "users": 1000000,
+    "reqPerUser": 0.01,
+    "writeShare": 0.01
+  },
+  "latencyTargetMs": 250,
+  "budget": 14000,
+  "capabilities": [
+    {
+      "id": "play",
+      "label": "Serve video pieces",
+      "hint": "Return the next short piece of the video being watched",
+      "share": 1,
+      "work": 0.5,
+      "critical": true,
+      "uses": [
+        "blob_storage"
+      ]
+    },
+    {
+      "id": "browse",
+      "label": "Browse and search the catalogue",
+      "hint": "Find videos by title or topic and show their details",
+      "share": 0.1,
+      "work": 2,
+      "critical": false,
+      "uses": [
+        "search_index",
+        "database"
+      ]
+    },
+    {
+      "id": "upload",
+      "label": "Accept an upload",
+      "hint": "Receive a new video file from a creator and store the original",
+      "share": 0.003,
+      "work": 20,
+      "critical": false,
+      "uses": [
+        "blob_storage"
+      ]
+    },
+    {
+      "id": "transcode",
+      "label": "Convert uploads to every quality",
+      "hint": "Create the several versions of a video that different devices need. Slow and heavy.",
+      "share": 0.003,
+      "work": 60,
+      "critical": false
+    },
+    {
+      "id": "recommend",
+      "label": "Recommend what to watch next",
+      "hint": "Suggest more videos using the viewing history",
+      "share": 0.25,
+      "work": 2,
+      "critical": false
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Typical peak",
+      "description": "Steady viewing with the usual trickle of uploads.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Watching and uploading are very different loads. How do you keep a heavy upload from touching viewers?",
+      "debrief": "Viewers fetch pieces from the CDN, and uploads and conversion happen on separate paths."
+    },
+    {
+      "id": "premiere",
+      "title": "A premiere (3x)",
+      "description": "A popular show drops and viewing triples.",
+      "trafficMultiplier": 3,
+      "interviewQuestion": "Nearly all viewers want the same handful of video pieces at once. What serves them before storage is touched?",
+      "debrief": "The same few pieces are requested by everyone, so the CDN absorbs the surge before storage is involved."
+    },
+    {
+      "id": "upload_burst",
+      "title": "An upload burst",
+      "description": "Uploads and conversions jump tenfold for a while.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Creators upload a mountain of video. Where does the conversion work wait, and how do viewers stay unaffected?",
+      "capabilityLoad": {
+        "upload": 10,
+        "transcode": 10
+      },
+      "debrief": "Conversion work waits in the queue and the transcode workers autoscale. Playback is a different path."
+    },
+    {
+      "id": "recommend_slow",
+      "title": "Recommendations hang",
+      "description": "Whatever runs recommendations becomes 20x slower.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Recommendations hang. Should playing a video wait for them?",
+      "failure": {
+        "target": {
+          "capability": "recommend"
+        },
+        "mode": "slow",
+        "factor": 20
+      },
+      "debrief": "Playback does not call the recommender, and the breaker keeps the rest of the page from waiting on it."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Video pieces start within the latency target at peak",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 250
+      }
+    },
+    {
+      "id": "r-premiere",
+      "text": "The premiere passes",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "premiere"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $14,000",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-cdn",
+      "text": "Pieces are served through a CDN in front of storage",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "cdn",
+          "blob_storage"
+        ]
+      }
+    },
+    {
+      "id": "r-transcode",
+      "text": "Something converts uploads, away from viewers",
+      "check": {
+        "type": "hosted",
+        "capability": "transcode"
+      }
+    },
+    {
+      "id": "r-burst",
+      "text": "An upload burst does not disturb viewers",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "upload_burst"
+      }
+    },
+    {
+      "id": "r-rec",
+      "text": "A hung recommender cannot slow playback",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "recommend_slow"
+      }
+    },
+    {
+      "id": "r-format",
+      "text": "The design explains how a video is split into pieces and qualities",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "Video is split into short pieces in several qualities, stored as objects, and served through a CDN so storage sees only misses.",
+    "Uploads go to storage first; a queue drives workers that convert them, so conversion never competes with playback.",
+    "Playback, catalogue and recommendations are separate paths; an optional service cannot slow playback.",
+    "Conversion capacity scales out under an upload burst without paying for it all month.",
+    "Popular pieces (a premiere) are served from CDN edges; the origin sees a small fraction of requests."
+  ],
+  "reference": {
+    "summary": "Serve video pieces from a CDN, keep catalogue, uploads and recommendations on their own paths, and transcode behind a queue.",
+    "design": [
+      "User, then a CDN (95% hit), then a Load Balancer that routes by request class: a Playback Service reading Blob Storage; a Catalogue Service over a Search Index and Database; a Recommendation Service behind a breaker; an Upload Service writing Blob Storage.",
+      "Uploads continue to a Queue asynchronously, read by Transcode Workers (autoscale to 120) that write the converted versions to Blob Storage."
+    ],
+    "tradeoffs": [
+      "A CDN serves nearly every piece, so storage sees misses only. Its cost is small next to the origin it replaces.",
+      "Transcoding behind a queue costs a queue and workers, but a burst of uploads never touches viewers."
+    ]
+  }
+}

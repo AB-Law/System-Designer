@@ -1,0 +1,152 @@
+/* ---------- shell ---------- */
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 390px;
+}
+.topbar {
+  height: 58px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  background: linear-gradient(180deg, #0e0d10, var(--bg));
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.topbar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-lo), transparent);
+  opacity: 0.6;
+}
+.brand {
+  font: 400 26px/1 var(--display);
+  letter-spacing: 0.01em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.problem-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.problem-pick select {
+  min-width: min(320px, 100%);
+  max-width: 100%;
+  text-overflow: ellipsis;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.problem-pick select:hover {
+  border-color: var(--gold-lo);
+}
+.actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-group {
+  display: flex;
+  gap: 6px;
+  padding-left: 10px;
+  margin-left: 4px;
+  border-left: 1px solid var(--line);
+}
+.pill {
+  font: 500 11px var(--mono);
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--panel);
+  white-space: nowrap;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+.btn:hover {
+  border-color: var(--gold-lo);
+  background: var(--raise);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+.btn.primary {
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  border-color: var(--gold-hi);
+  color: #1a1405;
+}
+.btn.primary:hover {
+  background: linear-gradient(180deg, #f3deA0, var(--gold-hi));
+}
+.btn.success {
+  background: var(--green-deep);
+  border-color: var(--green);
+  color: #b8ecd3;
+}
+.btn.success:hover {
+  background: var(--green);
+}
+.btn.danger {
+  background: transparent;
+  border-color: #4a2623;
+  color: var(--bad);
+}
+.btn.danger:hover {
+  background: rgba(224, 103, 93, 0.1);
+  border-color: var(--bad);
+}
+.btn.small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.btn.tall {
+  min-height: 40px;
+}
+.btn.block {
+  width: 100%;
+  margin-top: 10px;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  color: var(--gold);
+  font-weight: 600;
+  text-align: left;
+}
+.link:hover {
+  color: var(--gold-hi);
+}
+
