@@ -258,7 +258,7 @@
   border-color: var(--muted);
 }
 .rm-status-pill.done::before {
-  content: "âœ“ ";
+  content: "\2713 ";
 }
 .rm-status-pill.in_progress {
   color: var(--text);
@@ -266,7 +266,7 @@
   border-style: dashed;
 }
 .rm-status-pill.in_progress::before {
-  content: "â— ";
+  content: "\25D0 ";
 }
 .rm-status-pill.next {
   color: var(--gold-hi);

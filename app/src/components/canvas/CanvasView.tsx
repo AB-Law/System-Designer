@@ -20,6 +20,13 @@ import { isPlaceable, regionId, regionShort } from "../../sim/regions";
 import { ChatDock } from "./ChatDock";
 import type { EdgeKind } from "../../types";
 
+/** What the load badge means, in words. Far over capacity usually means each request costs the block much more than it should. */
+function loadTitle(u: number, database: boolean): string {
+  const base = `Receiving ${u >= 10 ? "more than 10 times" : `${Math.round(u * 100)}% of`} what this block can handle.`;
+  if (u < 1) return base;
+  return `${base} Above 100% it cannot keep up, so requests wait or fail.${database ? " For a database, a missing index is a common cause: each request then reads far more rows than it needs." : ""}`;
+}
+
 function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
   const def = BLOCK_MAP[data.blockId];
   const run = useRun();
@@ -52,7 +59,9 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
       {res?.down ? (
         <div className="bn-util">down</div>
       ) : u !== undefined && data.blockId !== "user" ? (
-        <div className="bn-util">{Math.round(u * 100)}%</div>
+        <div className="bn-util" title={loadTitle(u, data.blockId === "database" && !!problem?.dataModel)}>
+          {u >= 1.5 ? "Overloaded" : `${Math.round(u * 100)}%`}
+        </div>
       ) : null}
     </div>
   );
