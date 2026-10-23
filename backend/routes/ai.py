@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Literal
 from urllib.parse import urlparse
 
@@ -14,6 +15,9 @@ from rate_limit import meter
 router = APIRouter(tags=["ai"])
 
 OPENAI_BASE = "https://api.openai.com/v1"
+DEFAULT_OPENAI_MODEL = "gpt-6-luna"
+# Reasoning models reject non-default temperature unless reasoning_effort is "none".
+_REASONING_MODEL = re.compile(r"^(o[1-9]|gpt-5|gpt-6)([-.]|$)", re.I)
 MAX_AI_MESSAGES = 40
 MAX_AI_MESSAGE_CHARS = 20_000
 MAX_AI_PAYLOAD_CHARS = 200_000
@@ -25,9 +29,14 @@ class ReviewRequest(BaseModel):
     apiKey: str | None = None
     model: str | None = None
     messages: list[dict[str, Any]] = Field(max_length=MAX_AI_MESSAGES)
-    temperature: float = 0.2
+    # Optional: omitted for reasoning models that only accept the default.
+    temperature: float | None = None
     # LM Studio only: how long a reasoning model may think before answering ("none" turns thinking off)
     reasoningEffort: Literal["none", "low", "medium", "high"] | None = None
+
+
+def _is_reasoning_model(model: str | None) -> bool:
+    return bool(model and _REASONING_MODEL.match(model.strip()))
 
 
 def _loopback_base(url: str) -> str:
@@ -71,10 +80,12 @@ async def ai_review(req: ReviewRequest, user: CurrentUser) -> Any:
     if req.provider == "openai":
         # client baseUrl is ignored: always official OpenAI, so a custom URL cannot steal the server key
         base = OPENAI_BASE
-        key = (req.apiKey or "").strip() or os.environ.get("OPENAI_API_KEY")
+        # Prefer server env key. A client-supplied key is accepted only as a fallback for older
+        # clients; the browser no longer posts BYOK keys here (see callModel in review.ts).
+        key = os.environ.get("OPENAI_API_KEY") or (req.apiKey or "").strip()
         if not key:
-            raise HTTPException(400, "No OpenAI key. Enter one in AI settings or set OPENAI_API_KEY in backend/.env")
-        model = req.model or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+            raise HTTPException(400, "No OpenAI key. Paste one in AI settings (stays in the browser) or set OPENAI_API_KEY in backend/.env")
+        model = req.model or os.environ.get("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
         headers = {"Authorization": f"Bearer {key}"}
     else:
         configured = os.environ.get("LMSTUDIO_URL", "http://localhost:1234/v1")
@@ -82,11 +93,14 @@ async def ai_review(req: ReviewRequest, user: CurrentUser) -> Any:
         model = req.model or os.environ.get("LMSTUDIO_MODEL") or None
         headers = {}
 
-    payload: dict[str, Any] = {"messages": req.messages, "temperature": req.temperature}
+    payload: dict[str, Any] = {"messages": req.messages}
     if model:
         payload["model"] = model
     if req.provider == "lmstudio" and req.reasoningEffort:
         payload["reasoning_effort"] = req.reasoningEffort
+    allow_sampling = not _is_reasoning_model(model) or req.reasoningEffort == "none"
+    if allow_sampling:
+        payload["temperature"] = 0.2 if req.temperature is None else req.temperature
     try:
         async with httpx.AsyncClient(timeout=900, follow_redirects=False) as client:
             r = await client.post(f"{base}/chat/completions", json=payload, headers=headers)

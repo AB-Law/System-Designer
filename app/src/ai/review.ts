@@ -4,8 +4,10 @@ import type { AiReview, AiSettings, Design, Failure, Problem, RunResult, Scenari
 import { GUARANTEE_LABEL, capIdsOf, hostedCaps, unmetGuarantees } from "../sim/caps";
 import { indexText, planQueries } from "../sim/data";
 import { REGIONS, copyRegions, isPlaceable, regionId, regionLabel } from "../sim/regions";
+import { DEFAULT_OPENAI_MODEL, OPENAI_BASE, buildCompletionsBody } from "./openai";
 
 export type { AiSettings };
+export { DEFAULT_OPENAI_MODEL, OPENAI_BASE };
 
 const KEY = "dc:ai";
 export const DEFAULT_AI: AiSettings = { provider: "off", baseUrl: "http://localhost:1234/v1", apiKey: "", model: "", thinking: "off" };
@@ -31,7 +33,7 @@ export const saveAiSettings = (s: AiSettings) => {
 
 export function presetFor(provider: AiSettings["provider"], prev: AiSettings): AiSettings {
   if (provider === "lmstudio") return { ...prev, provider, baseUrl: "http://localhost:1234/v1", apiKey: "" };
-  if (provider === "openai") return { ...prev, provider, baseUrl: "https://api.openai.com/v1", model: prev.model || "gpt-4o-mini" };
+  if (provider === "openai") return { ...prev, provider, baseUrl: OPENAI_BASE, model: prev.model || DEFAULT_OPENAI_MODEL };
   return { ...prev, provider };
 }
 
@@ -398,19 +400,32 @@ function parseReview(answer: string, problem: Problem, design: Design): AiReview
 }
 
 /**
- * One call to whichever model is configured: the FastAPI proxy when it is running (no CORS, keys can live on the server),
- * otherwise straight to the endpoint. Returns the answer text. Used by the review and by the chat coach.
+ * One call to whichever model is configured.
+ * Trust: a key typed in the UI never leaves the browser for OpenAI — we call api.openai.com
+ * directly. The FastAPI proxy is only used for LM Studio (CORS) or when the OpenAI key is
+ * blank and the server has OPENAI_API_KEY (server key, not the user's).
  */
 export async function callModel(settings: AiSettings, messages: { role: string; content: string }[]): Promise<string> {
   if (settings.provider === "off") throw new Error("AI is turned off. Choose LM Studio or OpenAI in AI settings.");
-  const effort =
-    settings.provider === "lmstudio" ? (settings.thinking === "off" ? "none" : settings.thinking === "low" ? "low" : undefined) : undefined;
-  const body = { model: settings.model || undefined, messages, temperature: 0.2, ...(effort ? { reasoning_effort: effort } : {}) };
+  // Thinking control is LM Studio–only in the UI; OpenAI uses the API default (medium on gpt-6-luna).
+  const reasoningEffort =
+    settings.provider === "lmstudio"
+      ? settings.thinking === "off"
+        ? "none"
+        : settings.thinking === "low"
+          ? "low"
+          : undefined
+      : undefined;
+  const model = settings.model || (settings.provider === "openai" ? DEFAULT_OPENAI_MODEL : undefined);
+  const body = buildCompletionsBody({ model, messages, temperature: 0.2, reasoningEffort });
+
+  // BYOK OpenAI: browser → OpenAI only (key never posted to our backend).
+  const byokOpenAi = settings.provider === "openai" && Boolean(settings.apiKey?.trim());
+  const useProxy = cloudOn() && !byokOpenAi;
 
   let res: Response;
   try {
-    // the server proxy is for signed-in people only; guests call the model straight from the browser
-    if (cloudOn()) {
+    if (useProxy) {
       res = await fetch("/api/ai/review", {
         method: "POST",
         credentials: "include",
@@ -418,13 +433,16 @@ export async function callModel(settings: AiSettings, messages: { role: string; 
         body: JSON.stringify({
           provider: settings.provider,
           baseUrl: settings.baseUrl,
-          apiKey: settings.apiKey,
-          ...body,
-          reasoningEffort: effort,
+          // never forward a user key; proxy uses OPENAI_API_KEY when provider is openai
+          model: body.model,
+          messages: body.messages,
+          temperature: body.temperature,
+          reasoningEffort,
         }),
       });
     } else {
-      res = await fetch(`${settings.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      const base = settings.provider === "openai" ? OPENAI_BASE : settings.baseUrl.replace(/\/$/, "");
+      res = await fetch(`${base}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}) },
         body: JSON.stringify(body),

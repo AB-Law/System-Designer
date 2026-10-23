@@ -77,7 +77,7 @@ cd app && npx tsx scripts/summary.ts
 Open **AI** in the top bar.
 
 - **LM Studio:** load a model and start the local server (default `http://localhost:1234/v1`). With the backend, no CORS setup is needed. From the browser alone, enable CORS in LM Studio. For reasoning models, leave **Thinking** Off so reviews stay fast (about 10s instead of ~90s).
-- **OpenAI:** paste a key in the browser, or set `OPENAI_API_KEY` in `backend/.env`.
+- **OpenAI:** paste a key in the browser (memory only for that tab; calls go straight to `api.openai.com`, never to our server), or leave it blank and set `OPENAI_API_KEY` in `backend/.env` for signed-in proxy use. Default model is `gpt-6-luna`.
 
 The review sees your design, simulation results, automatic findings, and the problem rubric. It returns a score, strengths, gaps, and suggestions. It can also add three "what if" follow-up tests the simulator runs for real (not just opinions). Those are not part of the score.
 
