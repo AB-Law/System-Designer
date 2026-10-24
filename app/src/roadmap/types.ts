@@ -1,7 +1,19 @@
+/** What a module offers once its lesson is read. Everything here is optional reading, never a gate. */
+export interface ModuleWrapUp {
+  /** the ideas the module covered, one short line each */
+  recap: string[];
+  /** an optional, ungraded prompt. It is never scored or used to unlock anything */
+  reflection?: string;
+}
+
+/** A stage of the path. From Roadmap v2 a stage is a module: it can point at a lesson and carry a wrap-up. */
 export interface RoadmapStage {
   id: string;
   title: string;
   blurb: string;
+  /** id of a lesson in `app/content/lessons/` (its file name without ".md"). Leave out while a stage has no lesson. */
+  lesson?: string;
+  wrapUp?: ModuleWrapUp;
   steps: RoadmapStep[];
 }
 

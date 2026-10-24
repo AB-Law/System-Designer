@@ -1,0 +1,305 @@
+/* ---------- lessons ---------- */
+.learn {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg-2);
+}
+.learn-in {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 28px 16px 64px;
+  display: grid;
+  gap: 18px;
+}
+.learn-head h1 {
+  margin: 0 0 6px;
+  font: 400 32px/1.15 var(--display);
+  color: var(--gold-hi);
+}
+.learn-head p {
+  margin: 0;
+}
+.learn-crumb {
+  margin-bottom: 6px;
+}
+.learn-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.learn-note {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 8px;
+  background: var(--gold-wash);
+}
+.learn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.learn-card {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.learn-card:hover {
+  border-color: var(--gold-lo);
+}
+.learn-card b {
+  font-size: 16px;
+}
+.learn-card span {
+  color: var(--muted);
+}
+
+.learn-progress {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+.learn-progress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--gold);
+}
+.learn-pages ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.learn-page-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  text-align: left;
+}
+.learn-page-btn .pg-num {
+  font-weight: 700;
+  color: var(--gold);
+}
+/* the current page is marked by weight and a heavy border as well as colour */
+.learn-page-btn[aria-current="page"] {
+  border: 2px solid var(--gold);
+  font-weight: 700;
+  background: var(--gold-wash);
+}
+.learn-page {
+  display: grid;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.learn-page h2,
+.lesson-static h2,
+.lesson-static h3 {
+  margin: 0;
+  font: 400 24px/1.2 var(--display);
+  color: var(--gold-hi);
+}
+.learn-page h2:focus {
+  outline: none;
+}
+.learn-page h2:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.learn-page p,
+.lesson-static p {
+  margin: 0;
+}
+.lesson-summary {
+  margin: 0;
+  padding-left: 20px;
+}
+.learn-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quiz,
+.demo {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+.quiz fieldset,
+.demo fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.quiz legend,
+.demo legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.demo-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.demo-opt:hover {
+  background: var(--raise);
+}
+.demo-opt input {
+  margin-top: 4px;
+  accent-color: var(--gold);
+}
+.quiz-result p,
+.demo-result p {
+  margin: 0;
+}
+.demo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.demo-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.demo-tag {
+  padding: 2px 10px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-hi);
+}
+.demo-result {
+  display: grid;
+  gap: 10px;
+}
+.demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.demo-table caption {
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+.demo-table th,
+.demo-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.demo-try {
+  display: grid;
+  gap: 6px;
+}
+.demo-try input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+.demo-assume {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  color: var(--muted);
+}
+.demo-assume summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+}
+.demo-assume ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.demo-missing,
+.demo-static {
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+.lesson-static {
+  display: grid;
+  gap: 12px;
+}
+.lesson-static section {
+  display: grid;
+  gap: 10px;
+}
+
+.learn-print {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .learn-head h1 {
+    font-size: 26px;
+  }
+  .demo-table {
+    font-size: 13px;
+  }
+}
+
+@media print {
+  .topbar,
+  .learn-tools,
+  .learn-progress,
+  .learn-pages,
+  .learn-nav,
+  .learn-page,
+  .learn-crumb {
+    display: none !important;
+  }
+  .learn-print {
+    display: block !important;
+  }
+  .learn {
+    overflow: visible;
+  }
+  .app,
+  html,
+  body,
+  #root {
+    height: auto !important;
+  }
+  body,
+  .learn,
+  .learn-in {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .learn-head h1,
+  .lesson-static h2,
+  .lesson-static h3 {
+    color: #000 !important;
+  }
+}

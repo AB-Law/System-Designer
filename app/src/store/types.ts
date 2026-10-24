@@ -50,8 +50,8 @@ export interface State {
   chat: ChatMessage[];
   chatBusy: boolean;
 
-  /** home page, canvas workbench, learning roadmap, or a design someone shared */
-  view: "home" | "canvas" | "roadmap" | "shared";
+  /** home page, canvas workbench, learning roadmap, a design someone shared, or the lessons */
+  view: "home" | "canvas" | "roadmap" | "shared" | "learn";
   user: User | null;
   authOpen: boolean;
   shareOpen: boolean;
@@ -64,6 +64,9 @@ export interface State {
   versionsError?: string;
   shared: SharedView | null;
   sharedError?: string;
+  /** lesson and page open in the Learn view; they mirror the address (#/learn/<lesson>/<page>) */
+  learnLessonId: string | null;
+  learnPageId: string | null;
   /** problem id whose step detail side panel is open on the roadmap */
   roadmapSelectedStepId: string | null;
   /** primer overlay (from roadmap or Problem tab) */
@@ -76,6 +79,8 @@ export interface State {
   init: () => Promise<void>;
   setProblem: (id: string) => Promise<void>;
   setView: (v: State["view"]) => void;
+  /** open the lesson list, a lesson, or one page of it. This changes the address; the view follows from it. */
+  openLearn: (lessonId?: string, pageId?: string, replace?: boolean) => void;
   setRoadmapSelectedStepId: (id: string | null) => void;
   openPrimer: (problemId: string) => void;
   closePrimer: () => void;

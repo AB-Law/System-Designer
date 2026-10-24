@@ -33,7 +33,7 @@ export function wipeLocalData(): void {
   try {
     const prefixes = ["dc:design:", "dc:subs:", "dc:versions:", "dc:chat:", "dc:interview:", "dc:est:", "dc:tour:"];
     for (const k of Object.keys(localStorage)) {
-      if (prefixes.some((p) => k.startsWith(p)) || k === "dc:roadmap" || k === "dc:last") localStorage.removeItem(k);
+      if (prefixes.some((p) => k.startsWith(p)) || k === "dc:roadmap" || k === "dc:lessons" || k === "dc:last") localStorage.removeItem(k);
     }
   } catch {
     /* storage unavailable */
