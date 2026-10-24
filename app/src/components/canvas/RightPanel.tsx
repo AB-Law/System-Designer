@@ -7,6 +7,8 @@ import { toDesign, useProblem, useStore } from "../../store";
 import type { Dimension, Finding, RunResult, ScenarioResult } from "../../types";
 import { blockCost, money } from "../../blocks";
 import { ReviewView } from "./ReviewView";
+import { EstimateWorksheet } from "./EstimateWorksheet";
+import { WalkthroughCard } from "./WalkthroughCard";
 import { QueryPlans } from "./DataModelEditor";
 import { REGIONS, regionId, regionLabel, type RegionId } from "../../sim/regions";
 import { VersionsTab } from "./VersionsTab";
@@ -68,6 +70,7 @@ function ProblemTab() {
           </small>
         </div>
       )}
+      <EstimateWorksheet key={p.id} problem={p} />
       <h4 className="h">Constraints</h4>
       <ul className="bul">
         {p.constraints.map((c) => (
@@ -406,7 +409,10 @@ function StoreLoad({ res }: { res: ScenarioResult }) {
             <b>{BLOCK_MAP[n.data.blockId]?.label}</b>
             {bar("Reads", rd, r.readCapacity!, ru)}
             {bar("Writes", w, r.writeCapacity!, wu)}
-            <small>Reads and writes share the block, so together they fill {Math.round((ru + wu) * 100)}% of it.</small>
+            <small>
+              Reads and writes share the block, so{" "}
+              {ru + wu >= 1.5 ? "together they need far more than it has." : `together they fill ${Math.round((ru + wu) * 100)}% of it.`}
+            </small>
           </div>
         );
       })}
@@ -535,6 +541,7 @@ function SimulateTab() {
           </>
         )
       )}
+      <WalkthroughCard />
       <h4 className="h">
         Architecture confidence <b className="score">{run.confidenceTotal}</b>
         <small>/100</small>

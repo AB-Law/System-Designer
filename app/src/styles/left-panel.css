@@ -301,3 +301,46 @@
   margin: 14px 0 0;
 }
 
+
+/* why a block is red */
+.why {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 13px;
+}
+.why.bad {
+  border-left-color: var(--bad);
+}
+.why.warn {
+  border-left-color: var(--gold);
+}
+.why-h,
+.why-k {
+  font: 600 11px var(--body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.why-k {
+  margin-top: 8px;
+}
+.why-t {
+  margin: 4px 0;
+  color: var(--text);
+}
+.why-s {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.why ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+}
