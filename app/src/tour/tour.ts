@@ -155,8 +155,8 @@ const LIBRARY: Tour = {
     {
       id: "scale",
       title: "11. Give it more copies",
-      body: "Raise Replicas so several servers share the load, or turn on Autoscale so it grows with traffic. The badge turns green when it can keep up.",
-      target: ".why",
+      body: "Raise Replicas here so several servers share the load (or turn on Autoscale below it, so it grows with traffic). The badge turns green when it can keep up.",
+      target: '[data-field="replicas"]',
       done: (s) => !hot(s, "server"),
       skip: (s) => !hot(s, "server"),
     },
