@@ -114,7 +114,7 @@ function Inner() {
   );
 
   return (
-    <div className="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
+    <div className="canvas" data-tour="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

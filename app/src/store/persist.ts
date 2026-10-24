@@ -31,7 +31,7 @@ export const fromDoc = (doc: DesignDoc): Snapshot => ({
 /** Data in this browser belongs to whoever signed in last; a different person starts clean, so nothing leaks into their account. */
 export function wipeLocalData(): void {
   try {
-    const prefixes = ["dc:design:", "dc:subs:", "dc:versions:", "dc:chat:", "dc:interview:", "dc:est:"];
+    const prefixes = ["dc:design:", "dc:subs:", "dc:versions:", "dc:chat:", "dc:interview:", "dc:est:", "dc:tour:"];
     for (const k of Object.keys(localStorage)) {
       if (prefixes.some((p) => k.startsWith(p)) || k === "dc:roadmap" || k === "dc:last") localStorage.removeItem(k);
     }

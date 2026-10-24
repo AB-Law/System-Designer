@@ -77,6 +77,7 @@ function Palette() {
                   <div
                     key={b.id}
                     className="block-item"
+                    data-tour={`palette-${b.id}`}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData("application/x-block", b.id);
@@ -296,14 +297,14 @@ function Field({ f, cfg, onChange }: { f: FieldDef; cfg: Record<string, any>; on
 
   if (f.type === "toggle")
     return (
-      <div className="row">
+      <div className="row" data-field={f.key}>
         <label>{f.label}</label>
         <button role="switch" aria-checked={!!v} className={"switch" + (v ? " on" : "")} onClick={() => onChange(!v)} />
       </div>
     );
   if (f.type === "select")
     return (
-      <div className="col">
+      <div className="col" data-field={f.key}>
         <label>{f.label}</label>
         <select value={v} onChange={(e) => onChange(e.target.value)}>
           {f.options.map((o) => (
@@ -316,7 +317,7 @@ function Field({ f, cfg, onChange }: { f: FieldDef; cfg: Record<string, any>; on
     const items: string[] = Array.isArray(v) ? v : [];
     const shown = items.length ? items : [];
     return (
-      <div className="col">
+      <div className="col" data-field={f.key}>
         <label>{f.label}</label>
         {shown.map((it, i) => (
           <div className="list-row" key={i}>
@@ -337,7 +338,7 @@ function Field({ f, cfg, onChange }: { f: FieldDef; cfg: Record<string, any>; on
   const max = isRatio ? (f.max ?? 1) : f.max;
   const step = isRatio ? 0.01 : (f.step ?? 1);
   return (
-    <div className="row">
+    <div className="row" data-field={f.key}>
       <label>{f.label}</label>
       <div className="num">
         <input

@@ -1,0 +1,62 @@
+/* guided tour: a spotlight on the next thing to do, and a card that says why */
+.tour-spot {
+  position: fixed;
+  z-index: 60;
+  border: 2px solid var(--gold-hi);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 4px rgba(212, 180, 90, 0.18),
+    0 0 24px rgba(212, 180, 90, 0.35);
+  pointer-events: none;
+  transition:
+    left 0.2s,
+    top 0.2s,
+    width 0.2s,
+    height 0.2s;
+}
+.tour-card,
+.tour-offer {
+  position: fixed;
+  z-index: 61;
+  display: grid;
+  gap: 6px;
+  width: min(330px, calc(100vw - 24px));
+  padding: 14px 16px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.tour-offer {
+  left: 16px;
+  bottom: 16px;
+}
+.tour-card small {
+  font: 600 11px var(--body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tour-card b,
+.tour-offer b {
+  font-size: 15px;
+  color: var(--gold-hi);
+}
+.tour-card p,
+.tour-offer p {
+  margin: 0;
+  color: var(--text);
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.tour-actions .muted {
+  font-size: 12px;
+}
