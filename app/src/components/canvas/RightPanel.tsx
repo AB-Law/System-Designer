@@ -9,6 +9,8 @@ import { blockCost, money } from "../../blocks";
 import { ReviewView } from "./ReviewView";
 import { EstimateWorksheet } from "./EstimateWorksheet";
 import { WalkthroughCard } from "./WalkthroughCard";
+import { beginTour } from "../tour/TourLayer";
+import { tourFor } from "../../tour/tour";
 import { QueryPlans } from "./DataModelEditor";
 import { REGIONS, regionId, regionLabel, type RegionId } from "../../sim/regions";
 import { VersionsTab } from "./VersionsTab";
@@ -22,7 +24,7 @@ export function RightPanel() {
     <aside className="right">
       <nav className="tabs">
         {(["problem", "simulate", "submissions", "versions"] as const).map((t) => (
-          <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
+          <button key={t} data-tour={`tab-${t}`} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
             {t[0].toUpperCase() + t.slice(1)}
           </button>
         ))}
@@ -69,6 +71,11 @@ function ProblemTab() {
             regions pays the distance (US to Europe 85 ms, US to Asia 160 ms, Europe to Asia 130 ms).
           </small>
         </div>
+      )}
+      {tourFor(p.id) && (
+        <button className="link" onClick={() => void beginTour(p.id)}>
+          Take the guided tour
+        </button>
       )}
       <EstimateWorksheet key={p.id} problem={p} />
       <h4 className="h">Constraints</h4>

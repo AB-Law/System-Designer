@@ -53,6 +53,7 @@ By default the image uses local SQLite (`LITESTREAM_ENABLED=0`). For Azure Conta
 Useful extras while you work:
 
 - **Worked alternative:** under a scenario result, show a reference design that passes.
+- **Guided tour:** the first time you open the Library problem on an empty canvas you are offered a short walk-through (add blocks, connect them, run, read what is red, fix it). It moves on as you do each thing. Replay it from the Problem tab; your current design is saved as a version first. To add one for another problem, add a script to `app/src/tour/tour.ts`.
 - **Why is this red?** Select an overloaded, close-to-limit or failed block and its settings open with a plain-language reason and things to try (for a database, it points at its queries when those are the cause).
 - **Sizing warm-up:** on the Problem tab, estimate requests per second, writes, the spike and the servers needed before you build, then check your guesses against the worked numbers. Optional; "4k" works.
 - **Reference walkthrough:** in the Simulate tab, once every scenario passes (or after "I am stuck"), step through the reference design and see which of its blocks your design already has.

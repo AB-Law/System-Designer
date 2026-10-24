@@ -77,6 +77,7 @@ function Palette() {
                   <div
                     key={b.id}
                     className="block-item"
+                    data-tour={`palette-${b.id}`}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData("application/x-block", b.id);

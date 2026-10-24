@@ -14,6 +14,7 @@ import { SharedView } from "./components/share/SharedView";
 import { AuthModal } from "./components/modals/AuthModal";
 import { ShareModal } from "./components/modals/ShareModal";
 import { CompareModal } from "./components/modals/CompareModal";
+import { TourLayer } from "./components/tour/TourLayer";
 
 export function App() {
   const init = useStore((s) => s.init);
@@ -91,6 +92,7 @@ export function App() {
       {authOpen && <AuthModal />}
       {shareOpen && <ShareModal />}
       {compareOpen && <CompareModal />}
+      <TourLayer />
     </div>
   );
 }
