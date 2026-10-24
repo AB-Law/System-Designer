@@ -409,13 +409,7 @@ export async function callModel(settings: AiSettings, messages: { role: string; 
   if (settings.provider === "off") throw new Error("AI is turned off. Choose LM Studio or OpenAI in AI settings.");
   // Thinking control is LM Studio–only in the UI; OpenAI uses the API default (medium on gpt-6-luna).
   const reasoningEffort =
-    settings.provider === "lmstudio"
-      ? settings.thinking === "off"
-        ? "none"
-        : settings.thinking === "low"
-          ? "low"
-          : undefined
-      : undefined;
+    settings.provider === "lmstudio" ? (settings.thinking === "off" ? "none" : settings.thinking === "low" ? "low" : undefined) : undefined;
   const model = settings.model || (settings.provider === "openai" ? DEFAULT_OPENAI_MODEL : undefined);
   const body = buildCompletionsBody({ model, messages, temperature: 0.2, reasoningEffort });
 

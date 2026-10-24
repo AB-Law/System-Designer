@@ -4,6 +4,7 @@ import { useProblem } from "../../store";
 import { HOST_BLOCKS, capIdsOf, workFactor } from "../../sim/caps";
 import { DataModelEditor } from "./DataModelEditor";
 import { RegionEditor } from "./RegionEditor";
+import { WhyPanel } from "./WhyPanel";
 import { useStore } from "../../store";
 import type { FieldDef, SectionDef } from "../../types";
 
@@ -135,6 +136,7 @@ function Settings({ nodeId }: { nodeId: string }) {
           </span>
         </div>
         <h3 className="set-title">{def.label}</h3>
+        <WhyPanel nodeId={nodeId} />
         <div className="resp">
           {node.data.responsibilities.map((r, i) => (
             <div className="resp-chip" key={i}>
