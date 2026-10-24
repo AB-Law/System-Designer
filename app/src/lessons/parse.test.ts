@@ -100,8 +100,8 @@ describe("parseLesson: errors name the file and line", () => {
 
 describe("loadLessons", () => {
   it("skips fixtures that start with an underscore unless asked to load them", () => {
-    expect(loadLessons(undefined, false)).toEqual([]);
-    expect(loadLessons(undefined, true).map((l) => l.id)).toEqual(["_sample-placeholder"]);
+    expect(loadLessons(undefined, false).some((l) => l.id.startsWith("_"))).toBe(false);
+    expect(loadLessons(undefined, true).some((l) => l.id === "_sample-placeholder")).toBe(true);
   });
   it("parses and sorts the files it is given", () => {
     const src = { "/c/b.md": FM + PAGE, "/c/a.md": FM + PAGE, "/c/_skip.md": "not a lesson" };

@@ -33,6 +33,9 @@ Capacity costs money. A bigger server, or more of them, raises the monthly bill.
 
 So the question is never just "can it cope?". It is "can it cope for this traffic, at this price?"
 
+::: demo d0-one-server
+:::
+
 The bakery's numbers are invented for the lesson. The app uses simple rules for how latency rises and what a block costs. They are good enough to show the pattern. They are not a capacity calculator for real systems.
 
 ## Copies and the balancer {#m0-copies-and-balancer}
@@ -48,6 +51,9 @@ Copies are not free. Each one adds to the bill, and so does the balancer. And th
 You will see warnings in the app about blocks that exist as a single copy. The warnings are pointing at this risk. The database is one copy in the village hall example as well. Later lessons show how to make copies of data, which is harder than copying a server, because the copies must agree with each other.
 
 Copies of a server work well here because each copy is the same and keeps nothing that the others need. This model assumes that. Real systems have more to think about, such as sessions and shared state.
+
+::: demo d0-copies
+:::
 
 ## Files and records {#m0-files-vs-records}
 
@@ -85,6 +91,9 @@ There are two limits to remember. First, the hit ratio is a number you choose wh
 A CDN is not the place where files are kept. The edge copies come and go. If the original is not safely stored at the origin, there is nothing for the edge to copy from. Think of the CDN as a fast shelf in front of the warehouse, not the warehouse itself.
 
 In this app, the CDN keeps the origin's load down, and the model never loses a file. A real system has to plan for both.
+
+::: demo d0-edge-origin
+:::
 
 Optional, and not scored: pick a website you use often. If ten times as many people arrived tomorrow, which of its blocks would you worry about first?
 
