@@ -7,6 +7,46 @@ import type { RoadmapStage } from "./types";
  */
 export const ROADMAP: RoadmapStage[] = [
   {
+    id: "first-designs",
+    title: "First designs",
+    blurb: "Meet the first blocks: a server, a database, copies of a server, and what happens when traffic outgrows one.",
+    lesson: "module-0",
+    wrapUp: {
+      recap: [
+        "A request passes through blocks, and each block does one job and has a limit.",
+        "When work arrives faster than a block's capacity, some of it is not served.",
+        "Several copies behind a load balancer share the work and survive one failing, but they cost money.",
+        "Records and files need different homes: search and change records in a database, keep large files in blob storage.",
+        "A CDN takes read load off the origin, but it is not where files are kept.",
+      ],
+      reflection:
+        "Pick a website you use often. If ten times as many people arrived tomorrow, which of its blocks would you worry about first?",
+    },
+    steps: [
+      {
+        problemId: "personal_blog",
+        minutes: 20,
+        youWillLearn: [
+          "Following one request from a visitor to the database and back",
+          "What happens when traffic outgrows one [[server]]",
+          "What a [[load balancer]] and extra [[replica|replicas]] change, and what they cost",
+        ],
+        newIdeas: ["User", "Server", "Database", "Load Balancer", "replicas"],
+        primer: [
+          "A visitor asks a [[server]], and the server reads the posts from a database.",
+          "[[Capacity]] is how many [[requests per second|requests a second]] a block can answer. Past it, work is not served.",
+          "Copies share load, and the budget is part of the question.",
+        ],
+        watchOutFor: "Sizing everything for a quiet day, or for the busiest hour of the year.",
+        reflect: [
+          "Which block filled up first when the post was shared?",
+          "What did your design do when a server failed?",
+          "What did the extra capacity cost, and was it worth it?",
+        ],
+      },
+    ],
+  },
+  {
     id: "first-systems",
     title: "Your first systems",
     blurb: "Learn the vocabulary: capacity, copies, caches, and why order of blocks matters.",

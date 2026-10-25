@@ -57,6 +57,6 @@ describe("checkRoadmap: module rules", () => {
     expect(checkRoadmap(list, road, ["other"])).toContainEqual({ kind: "unknown_lesson", stageId: "a", lesson: "module-0" });
   });
   it("accepts the shipped roadmap with lesson checking switched on", () => {
-    expect(checkRoadmap(list, ROADMAP, [])).toEqual([]);
+    expect(checkRoadmap(list, ROADMAP, ["module-0"])).toEqual([]);
   });
 });

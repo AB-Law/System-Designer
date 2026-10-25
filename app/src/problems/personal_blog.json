@@ -1,0 +1,121 @@
+{
+  "id": "personal_blog",
+  "title": "Design a Personal Blog",
+  "difficulty": "easy",
+  "brief": "A hobbyist writes a blog about hiking trips. Each visit is a request: a server builds the page from posts kept in a database. On most days the blog is quiet. Now and then a post is shared on a big news site and, for a few hours, far more people arrive than usual. Visitors should still get their page, even if one of your servers has a bad day, and the monthly bill should stay small.",
+  "constraints": [
+    "A page must load within 300 ms on a normal day",
+    "About 100 page views per second on a normal day",
+    "When a post is shared, traffic can reach about 12 times that for a few hours",
+    "The blog keeps working if one server fails",
+    "Keep infrastructure under $1,800 a month"
+  ],
+  "traffic": {
+    "users": 5000,
+    "reqPerUser": 0.02,
+    "writeShare": 0.01
+  },
+  "latencyTargetMs": 300,
+  "budget": 1800,
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Normal day",
+      "description": "Steady, quiet traffic.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Follow one page view from the visitor to the database and back. Which block is busiest on a normal day, and how do you know?",
+      "debrief": "On a normal day the whole blog uses a small share of its capacity, so any sensible design passes. The scenarios that follow are what separate designs."
+    },
+    {
+      "id": "front_page",
+      "title": "Shared on a news site (12x)",
+      "description": "A post is shared and traffic jumps to twelve times normal for a few hours.",
+      "trafficMultiplier": 12,
+      "interviewQuestion": "Traffic is twelve times higher. Which block fills up first, and what are your two options for coping?",
+      "debrief": "Twelve times normal is more than one default-sized server can answer, so something has to give: more capacity in one place, or the same work shared between copies."
+    },
+    {
+      "id": "server_down",
+      "title": "A server fails",
+      "description": "One of the servers stops working on an ordinary day.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "server"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "One server stops at an ordinary moment. What does a visitor see in your design?",
+      "debrief": "A design that depends on a single server has nothing left to answer when it fails. Spare capacity kept in a second copy is what lets the blog carry on."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Pages load within the latency target on a normal day",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 300
+      }
+    },
+    {
+      "id": "r-front",
+      "text": "At least 98% of visitors are served when a post is shared",
+      "check": {
+        "type": "scenario",
+        "scenario": "front_page",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-down",
+      "text": "The blog keeps working when one server fails",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "server_down"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $1,800",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-path",
+      "text": "A server builds each page from posts kept in a database",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "server",
+          "database"
+        ]
+      }
+    }
+  ],
+  "rubric": [
+    "A server receives each request and reads the posts it needs from a database.",
+    "The design has enough capacity for the shared-post surge without paying for that capacity all month if it can avoid it.",
+    "More than one copy of the server runs, so a single failure does not take the blog down.",
+    "The design says which block would fill up first if traffic grew further."
+  ],
+  "reference": {
+    "summary": "Share the work between a few identical servers behind a load balancer, with enough spare room that losing one still leaves the blog standing.",
+    "design": [
+      "User, then a Load Balancer, then a Server running 'the page' with three replicas of 500 requests a second each.",
+      "The Server reads posts from a Database sized for the shared-post peak."
+    ],
+    "tradeoffs": [
+      "Three smaller copies cost about the same as two large ones, but losing one leaves a bigger share of capacity behind.",
+      "The database is still a single copy. The design passes every scenario here, but it would not survive that database failing; later lessons cover that."
+    ]
+  }
+}
