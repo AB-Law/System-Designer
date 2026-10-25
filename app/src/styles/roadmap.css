@@ -22,7 +22,8 @@
   gap: 20px 32px;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 22px 24px 12px;
+  /* hero, tabs and path share one centred column, so a wide screen does not leave the right side empty */
+  padding: 22px max(24px, calc((100% - 1000px) / 2)) 12px;
   border-bottom: 1px solid var(--line-soft);
   background: linear-gradient(180deg, var(--panel), transparent);
 }
@@ -92,18 +93,17 @@
 }
 .rm-tabs {
   flex: none;
-  padding: 0 16px;
+  padding: 0 max(16px, calc((100% - 1000px) / 2));
 }
 .rm-body {
   flex: 1;
   min-height: 0;
-  padding: 8px 20px 32px;
+  padding: 8px max(20px, calc((100% - 1000px) / 2)) 32px;
 }
 .rm-path {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  max-width: 920px;
 }
 .rm-stage-h {
   display: flex;

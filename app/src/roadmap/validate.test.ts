@@ -68,6 +68,20 @@ describe("checkRoadmap: module rules", () => {
     expect(checkRoadmap(list, road, ["l"], { l: ["gone"] })).toEqual([]);
   });
   it("accepts the shipped roadmap with lesson checking switched on", () => {
-    expect(checkRoadmap(list, ROADMAP, ["module-0"])).toEqual([]);
+    expect(checkRoadmap(list, ROADMAP, ["module-0", "module-1", "module-2", "module-3", "module-4", "module-5"])).toEqual([]);
+  });
+  it("follows the approved module order, and only modules with a written lesson link to one", () => {
+    expect(ROADMAP.map((st) => [st.id, st.lesson ?? null, st.steps.map((x) => x.problemId)])).toEqual([
+      ["first-designs", "module-0", ["personal_blog", "photo_portfolio"]],
+      ["traffic-copies-correctness", "module-1", ["class_poll"]],
+      ["work-later", "module-2", ["contact_form", "url_shortener", "pastebin", "notification"]],
+      [
+        "data-and-queries",
+        "module-3",
+        ["library_management", "google_drive", "messaging_app", "ticket_booking", "metrics_monitoring", "news_feed"],
+      ],
+      ["search-maps-media", "module-4", ["search", "maps", "video_streaming", "web_crawler"]],
+      ["real-time-money", "module-5", ["food_delivery", "ride_sharing", "payment", "ad_serving"]],
+    ]);
   });
 });

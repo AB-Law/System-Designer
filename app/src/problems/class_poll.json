@@ -1,0 +1,119 @@
+{
+  "id": "class_poll",
+  "title": "Design a Class Poll",
+  "difficulty": "easy",
+  "brief": "A teacher shows a question on the screen and students vote on their phones. Everyone sees the question, casts a vote and sees the running tally. Most of the time the poll is idle. When the teacher opens a new question, the whole class votes within a few seconds, so many votes arrive at the same moment. Every vote must be counted: two students voting at the same instant must both be recorded, and no vote may overwrite another.",
+  "constraints": [
+    "A page must load within 300 ms in a quiet lesson",
+    "About 200 requests per second in a quiet lesson, and about 7 in 10 of them record a vote",
+    "When a question opens, traffic can reach about 6 times that for a few seconds",
+    "Two votes at the same moment must both be counted",
+    "Keep infrastructure under $1,900 a month"
+  ],
+  "traffic": {
+    "users": 2000,
+    "reqPerUser": 0.1,
+    "writeShare": 0.7
+  },
+  "latencyTargetMs": 300,
+  "budget": 1900,
+  "capabilities": [
+    {
+      "id": "vote",
+      "label": "Take part in the poll",
+      "hint": "Show the question, record a vote and show the tally. Two votes at the same moment must both be counted.",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 0.7,
+      "uses": [
+        "database"
+      ],
+      "requires": [
+        "exclusive_access"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Quiet lesson",
+      "description": "A few students vote now and then.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Follow one vote from a student's phone to the database. Which step changes the stored tally, and who else might be changing it?",
+      "debrief": "In a quiet lesson votes rarely overlap, so a design with no protection can look fine. That is why the flaw is easy to miss."
+    },
+    {
+      "id": "opening",
+      "title": "A question opens (6x)",
+      "description": "The teacher opens a question and the class votes within seconds.",
+      "trafficMultiplier": 6,
+      "interviewQuestion": "Many students vote in the same second. What stops two of them overwriting each other's vote, and what does that protection cost you?",
+      "debrief": "When many votes arrive together, two of them touching the same tally at once is certain, not rare. Protecting the update makes each vote wait its turn, so the database needs enough room to keep up."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Pages load within the latency target in a quiet lesson",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 300
+      }
+    },
+    {
+      "id": "r-open",
+      "text": "When a question opens, the poll keeps up and every vote is counted correctly",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "opening"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $1,900",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-path",
+      "text": "A server records each vote in a database",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "server",
+          "database"
+        ]
+      }
+    },
+    {
+      "id": "r-both",
+      "text": "The design explains how two votes at the same moment are both counted",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "A server records each vote in a database.",
+    "The update to the tally is protected so two simultaneous votes cannot overwrite each other.",
+    "The design says what the protection costs: each vote waits its turn, so write capacity is lower than without it.",
+    "The design makes no claim to handle unlimited voters; it protects the update and sizes the database for the burst."
+  ],
+  "reference": {
+    "summary": "Protect the tally with row locks in the database, and give the database enough capacity to keep up while votes wait their turn.",
+    "design": [
+      "User, then a Load Balancer, then a Server with three replicas running 'Take part in the poll'.",
+      "The Server records votes in a Database with Locking set to Row locks, sized for the opening burst."
+    ],
+    "tradeoffs": [
+      "Row locks cost some write speed, so the database needs more capacity than it would with no protection.",
+      "This protects an update to one tally from being lost. It does not make the poll able to scale to unlimited voters.",
+      "Locking more strictly (Serializable) is safer still, and costs more capacity again."
+    ]
+  }
+}

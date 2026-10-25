@@ -126,3 +126,29 @@ export function Result({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/** One choice from a short list, as radio buttons. */
+export function Choice({
+  legend,
+  options,
+  value,
+  onChange,
+}: {
+  legend: string;
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const name = useId();
+  return (
+    <fieldset className="demo-try">
+      <legend>{legend}</legend>
+      {options.map((o) => (
+        <label key={o.id} className="demo-opt">
+          <input type="radio" name={name} value={o.id} checked={value === o.id} onChange={() => onChange(o.id)} />
+          <span>{o.label}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}

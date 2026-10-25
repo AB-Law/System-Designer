@@ -1,0 +1,158 @@
+{
+  "id": "contact_form",
+  "title": "Design a Contact Form",
+  "difficulty": "easy",
+  "brief": "A busy site has a contact form. A visitor writes a message and presses send, and the site must email it to its staff. Sending email goes through an outside email provider, which takes a moment and sometimes fails. The visitor should not have to wait for the email to go, and every message must reach the staff once: not lost, and not sent twice. Now and then a campaign sends a surge of messages.",
+  "constraints": [
+    "The form must respond within 100 ms, however long the email takes",
+    "About 200 messages per second on a normal day, and up to about 5 times that during a campaign",
+    "Every message must be delivered once: not lost, and not sent twice, even if the provider fails and the send is tried again",
+    "The form keeps accepting messages when the email provider is down",
+    "Keep infrastructure under $1,600 a month"
+  ],
+  "traffic": {
+    "users": 4000,
+    "reqPerUser": 0.05,
+    "writeShare": 1
+  },
+  "latencyTargetMs": 100,
+  "budget": 1600,
+  "capabilities": [
+    {
+      "id": "accept",
+      "label": "Accept a message",
+      "hint": "Check the message and record that it arrived.",
+      "share": 1,
+      "work": 1,
+      "critical": true,
+      "writes": 1
+    },
+    {
+      "id": "deliver",
+      "label": "Deliver the message by email",
+      "hint": "Hand the message to the email provider. Select the block that runs it and tick it under Hosts. A message must not be sent twice.",
+      "share": 1,
+      "work": 1,
+      "critical": false,
+      "writes": 0,
+      "needs": [
+        "third_party:messaging"
+      ],
+      "requires": [
+        "idempotent"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Normal day",
+      "description": "Messages arrive steadily.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Follow one message from the visitor to the staff's inbox. At which point does the visitor stop waiting?",
+      "debrief": "The visitor only needs to wait until the message is safely accepted. Everything after that can happen later."
+    },
+    {
+      "id": "campaign",
+      "title": "A campaign (5x)",
+      "description": "A campaign sends five times the usual messages for a while.",
+      "trafficMultiplier": 5,
+      "interviewQuestion": "Five times as many messages arrive. Which part of your design has to keep up with them, and which part can fall behind for a while?",
+      "debrief": "Accepting a message is quick and cheap, so it keeps up. The slower delivery work needs enough workers to keep up with what arrives, or the messages queue up."
+    },
+    {
+      "id": "provider_down",
+      "title": "The email provider stops answering",
+      "description": "The outside email provider is unavailable.",
+      "trafficMultiplier": 1,
+      "failure": {
+        "target": {
+          "types": [
+            "third_party"
+          ]
+        },
+        "mode": "down"
+      },
+      "interviewQuestion": "The provider is down. What does a visitor see when they press send, and what happens to the message?",
+      "debrief": "If delivery is part of the request, the visitor's form fails with the provider. If delivery happens later, the form still works and the messages wait to be sent."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "The form responds within the latency target on a normal day",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 100
+      }
+    },
+    {
+      "id": "r-campaign",
+      "text": "The form copes with a campaign",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "campaign"
+      }
+    },
+    {
+      "id": "r-provider",
+      "text": "Messages are still accepted when the email provider is down",
+      "check": {
+        "type": "scenarioPass",
+        "scenario": "provider_down"
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $1,600",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-async",
+      "text": "Accepting a message does not wait for it to be delivered",
+      "check": {
+        "type": "asyncEdge"
+      }
+    },
+    {
+      "id": "r-deliver",
+      "text": "Something delivers each message by email",
+      "check": {
+        "type": "hosted",
+        "capability": "deliver"
+      }
+    },
+    {
+      "id": "r-retry",
+      "text": "The design explains what happens to a message when the provider fails, and how a retry avoids sending it twice",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "The form accepts and records the message quickly, and the visitor does not wait for the email to be sent.",
+    "Delivery happens later, from a list of waiting messages, by workers that call the email provider.",
+    "If the provider fails, the message waits and delivery is tried again; the design says so.",
+    "A retry cannot send the same message twice: delivery is idempotent, and the design says how.",
+    "The workers are sized to keep up with a campaign, and delivery trouble does not stop messages being accepted."
+  ],
+  "reference": {
+    "summary": "Accept the message quickly and put it on a queue, and let idempotent workers deliver it through the provider, retrying if it fails.",
+    "design": [
+      "User, then a Server with two replicas running 'Accept a message'.",
+      "The Server hands each message to a Queue over an async connection, and Workers read the Queue.",
+      "The Workers run 'Deliver the message by email', with idempotent processing on and retries enabled, and call a Third-party API set to Email / SMS."
+    ],
+    "tradeoffs": [
+      "The visitor's wait no longer depends on the provider, but a message is delivered a little later than it was accepted.",
+      "Idempotent workers make a retry safe, at the cost of a check for every message.",
+      "The queue and workers are more blocks to pay for; the queue only holds work, it does not make it disappear, so the workers must still keep up."
+    ]
+  }
+}

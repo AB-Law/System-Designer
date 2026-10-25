@@ -71,3 +71,71 @@ describe("demo: edge and origin", () => {
     expect(e.withCdn.monthlyCost).toBeGreaterThan(e.withoutCdn.monthlyCost);
   });
 });
+
+import { forum, notices } from "./analyzeModels";
+
+/*
+  Hand calculation. One database node answers 500 reads and 500 writes a second. The app's database always has at least one read
+  copy, so "1 copy" is the smallest design: reads are answered by 500 x (1 + 1) = 1,000 a second, and writes by the original alone.
+  The most requests a second at a write share w is 1 / ((1 - w) / readLimit + w / writeLimit).
+    1 copy,  w = 3%:  1 / (0.97 / 1000 + 0.03 / 500)  = 1 / 0.00103  =  970.9  -> 970.9 / 1,500 = 65% of 1,500 served
+    3 copies, w = 3%: 1 / (0.97 / 2000 + 0.03 / 500)  = 1 / 0.000545 = 1,834.9 -> all 1,500 served
+    w = 40%, 6 copies: 1 / (0.6 / 3500 + 0.4 / 500)   = 1 / 0.000971 = 1,029   -> 69% served: the write limit is the ceiling
+    w = 40%, 1 copy, 2 slices (1,000 reads and 1,000 writes... x2): read 2,000, write 1,000: 1 / (0.6 / 2000 + 0.4 / 1000) = 1,428.6 -> 95%
+*/
+describe("demo: copies and slices of a database", () => {
+  it("the smallest design answers 1,000 reads and 500 writes a second", () => {
+    const f = forum(1, 1);
+    expect(f.readLimit).toBeCloseTo(1000, 6);
+    expect(f.writeLimit).toBeCloseTo(500, 6);
+  });
+  it("more copies raise the read limit and leave the write limit exactly where it was", () => {
+    const f = forum(3, 1); // reads: 500 x (1 + 3) = 2,000
+    expect(f.readLimit).toBeCloseTo(2000, 6);
+    expect(f.writeLimit).toBeCloseTo(500, 6);
+    expect(forum(6, 1).writeLimit).toBeCloseTo(500, 6);
+  });
+  it("two slices double both limits, because each slice takes its own writes", () => {
+    const f = forum(1, 2);
+    expect(f.readLimit).toBeCloseTo(2000, 6);
+    expect(f.writeLimit).toBeCloseTo(1000, 6);
+  });
+  it("the forum's 1,500 requests a second: one copy serves 65%, three copies serve everything", () => {
+    const f = forum(1, 1);
+    expect(f.reads).toBeCloseTo(1455, 6);
+    expect(f.writes).toBeCloseTo(45, 6);
+    expect(f.served).toBeCloseTo(970.87 / 1500, 3);
+    expect(forum(3, 1).served).toBe(1);
+  });
+  it("copies cannot rescue a write-heavy forum: 40% writes is 600 a second against 500", () => {
+    const heavy = forum(6, 1, 0.4);
+    expect(heavy.writes).toBeCloseTo(600, 6);
+    expect(heavy.served).toBeCloseTo(1029 / 1500, 2);
+    const sliced = forum(1, 2, 0.4);
+    expect(sliced.served).toBeCloseTo(1428.57 / 1500, 3); // slices take the extra writes
+    expect(sliced.served).toBeGreaterThan(heavy.served);
+  });
+  it("copies cost money and so do slices", () => {
+    expect(forum(3, 1).monthlyCost).toBeGreaterThan(forum(1, 1).monthlyCost);
+    expect(forum(1, 2).monthlyCost).toBeGreaterThan(forum(1, 1).monthlyCost);
+  });
+});
+
+describe("demo: regions and distance", () => {
+  it("with everything in US East, distance is added to every call: US is the baseline, Europe +85 ms, Asia Pacific +160 ms", () => {
+    const n = notices(false, false);
+    expect(n.byRegion.eu - n.byRegion.us).toBeCloseTo(85, 6);
+    expect(n.byRegion.ap - n.byRegion.us).toBeCloseTo(160, 6);
+  });
+  it("servers near the visitors do not help while the data is still far away", () => {
+    expect(notices(true, false).byRegion).toEqual(notices(false, false).byRegion);
+  });
+  it("servers plus a read copy of the data in each region make every region as quick as the home region", () => {
+    const n = notices(true, true).byRegion;
+    expect(n.eu).toBeCloseTo(n.us, 6);
+    expect(n.ap).toBeCloseTo(n.us, 6);
+  });
+  it("a copy of the data costs money", () => {
+    expect(notices(true, true).monthlyCost).toBeGreaterThan(notices(true, false).monthlyCost);
+  });
+});

@@ -8,15 +8,15 @@ import type { Design, DesignEdge, DesignNode, Problem, Scenario } from "../../ty
   (traffic, capacities) is invented for the lesson; the rules that turn them into "served", response time and cost are the app's.
 */
 
-const node = (id: string, blockId: string, over: Record<string, unknown> = {}): DesignNode => ({
+export const node = (id: string, blockId: string, over: Record<string, unknown> = {}): DesignNode => ({
   id,
   blockId,
   cfg: { ...defaultCfg(BLOCK_MAP[blockId]), ...over },
   responsibilities: [],
 });
-const edge = (source: string, target: string): DesignEdge => ({ id: `${source}-${target}`, source, target, kind: "sync" });
+export const edge = (source: string, target: string): DesignEdge => ({ id: `${source}-${target}`, source, target, kind: "sync" });
 
-const scenario = (id: string, over: Partial<Scenario> = {}): Scenario => ({
+export const scenario = (id: string, over: Partial<Scenario> = {}): Scenario => ({
   id,
   title: id,
   description: id,
@@ -25,7 +25,7 @@ const scenario = (id: string, over: Partial<Scenario> = {}): Scenario => ({
   ...over,
 });
 
-const problem = (id: string, requestsPerSec: number, scenarios: Scenario[]): Problem => ({
+export const problem = (id: string, requestsPerSec: number, scenarios: Scenario[]): Problem => ({
   id,
   title: id,
   difficulty: "easy",
@@ -137,4 +137,81 @@ export function edgeOrigin(hitRatio: number): EdgeOutcome {
     edges: [edge("u", "cdn"), edge("cdn", "b")],
   };
   return { withoutCdn: run(direct, p, "start", "b", rps), withCdn: run(viaCdn, p, "start", "b", rps) };
+}
+
+// ----- Module 1 demo: copies and slices of a database -----
+export const FORUM = { rps: 1500, nodeCapacity: 500, writeShare: 0.03 };
+
+export interface ForumOutcome {
+  /** reads and writes a second the database is asked for */
+  reads: number;
+  writes: number;
+  /** the most reads (or writes) a second the database could answer if that were all it did */
+  readLimit: number;
+  writeLimit: number;
+  served: number;
+  monthlyCost: number;
+}
+
+/** A hobbyist forum: one database with `copies` read copies and `slices` shards. Servers are sized so they are never the limit. */
+export function forum(copies: number, slices: number, writeShare: number = FORUM.writeShare, rps: number = FORUM.rps): ForumOutcome {
+  const design: Design = {
+    nodes: [
+      node("u", "user", { users: rps, reqPerUser: 1 }),
+      node("s", "server", { capacity: 20000, replicas: 1, autoscale: false }),
+      node("db", "database", { capacity: FORUM.nodeCapacity, readReplicas: copies, shards: slices }),
+    ],
+    edges: [edge("u", "s"), edge("s", "db")],
+  };
+  const p = problem("forum", rps, [scenario("now")]);
+  p.traffic.writeShare = writeShare;
+  const result = analyze(design, p);
+  const s = result.scenarios[0];
+  const db = s.nodes["db"];
+  return {
+    reads: rps * (1 - writeShare),
+    writes: rps * writeShare,
+    readLimit: db.readCapacity ?? 0,
+    writeLimit: db.writeCapacity ?? 0,
+    served: s.served,
+    monthlyCost: result.cost,
+  };
+}
+
+// ----- Module 1 demo: regions and distance -----
+export const NOTICES = { rps: 300, mix: { us: 0.4, eu: 0.3, ap: 0.3 } };
+
+export interface RegionsOutcome {
+  /** the response time a visitor in each region sees, in ms */
+  byRegion: { us: number; eu: number; ap: number };
+  monthlyCost: number;
+}
+
+/**
+ * A school-notices app. The data's home is US East. `servers` puts a server in every region; `copies` also keeps a read copy of
+ * the data in Europe and Asia Pacific. A server in each region does not help much if the data it needs is still far away.
+ */
+export function notices(servers: boolean, copies: boolean): RegionsOutcome {
+  const regionNames = ["US East", "Europe", "Asia Pacific"];
+  const design: Design = {
+    nodes: [
+      node("u", "user", { users: NOTICES.rps, reqPerUser: 1 }),
+      ...(servers
+        ? regionNames.map((r, i) => node(`s${i}`, "server", { capacity: 2000, replicas: 1, autoscale: false, region: r }))
+        : [node("s0", "server", { capacity: 2000, replicas: 1, autoscale: false, region: "US East" })]),
+      node("db", "database", {
+        capacity: 2000,
+        region: "US East",
+        ...(copies ? { replicaRegions: ["Europe", "Asia Pacific"] } : {}),
+      }),
+    ],
+    edges: [],
+  };
+  const serverIds = servers ? ["s0", "s1", "s2"] : ["s0"];
+  design.edges = [...serverIds.flatMap((id) => [edge("u", id), edge(id, "db")])];
+  const p = problem("notices", NOTICES.rps, [scenario("now", { regionMix: NOTICES.mix })]);
+  p.regions = { home: "us" };
+  const result = analyze(design, p);
+  const by = result.scenarios[0].latencyByRegion ?? { us: 0, eu: 0, ap: 0 };
+  return { byRegion: { us: by.us ?? 0, eu: by.eu ?? 0, ap: by.ap ?? 0 }, monthlyCost: result.cost };
 }
