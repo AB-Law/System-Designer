@@ -10,6 +10,7 @@ import { buildChatMessages, describeChange, parseChanges } from "../ai/chat";
 import { analyze } from "../sim/analyze";
 import { capIdsOf, primaryCapability } from "../sim/caps";
 import { isStepDone, validateRoadmap } from "../roadmap";
+import { learnHash, parseLearnHash } from "../lessons/route";
 import type { ChatMessage, Problem, RunResult, Scenario, Submission } from "../types";
 import { edgeProps, errText, freeSpot, layered, nextId, toDesign } from "./canvas";
 import { fromDoc, persist, restore, wipeLocalData } from "./persist";
@@ -82,6 +83,9 @@ export const useStore = create<State>((set, get) => {
     fitTick: 0,
     versions: [],
     shared: null,
+    learnLessonId: null,
+    learnPageId: null,
+    learnFrom: "home",
     roadmapSelectedStepId: null,
     primerOpen: false,
     primerProblemId: null,
@@ -109,7 +113,24 @@ export const useStore = create<State>((set, get) => {
       window.addEventListener("hashchange", () => void get().openFromHash());
     },
 
-    setView: (v) => set({ view: v, roadmapSelectedStepId: v === "canvas" ? null : get().roadmapSelectedStepId }),
+    setView: (v) => {
+      // leaving the lessons clears their address, so a reload or a copied link does not drag the learner back
+      if (v !== "learn" && parseLearnHash(location.hash)) history.pushState(null, "", location.pathname + location.search);
+      if (v === "learn") get().openLearn(get().learnLessonId ?? undefined, get().learnPageId ?? undefined);
+      else set({ view: v, roadmapSelectedStepId: v === "canvas" ? null : get().roadmapSelectedStepId });
+    },
+    openLearn: (lessonId, pageId, replace) => {
+      const target = learnHash({ lessonId, pageId });
+      // the address is the source of truth: back, forward, reload and pasted links all arrive through openFromHash
+      if (location.hash === target) {
+        void get().openFromHash();
+      } else if (replace) {
+        history.replaceState(null, "", location.pathname + location.search + target);
+        void get().openFromHash();
+      } else {
+        location.hash = target;
+      }
+    },
     setRoadmapSelectedStepId: (id) => set({ roadmapSelectedStepId: id }),
     openPrimer: (problemId) => set({ primerOpen: true, primerProblemId: problemId }),
     closePrimer: () => set({ primerOpen: false, primerProblemId: null }),
@@ -633,6 +654,19 @@ export const useStore = create<State>((set, get) => {
 
     openFromHash: async () => {
       const h = location.hash;
+      const learn = parseLearnHash(h);
+      if (learn) {
+        const from = get().view;
+        set({
+          view: "learn",
+          learnLessonId: learn.lessonId ?? null,
+          learnPageId: learn.pageId ?? null,
+          ...(from !== "learn" ? { learnFrom: from } : {}),
+        });
+        return;
+      }
+      // back or forward onto an address with no lesson in it leaves the lessons
+      if (get().view === "learn") set({ view: get().learnFrom });
       const t = /^#share=([\w-]{8,64})$/.exec(h);
       if (t) {
         try {

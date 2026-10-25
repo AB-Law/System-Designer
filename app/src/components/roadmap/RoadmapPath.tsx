@@ -1,10 +1,14 @@
 import { ROADMAP, bestScore, firstNotDone, localSubmissions, stageDoneCount, statusFor } from "../../roadmap";
 import { useStore } from "../../store";
+import { lessonIndex } from "../../lessons/load";
+import { pagesSeen, resumePageId } from "../../lessons/progress";
+import { GlossText } from "./GlossText";
 import { StepCard } from "./StepCard";
 
 export function RoadmapPath({ selectedId, onSelect }: { selectedId: string | null; onSelect: (problemId: string) => void }) {
   const problems = useStore((s) => s.problems);
   const nextUp = firstNotDone();
+  const openLearn = useStore((s) => s.openLearn);
 
   return (
     <div className="rm-path">
@@ -28,6 +32,9 @@ export function RoadmapPath({ selectedId, onSelect }: { selectedId: string | nul
                 </span>
               </div>
             </header>
+            {stage.lesson && lessonIndex().some((l) => l.id === stage.lesson) && (
+              <ModuleLesson stage={stage} onOpen={(lesson, page) => openLearn(lesson, page)} />
+            )}
             <div className="rm-steps">
               {stage.steps.map((step, stepIdx) => {
                 const index = indexBase + stepIdx + 1;
@@ -53,6 +60,46 @@ export function RoadmapPath({ selectedId, onSelect }: { selectedId: string | nul
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function ModuleLesson({ stage, onOpen }: { stage: (typeof ROADMAP)[number]; onOpen: (lesson: string, page: string) => void }) {
+  const lesson = lessonIndex().find((l) => l.id === stage.lesson)!;
+  const seen = pagesSeen(lesson);
+  return (
+    <div className="rm-lesson">
+      <div>
+        <h3>
+          Lesson: {lesson.title} <span className="rm-optional">Optional</span>
+        </h3>
+        <p className="muted">
+          {lesson.pages.length} short pages, about {lesson.minutes} minutes, with something to try on each one.{" "}
+          {seen === 0
+            ? "You can read it first, or open any problem below straight away."
+            : `${seen} of ${lesson.pages.length} pages opened.`}
+        </p>
+      </div>
+      <button type="button" className="btn" onClick={() => onOpen(lesson.id, resumePageId(lesson))}>
+        {seen === 0 ? "Read the lesson" : "Continue the lesson"}
+      </button>
+      {stage.wrapUp && (
+        <details className="rm-wrapup">
+          <summary>What this module covers</summary>
+          <ul className="bul">
+            {stage.wrapUp.recap.map((line) => (
+              <li key={line}>
+                <GlossText text={line} />
+              </li>
+            ))}
+          </ul>
+          {stage.wrapUp.reflection && (
+            <p className="muted">
+              Optional, and not scored: <GlossText text={stage.wrapUp.reflection} />
+            </p>
+          )}
+        </details>
+      )}
     </div>
   );
 }

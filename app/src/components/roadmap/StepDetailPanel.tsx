@@ -2,6 +2,7 @@ import { useState } from "react";
 import { earlierIncomplete, findStep, loadRoadmapPrefs, saveRoadmapPrefs, type RoadmapStep } from "../../roadmap";
 import { useStore } from "../../store";
 import { GlossText } from "./GlossText";
+import { LessonLink } from "./LessonLink";
 
 export function StepDetailPanel({ problemId, onClose }: { problemId: string; onClose: () => void }) {
   const problems = useStore((s) => s.problems);
@@ -62,6 +63,9 @@ export function StepDetailPanel({ problemId, onClose }: { problemId: string; onC
       <button type="button" className="btn ghost small" onClick={() => openPrimer(problemId)}>
         Open primer panel
       </button>
+      <p className="rm-lesson-link">
+        <LessonLink lesson={found.stage.lesson} page={step.lessonPage} />
+      </p>
 
       <p className="watch">
         <strong>Watch out for:</strong> <GlossText text={step.watchOutFor} />

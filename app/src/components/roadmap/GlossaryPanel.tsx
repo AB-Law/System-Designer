@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { GLOSSARY } from "../../roadmap";
 import { useStore } from "../../store";
+import { LessonLink } from "./LessonLink";
 
 export function GlossaryPanel() {
   const [q, setQ] = useState("");
@@ -37,6 +38,11 @@ export function GlossaryPanel() {
             <div className="rm-glossary-term">{g.term}</div>
             <p>{g.plain}</p>
             <p className="muted">First met in: {titleOf(g.where)}</p>
+            {g.lesson && (
+              <p>
+                <LessonLink lesson={g.lesson.lesson} page={g.lesson.page} />
+              </p>
+            )}
           </li>
         ))}
         {filtered.length === 0 && <li className="muted">No terms match that search.</li>}

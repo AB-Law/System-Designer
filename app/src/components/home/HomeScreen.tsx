@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { backend } from "../../api";
 import {
   ROADMAP,
@@ -12,6 +12,7 @@ import {
   localSubmissions,
   statusFor,
 } from "../../roadmap";
+import { hasLessons } from "../../lessons/load";
 import { useStore } from "../../store";
 import { HomeCohorts } from "./HomeCohorts";
 import { HomeShares } from "./HomeShares";
@@ -34,6 +35,7 @@ export function HomeScreen() {
   const setAuthOpen = useStore((s) => s.setAuthOpen);
   const setView = useStore((s) => s.setView);
   const start = useStore((s) => s.startRoadmapStep);
+  const showLessons = useMemo(hasLessons, []);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
 
   const done = countDone();
@@ -88,6 +90,11 @@ export function HomeScreen() {
               <button className="btn lg" onClick={() => setView("roadmap")}>
                 Open the learning roadmap
               </button>
+              {showLessons && (
+                <button className="btn lg" onClick={() => setView("learn")}>
+                  Learn the building blocks
+                </button>
+              )}
             </div>
           </div>
           <div className="home-progress" role="group" aria-label={`${done} of ${TOTAL_STEPS} problems done`}>

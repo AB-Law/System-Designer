@@ -9,6 +9,7 @@ import { AiSettingsModal } from "./components/modals/AiSettingsModal";
 import { RoadmapScreen } from "./components/roadmap/RoadmapScreen";
 import { PrimerPanel } from "./components/roadmap/PrimerPanel";
 import { CelebrateCard } from "./components/roadmap/CelebrateCard";
+import { LearnScreen } from "./components/learn/LearnScreen";
 import { HomeScreen } from "./components/home/HomeScreen";
 import { SharedView } from "./components/share/SharedView";
 import { AuthModal } from "./components/modals/AuthModal";
@@ -72,6 +73,8 @@ export function App() {
         <HomeScreen />
       ) : view === "shared" ? (
         <SharedView />
+      ) : view === "learn" ? (
+        <LearnScreen />
       ) : view === "roadmap" ? (
         <RoadmapScreen />
       ) : (
