@@ -510,7 +510,9 @@ function SimulateTab() {
               </div>
               <div>
                 <small>Result</small>
-                <b className={res.pass ? "good" : "badc"}>{res.pass ? "Pass" : "Fail"}</b>
+                <b className={res.pass ? "good" : "badc"}>
+                  {scenario.fromInterviewer ? (res.pass ? "Still serves" : "Breaks") : res.pass ? "Pass" : "Fail"}
+                </b>
               </div>
             </div>
             {res.notes.length > 0 && (

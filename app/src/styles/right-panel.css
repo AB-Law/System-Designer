@@ -631,7 +631,7 @@ b.strong {
 }
 .iv-q {
   margin: 6px 0 4px;
-  font: italic 400 17px/1.35 var(--display);
+  font: 500 15px/1.5 var(--body);
   color: var(--gold-hi);
 }
 .iv-why {
