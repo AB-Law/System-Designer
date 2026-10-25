@@ -1,0 +1,114 @@
+{
+  "id": "photo_portfolio",
+  "title": "Design a Photo Portfolio",
+  "difficulty": "easy",
+  "brief": "A photographer shows their work online. Each gallery page is a few small records, such as titles and captions, and a lot of large photo files: about 9 in 10 requests are for a photo. The original photos are the only copies of the photographer's work, so they must never be lost. Now and then a gallery is featured on a popular site and far more people arrive than usual. Visitors should see photos quickly, and the monthly bill should stay modest.",
+  "constraints": [
+    "A page must load within 300 ms on a normal day",
+    "About 1,000 requests per second on a normal day, and about 9 in 10 are for a photo file",
+    "When a gallery is featured, traffic can reach about 5 times that for a few hours",
+    "The original photos must never be lost",
+    "Keep infrastructure under $2,200 a month"
+  ],
+  "traffic": {
+    "users": 50000,
+    "reqPerUser": 0.02,
+    "writeShare": 0.01
+  },
+  "latencyTargetMs": 300,
+  "budget": 2200,
+  "scenarios": [
+    {
+      "id": "normal",
+      "title": "Normal day",
+      "description": "Steady traffic, mostly photos.",
+      "trafficMultiplier": 1,
+      "interviewQuestion": "Which requests on a normal day are for records and which are for files? Where does each kind get answered?",
+      "debrief": "On an ordinary day almost any sensible design copes. The featured gallery is where the choices show."
+    },
+    {
+      "id": "featured",
+      "title": "Gallery featured on a popular site (5x)",
+      "description": "A gallery is linked from a big site and traffic jumps to five times normal for a few hours.",
+      "trafficMultiplier": 5,
+      "interviewQuestion": "Most of the extra load is for the same few photos. What could answer those requests without bothering your servers or your storage?",
+      "debrief": "The same few photos are asked for over and over, so copies kept close to visitors can answer most of the surge. The servers and storage then only see the small share that gets through."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "r-fast",
+      "text": "Pages load within the latency target on a normal day",
+      "check": {
+        "type": "scenario",
+        "scenario": "normal",
+        "metric": "latencyMs",
+        "op": "<=",
+        "value": 300
+      }
+    },
+    {
+      "id": "r-featured",
+      "text": "At least 98% of visitors are served when a gallery is featured",
+      "check": {
+        "type": "scenario",
+        "scenario": "featured",
+        "metric": "served",
+        "op": ">=",
+        "value": 0.98
+      }
+    },
+    {
+      "id": "r-budget",
+      "text": "Total monthly cost stays within $2,200",
+      "check": {
+        "type": "budget"
+      }
+    },
+    {
+      "id": "r-store",
+      "text": "The original photos are kept in storage built for files",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "blob_storage"
+        ]
+      }
+    },
+    {
+      "id": "r-edge",
+      "text": "Popular photos are delivered from copies kept close to visitors",
+      "check": {
+        "type": "has",
+        "blocks": [
+          "cdn"
+        ]
+      }
+    },
+    {
+      "id": "r-origin",
+      "text": "The design explains why the copies near visitors are not where the originals are kept",
+      "check": {
+        "type": "ai"
+      }
+    }
+  ],
+  "rubric": [
+    "Photo files are kept in storage built for files, separate from the small records in the database.",
+    "Popular photos are delivered from copies near visitors, so the servers and storage see only a fraction of the surge.",
+    "The design says the delivery copies can be lost or replaced because the originals are safe elsewhere.",
+    "The delivery layer is sized and priced for the traffic, not left at an unnecessarily large default."
+  ],
+  "reference": {
+    "summary": "Keep the originals in blob storage and put a CDN in front for delivery, so a surge of the same few photos is answered near the visitor.",
+    "design": [
+      "User, then a CDN (about 6,000 requests a second, 90% of traffic is static, 90% hit), then a Load Balancer, then a Server with two replicas.",
+      "The Server reads the small records from a Database and the original photos from Blob Storage."
+    ],
+    "tradeoffs": [
+      "The CDN costs money every month, but it costs far less than the servers and database a surge would otherwise need.",
+      "The CDN holds copies only. If it lost them, the originals in Blob Storage would still be there.",
+      "The database and the blob store are still single blocks here; later lessons cover keeping copies of data."
+    ]
+  }
+}

@@ -44,6 +44,27 @@ export const ROADMAP: RoadmapStage[] = [
           "What did the extra capacity cost, and was it worth it?",
         ],
       },
+      {
+        problemId: "photo_portfolio",
+        minutes: 25,
+        youWillLearn: [
+          "Why large files and small records need different homes",
+          "What a [[CDN]] takes off the servers, and what it does not do",
+          "How a [[hit ratio]] shows up in the load your servers see",
+        ],
+        newIdeas: ["Blob Storage", "CDN"],
+        primer: [
+          "Files are kept in blob storage. A CDN keeps copies of popular ones close to visitors.",
+          "The edge only answers what it already has. The [[hit ratio]] decides how much goes on.",
+          "A CDN has its own settings and its own cost. Look at both.",
+        ],
+        watchOutFor: "Treating the CDN as the place the photos live.",
+        reflect: [
+          "What share of a surge reached your servers?",
+          "What would you still have if the CDN lost every copy?",
+          "What did the CDN cost, and what did it save?",
+        ],
+      },
     ],
   },
   {
