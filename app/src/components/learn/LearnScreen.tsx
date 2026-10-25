@@ -109,6 +109,9 @@ function Reader({ lesson, pageId }: { lesson: Lesson; pageId: string | null }) {
 
   return (
     <>
+      <a className="skip-link" href="#learn-page" onClick={(e) => (e.preventDefault(), headingRef.current?.focus())}>
+        Skip to this page
+      </a>
       <header className="learn-head">
         <nav aria-label="Breadcrumb" className="learn-crumb">
           <button type="button" className="link" onClick={() => open()}>
@@ -155,7 +158,7 @@ function Reader({ lesson, pageId }: { lesson: Lesson; pageId: string | null }) {
               ))}
             </ol>
           </nav>
-          <article className="learn-page">
+          <article className="learn-page" id="learn-page">
             <h2 ref={headingRef} tabIndex={-1}>
               {page.title}
             </h2>

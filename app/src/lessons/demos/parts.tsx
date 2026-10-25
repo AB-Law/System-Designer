@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 const MODEL_LABEL = { teaching: "Teaching model", analyze: "Uses the app's simulator" } as const;
 
@@ -109,6 +109,20 @@ export function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         aria-valuetext={text}
       />
+    </div>
+  );
+}
+
+/**
+ * The block that appears when a prediction is revealed. It takes keyboard focus as it appears, so a keyboard user (and a screen
+ * reader) lands on the answer instead of being dropped back at the top of the page when the Reveal button goes away.
+ */
+export function Result({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <div className="demo-result" ref={ref} tabIndex={-1}>
+      {children}
     </div>
   );
 }

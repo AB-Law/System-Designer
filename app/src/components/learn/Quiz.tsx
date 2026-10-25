@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { LessonBlock } from "../../lessons/types";
 import { GlossText } from "../roadmap/GlossText";
 
@@ -11,6 +11,11 @@ export function Quiz({ block }: { block: QuizBlock }) {
   const [checked, setChecked] = useState(false);
   const right = block.options.findIndex((o) => o.correct);
   const correct = checked && picked === right;
+  const result = useRef<HTMLDivElement>(null);
+  // the Check button goes away on a correct answer, so keyboard focus moves to the result instead of falling back to the top
+  useEffect(() => {
+    if (correct) result.current?.focus();
+  }, [correct]);
 
   return (
     <section className="quiz" aria-label="Quick check">
@@ -40,7 +45,7 @@ export function Quiz({ block }: { block: QuizBlock }) {
           Check my answer
         </button>
       )}
-      <div role="status" aria-live="polite" className="quiz-result">
+      <div role="status" aria-live="polite" className="quiz-result" ref={result} tabIndex={-1}>
         {checked && (
           <p>
             <b>{correct ? "Correct." : "Not quite. Have another look and try again."}</b>{" "}

@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { COPIES, copies } from "./analyzeModels";
-import { DemoFrame, Predict, Slider } from "./parts";
+import { DemoFrame, Predict, Result, Slider } from "./parts";
+import { restart } from "./restart";
 import { dollars, n, pct } from "./format";
 
 const GUESSES = [
@@ -54,7 +55,7 @@ export function CopiesDemo() {
       />
       <div role="status" aria-live="polite">
         {revealed && (
-          <div className="demo-result">
+          <Result>
             <p>
               <b>{guess === "all" ? "Yes: all of them." : "All of them are still served."}</b> Two copies are left, and together they handle{" "}
               {n(2 * COPIES.capacityEach)} requests a second. That is more than {n(COPIES.rps)}, so there is no loss. The price of that
@@ -102,10 +103,10 @@ export function CopiesDemo() {
                 : `With all ${count} ${count === 1 ? "copy" : "copies"} working, ${pct(shown.served)} of requests are served.`}{" "}
               The whole design costs about {dollars(tried.normal.monthlyCost)} a month, including the load balancer.
             </p>
-            <button type="button" className="btn small" onClick={reset}>
+            <button type="button" className="btn small" onClick={(e) => restart(e, reset)}>
               Try the question again
             </button>
-          </div>
+          </Result>
         )}
       </div>
     </DemoFrame>

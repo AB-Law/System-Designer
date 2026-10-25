@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CACHE_DEMO, cacheOutcome, loadMultiple } from "./cacheModel";
-import { DemoFrame, Predict, Slider } from "./parts";
+import { DemoFrame, Predict, Result, Slider } from "./parts";
+import { restart } from "./restart";
 import { n, pct } from "./format";
 
 const GUESSES = [
@@ -53,7 +54,7 @@ export function CacheDemo() {
       />
       <div role="status" aria-live="polite">
         {revealed && (
-          <div className="demo-result">
+          <Result>
             <p>
               <b>{guess === "five" ? "Yes: about 5 times as much." : "The database receives 5 times as much."}</b> A hit ratio only looks
               like a small change. What matters is the share that misses: it went from {pct(before.missShare)} to {pct(after.missShare)}.
@@ -93,10 +94,10 @@ export function CacheDemo() {
               At {pct(tried.hitRatio)} the database receives {n(tried.dbReadsPerSec)} reads a second and is {pct(tried.dbUtilisation)} busy
               {tried.overloaded ? ", more than it can answer." : "."}
             </p>
-            <button type="button" className="btn small" onClick={reset}>
+            <button type="button" className="btn small" onClick={(e) => restart(e, reset)}>
               Try the question again
             </button>
-          </div>
+          </Result>
         )}
       </div>
     </DemoFrame>

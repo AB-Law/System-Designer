@@ -114,6 +114,22 @@
   font: 400 24px/1.2 var(--display);
   color: var(--gold-hi);
 }
+.demo-result:focus,
+.quiz-result:focus {
+  outline: none;
+}
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  position: static;
+  display: inline-block;
+  padding: 6px 12px;
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  background: var(--panel);
+}
 .learn-page h2:focus {
   outline: none;
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EDGE, edgeOrigin } from "./analyzeModels";
-import { DemoFrame, Predict, Slider } from "./parts";
+import { DemoFrame, Predict, Result, Slider } from "./parts";
+import { restart } from "./restart";
 import { dollars, n, pct } from "./format";
 
 const GUESSES = [
@@ -51,7 +52,7 @@ export function EdgeDemo() {
       />
       <div role="status" aria-live="polite">
         {revealed && (
-          <div className="demo-result">
+          <Result>
             <p>
               <b>{guess === "100" ? "Yes: about 100 a second." : "About 100 a second reach the origin."}</b> Only the {100 - START}% that
               the edge cannot answer goes on: {n(EDGE.rps)} × {((100 - START) / 100).toFixed(2)} = {n(lesson.withCdn.reaching)}. The origin
@@ -93,10 +94,10 @@ export function EdgeDemo() {
               {tried.withCdn.busy > 1 ? " (more than it can answer)" : ""}, and {pct(tried.withCdn.served)} of requests are served. The CDN
               adds about {dollars(tried.withCdn.monthlyCost - tried.withoutCdn.monthlyCost)} a month.
             </p>
-            <button type="button" className="btn small" onClick={reset}>
+            <button type="button" className="btn small" onClick={(e) => restart(e, reset)}>
               Try the question again
             </button>
-          </div>
+          </Result>
         )}
       </div>
     </DemoFrame>

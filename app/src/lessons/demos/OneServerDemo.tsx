@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ONE_SERVER, oneServer } from "./analyzeModels";
-import { DemoFrame, Predict, Slider } from "./parts";
+import { DemoFrame, Predict, Result, Slider } from "./parts";
+import { restart } from "./restart";
 import { dollars, n, pct } from "./format";
 
 const GUESSES = [
@@ -52,7 +53,7 @@ export function OneServerDemo() {
       />
       <div role="status" aria-live="polite">
         {revealed && (
-          <div className="demo-result">
+          <Result>
             <p>
               <b>{guess === "five-sixths" ? "Yes: about 5 in 6." : "About 5 in 6 are served."}</b> The server can answer{" "}
               {n(ONE_SERVER.capacity)} of the {n(ONE_SERVER.busyRps)} requests each second: {n(ONE_SERVER.capacity)} ÷{" "}
@@ -101,10 +102,10 @@ export function OneServerDemo() {
               {n(tried.responseMs)} ms, server {pct(tried.busy)} busy
               {tried.busy > 1 ? " (more work than it can do)" : ""}, costing about {dollars(tried.monthlyCost)} a month.
             </p>
-            <button type="button" className="btn small" onClick={reset}>
+            <button type="button" className="btn small" onClick={(e) => restart(e, reset)}>
               Try the question again
             </button>
-          </div>
+          </Result>
         )}
       </div>
     </DemoFrame>
