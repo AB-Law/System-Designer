@@ -25,6 +25,7 @@ export const ROADMAP: RoadmapStage[] = [
     steps: [
       {
         problemId: "personal_blog",
+        lessonPage: "m0-copies-and-balancer",
         minutes: 20,
         youWillLearn: [
           "Following one request from a visitor to the database and back",
@@ -46,6 +47,7 @@ export const ROADMAP: RoadmapStage[] = [
       },
       {
         problemId: "photo_portfolio",
+        lessonPage: "m0-blob-and-cdn",
         minutes: 25,
         youWillLearn: [
           "Why large files and small records need different homes",

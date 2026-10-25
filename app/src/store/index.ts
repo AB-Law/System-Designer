@@ -85,6 +85,7 @@ export const useStore = create<State>((set, get) => {
     shared: null,
     learnLessonId: null,
     learnPageId: null,
+    learnFrom: "home",
     roadmapSelectedStepId: null,
     primerOpen: false,
     primerProblemId: null,
@@ -655,11 +656,17 @@ export const useStore = create<State>((set, get) => {
       const h = location.hash;
       const learn = parseLearnHash(h);
       if (learn) {
-        set({ view: "learn", learnLessonId: learn.lessonId ?? null, learnPageId: learn.pageId ?? null });
+        const from = get().view;
+        set({
+          view: "learn",
+          learnLessonId: learn.lessonId ?? null,
+          learnPageId: learn.pageId ?? null,
+          ...(from !== "learn" ? { learnFrom: from } : {}),
+        });
         return;
       }
       // back or forward onto an address with no lesson in it leaves the lessons
-      if (get().view === "learn") set({ view: "home" });
+      if (get().view === "learn") set({ view: get().learnFrom });
       const t = /^#share=([\w-]{8,64})$/.exec(h);
       if (t) {
         try {

@@ -10,36 +10,43 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "requests per second",
     plain: "How many requests arrive each second. Often shortened to rps. It is the main way we talk about load.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-capacity-and-overload" },
   },
   {
     term: "rps",
     plain: "Short for requests per second — how many requests arrive each second.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-capacity-and-overload" },
   },
   {
     term: "capacity",
     plain: "How much work a block can handle before it slows down or starts failing. Measured in things like rps or operations per second.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-capacity-and-overload" },
   },
   {
     term: "replica",
     plain: "An extra copy of the same block. Replicas share the load and help if one copy dies.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-copies-and-balancer" },
   },
   {
     term: "instance",
     plain: 'One running copy of a block. "Three instances" means three machines or containers doing that job.',
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-copies-and-balancer" },
   },
   {
     term: "load balancer",
     plain: "A block that spreads incoming requests across several servers so no single one takes everything.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-copies-and-balancer" },
   },
   {
     term: "server",
     plain: "A block that runs your application code and answers requests. You can run several and put a load balancer in front.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-requests-and-blocks" },
   },
   {
     term: "cache",
@@ -50,6 +57,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "hit ratio",
     plain: "The share of lookups that find an answer in the cache. Higher means fewer trips to the slow store.",
     where: "library_management",
+    lesson: { lesson: "module-0", page: "m0-blob-and-cdn" },
   },
   {
     term: "lock",
@@ -62,6 +70,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     plain:
       "A content delivery network: copies of files kept near readers around the world so downloads are fast and the origin stays quiet.",
     where: "pastebin",
+    lesson: { lesson: "module-0", page: "m0-blob-and-cdn" },
   },
   {
     term: "queue",

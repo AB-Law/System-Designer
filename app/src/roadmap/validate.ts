@@ -10,13 +10,20 @@ export type RoadmapIssue =
   | { kind: "empty" }
   | { kind: "empty_stage"; stageId: string }
   | { kind: "duplicate_stage"; stageId: string }
-  | { kind: "unknown_lesson"; stageId: string; lesson: string };
+  | { kind: "unknown_lesson"; stageId: string; lesson: string }
+  | { kind: "unknown_lesson_page"; stageId: string; problemId: string; page: string };
 
 /**
  * Pure sanity check: every problemId exists and every problem appears exactly once, every stage has a problem, and every
  * lesson a stage points at exists. Pass `lessonIds` to check lesson references; leave it out to skip that check.
  */
-export function checkRoadmap(problems: Problem[], roadmap: RoadmapStage[] = ROADMAP, lessonIds?: string[]): RoadmapIssue[] {
+export function checkRoadmap(
+  problems: Problem[],
+  roadmap: RoadmapStage[] = ROADMAP,
+  lessonIds?: string[],
+  /** page ids of each lesson; pass it to check every step's `lessonPage` */
+  lessonPages?: Record<string, string[]>,
+): RoadmapIssue[] {
   const issues: RoadmapIssue[] = [];
   const ids = new Set(problems.map((p) => p.id));
   const seen = new Map<string, number>();
@@ -31,6 +38,8 @@ export function checkRoadmap(problems: Problem[], roadmap: RoadmapStage[] = ROAD
       issues.push({ kind: "unknown_lesson", stageId: stage.id, lesson: stage.lesson });
     for (const step of stage.steps) {
       total += 1;
+      if (step.lessonPage !== undefined && lessonPages && !lessonPages[stage.lesson ?? ""]?.includes(step.lessonPage))
+        issues.push({ kind: "unknown_lesson_page", stageId: stage.id, problemId: step.problemId, page: step.lessonPage });
       if (!ids.has(step.problemId)) issues.push({ kind: "unknown", problemId: step.problemId });
       seen.set(step.problemId, (seen.get(step.problemId) ?? 0) + 1);
     }
@@ -71,6 +80,10 @@ export function validateRoadmap(problems: Problem[]): void {
       console.warn(`[roadmap] stage "${issue.stageId}" has no problems`);
     } else if (issue.kind === "duplicate_stage") {
       console.warn(`[roadmap] stage id "${issue.stageId}" is used twice`);
+    } else if (issue.kind === "unknown_lesson_page") {
+      console.warn(
+        `[roadmap] "${issue.problemId}" points at lesson page "${issue.page}", which is not in the lesson of stage "${issue.stageId}"`,
+      );
     } else if (issue.kind === "unknown_lesson") {
       console.warn(`[roadmap] stage "${issue.stageId}" points at lesson "${issue.lesson}", which does not exist`);
     }

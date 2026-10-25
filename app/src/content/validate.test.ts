@@ -45,6 +45,7 @@ describe("shipped content", () => {
       roadmap: ROADMAP,
       demoIds: DEMO_IDS,
       glossaryTerms,
+      glossary: GLOSSARY,
       references: REFERENCE_DESIGNS,
       needReference: PROBLEMS_NEEDING_A_REFERENCE,
     });
@@ -82,6 +83,17 @@ describe("a failing fixture for each check", () => {
       where: ROADMAP[0].id,
       message: 'points at lesson "ghost", which does not exist',
     });
+  });
+  it("roadmap step or glossary term pointing at a lesson page that does not exist", () => {
+    const sources = Object.fromEntries(Object.entries(lessonSources).map(([path, text]) => [path.split("/").pop()!, text]));
+    const roadmap = ROADMAP.map((s) => ({
+      ...s,
+      steps: s.steps.map((st) => (st.lessonPage ? { ...st, lessonPage: "no-such-page" } : st)),
+    }));
+    const glossary = [{ term: "x", plain: "", where: "pastebin", lesson: { lesson: "module-0", page: "nope" } }];
+    const issues = checkContent(base({ sources, roadmap, glossary }));
+    expect(issues.some((i) => i.check === "roadmap" && /lesson page "no-such-page"/.test(i.message))).toBe(true);
+    expect(issues).toContainEqual({ check: "glossary", where: "x", message: 'points at page "nope", which is not in lesson "module-0"' });
   });
   it("roadmap stage with no problems", () => {
     const roadmap = [...ROADMAP, { id: "empty", title: "E", blurb: "", steps: [] }];

@@ -56,6 +56,17 @@ describe("checkRoadmap: module rules", () => {
     expect(checkRoadmap(list, road, ["module-0"])).toEqual([]);
     expect(checkRoadmap(list, road, ["other"])).toContainEqual({ kind: "unknown_lesson", stageId: "a", lesson: "module-0" });
   });
+  it("rejects a lesson page that the stage's lesson does not have", () => {
+    const steps = all.map((id, i) => ({ ...step(id), ...(i === 0 ? { lessonPage: "gone" } : {}) }));
+    const road = [stage("a", [], { lesson: "l", steps })];
+    expect(checkRoadmap(list, road, ["l"], { l: ["here"] })).toContainEqual({
+      kind: "unknown_lesson_page",
+      stageId: "a",
+      problemId: all[0],
+      page: "gone",
+    });
+    expect(checkRoadmap(list, road, ["l"], { l: ["gone"] })).toEqual([]);
+  });
   it("accepts the shipped roadmap with lesson checking switched on", () => {
     expect(checkRoadmap(list, ROADMAP, ["module-0"])).toEqual([]);
   });

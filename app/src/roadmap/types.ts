@@ -19,6 +19,8 @@ export interface RoadmapStage {
 
 export interface RoadmapStep {
   problemId: string;
+  /** One page of the stage's lesson that prepares for this problem. Set only where it is unambiguous. */
+  lessonPage?: string;
   minutes: number;
   youWillLearn: string[];
   newIdeas: string[];
@@ -32,6 +34,8 @@ export interface GlossaryEntry {
   plain: string;
   /** Problem id where this idea first appears on the path. */
   where: string;
+  /** Lesson page that introduces the idea, once one exists. `where` stays valid either way. */
+  lesson?: { lesson: string; page: string };
 }
 
 export type StepStatus = "done" | "in_progress" | "next" | "not_started";

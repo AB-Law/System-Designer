@@ -3,7 +3,7 @@ import type { Design, Problem } from "../types";
 import { LessonParseError, parseLesson } from "../lessons/parse";
 import type { Lesson } from "../lessons/types";
 import { checkRoadmap } from "../roadmap/validate";
-import type { RoadmapStage } from "../roadmap/types";
+import type { GlossaryEntry, RoadmapStage } from "../roadmap/types";
 
 /*
   Mechanical checks on lessons and the roadmap. These catch broken references and malformed content. They cannot tell whether a
@@ -79,10 +79,28 @@ export function checkLessonReferences(lessons: Lesson[], demoIds: string[], glos
   return issues;
 }
 
+/** Glossary entries that say a lesson page introduces them must name a page that exists. */
+export function checkGlossaryLessons(glossary: GlossaryEntry[], lessons: Lesson[]): ContentIssue[] {
+  const issues: ContentIssue[] = [];
+  for (const g of glossary) {
+    if (!g.lesson) continue;
+    const lesson = lessons.find((l) => l.id === g.lesson!.lesson);
+    if (!lesson) issues.push({ check: "glossary", where: g.term, message: `points at lesson "${g.lesson.lesson}", which does not exist` });
+    else if (!lesson.pages.some((pg) => pg.id === g.lesson!.page))
+      issues.push({
+        check: "glossary",
+        where: g.term,
+        message: `points at page "${g.lesson.page}", which is not in lesson "${lesson.id}"`,
+      });
+  }
+  return issues;
+}
+
 /** The roadmap checks from `checkRoadmap`, written as readable issues. */
 export function checkRoadmapContent(problems: Problem[], roadmap: RoadmapStage[], lessons: Lesson[]): ContentIssue[] {
   const lessonIds = lessons.map((l) => l.id);
-  return checkRoadmap(problems, roadmap, lessonIds).map((i): ContentIssue => {
+  const pages = Object.fromEntries(lessons.map((l) => [l.id, l.pages.map((pg) => pg.id)]));
+  return checkRoadmap(problems, roadmap, lessonIds, pages).map((i): ContentIssue => {
     switch (i.kind) {
       case "unknown":
         return { check: "roadmap", where: i.problemId, message: "is on the path but has no problem file" };
@@ -98,6 +116,8 @@ export function checkRoadmapContent(problems: Problem[], roadmap: RoadmapStage[]
         return { check: "roadmap", where: i.stageId, message: "has no problems" };
       case "duplicate_stage":
         return { check: "roadmap", where: i.stageId, message: "stage id is used twice" };
+      case "unknown_lesson_page":
+        return { check: "roadmap", where: i.problemId, message: `points at lesson page "${i.page}", which does not exist` };
       case "unknown_lesson":
         return { check: "roadmap", where: i.stageId, message: `points at lesson "${i.lesson}", which does not exist` };
     }
@@ -132,6 +152,8 @@ export interface ContentInput {
   roadmap: RoadmapStage[];
   demoIds: string[];
   glossaryTerms: string[];
+  /** the full glossary, to check the lesson pages it points at */
+  glossary?: GlossaryEntry[];
   references: Record<string, Design>;
   needReference: string[];
 }
@@ -141,6 +163,7 @@ export function checkContent(input: ContentInput): ContentIssue[] {
   const { lessons, issues } = parseAll(input.sources);
   issues.push(...checkLessonReferences(lessons, input.demoIds, input.glossaryTerms));
   issues.push(...checkRoadmapContent(input.problems, input.roadmap, lessons));
+  issues.push(...checkGlossaryLessons(input.glossary ?? [], lessons));
   for (const id of input.needReference) {
     const problem = input.problems.find((p) => p.id === id);
     if (!problem) issues.push({ check: "reference", where: id, message: "needs a reference design but there is no such problem" });

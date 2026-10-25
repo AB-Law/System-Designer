@@ -29,3 +29,15 @@ export function hasLessons(): boolean {
     return true; // a broken lesson should be seen, not hidden
   }
 }
+
+let cached: Lesson[] | undefined;
+/** The lessons, parsed once. A lesson that cannot be read gives an empty list here; the Learn screen reports the error itself. */
+export function lessonIndex(): Lesson[] {
+  if (cached) return cached;
+  try {
+    cached = loadLessons();
+  } catch {
+    cached = [];
+  }
+  return cached;
+}

@@ -1,6 +1,7 @@
 import { findStep, markPrimerRead } from "../../roadmap";
 import { useStore } from "../../store";
 import { GlossText } from "./GlossText";
+import { LessonLink } from "./LessonLink";
 
 export function PrimerPanel() {
   const open = useStore((s) => s.primerOpen);
@@ -41,6 +42,9 @@ export function PrimerPanel() {
               </ul>
               <p className="watch">
                 <strong>Watch out for:</strong> <GlossText text={found.step.watchOutFor} />
+              </p>
+              <p>
+                <LessonLink lesson={found.stage.lesson} page={found.step.lessonPage} onOpen={onClose} />
               </p>
             </>
           )}

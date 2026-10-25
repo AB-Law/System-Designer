@@ -67,6 +67,8 @@ export interface State {
   /** lesson and page open in the Learn view; they mirror the address (#/learn/<lesson>/<page>) */
   learnLessonId: string | null;
   learnPageId: string | null;
+  /** the view the learner came from, so Back from a lesson returns there */
+  learnFrom: State["view"];
   /** problem id whose step detail side panel is open on the roadmap */
   roadmapSelectedStepId: string | null;
   /** primer overlay (from roadmap or Problem tab) */

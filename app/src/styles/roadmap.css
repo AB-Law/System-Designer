@@ -534,3 +534,47 @@
   }
 }
 
+
+/* ---------- a module's lesson, above its problems ---------- */
+.rm-lesson {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border: 1px dashed var(--gold-lo);
+  border-radius: 12px;
+  background: var(--gold-wash);
+}
+.rm-lesson h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.rm-lesson p {
+  margin: 0;
+}
+.rm-optional {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold-hi);
+}
+.rm-wrapup {
+  grid-column: 1 / -1;
+}
+.rm-wrapup summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.rm-lesson-link {
+  margin: 8px 0 0;
+}
+@media (max-width: 560px) {
+  .rm-lesson {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
