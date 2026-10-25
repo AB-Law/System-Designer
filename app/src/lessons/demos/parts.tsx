@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
-const MODEL_LABEL = { teaching: "Teaching model", analyze: "Uses the app's simulator" } as const;
+const MODEL_LABEL = { teaching: "Teaching model", analyze: "" } as const;
 
 /**
  * The frame every demo sits in: a title, a label saying which kind of model it uses, and the assumptions and limits, open by
@@ -22,7 +22,7 @@ export function DemoFrame({
     <section className="demo" aria-labelledby={id}>
       <header className="demo-head">
         <h3 id={id}>{title}</h3>
-        <span className="demo-tag">{MODEL_LABEL[model]}</span>
+        {MODEL_LABEL[model] && <span className="demo-tag">{MODEL_LABEL[model]}</span>}
       </header>
       {children}
       <details className="demo-assume" open>

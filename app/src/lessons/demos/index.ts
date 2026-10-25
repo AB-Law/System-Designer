@@ -109,19 +109,19 @@ export const DEMOS: Record<string, DemoDef> = {
   "d0-one-server": {
     title: "What happens when one server is full?",
     model: "analyze",
-    text: `Uses the app's simulator. A bakery's order page runs on one server that handles ${n(ONE_SERVER.capacity)} requests a second. On a normal day ${n(ONE_SERVER.quietRps)} arrive and all are served. On a busy Saturday ${n(ONE_SERVER.busyRps)} arrive, so ${pct(busyDay.served)} are served and the rest are not. The numbers are invented; there is one server and it does not scale itself up.`,
+    text: `A bakery's order page runs on one server that handles ${n(ONE_SERVER.capacity)} requests a second. On a normal day ${n(ONE_SERVER.quietRps)} arrive and all are served. On a busy Saturday ${n(ONE_SERVER.busyRps)} arrive, so ${pct(busyDay.served)} are served and the rest are not. The numbers are invented; there is one server and it does not scale itself up.`,
     Component: OneServerDemo,
   },
   "d0-copies": {
     title: "What do extra copies buy you?",
     model: "analyze",
-    text: `Uses the app's simulator. The bakery runs 3 copies of its server behind a load balancer, each handling ${n(COPIES.capacityEach)} requests a second, with ${n(COPIES.rps)} arriving. If one copy fails, two remain and handle ${n(2 * COPIES.capacityEach)}, so ${pct(threeCopies.oneDown.served)} of requests are still served. A single copy that fails leaves nothing standing. Each copy adds to the monthly cost. The numbers are invented; copies are identical and keep no shared state.`,
+    text: `The bakery runs 3 copies of its server behind a load balancer, each handling ${n(COPIES.capacityEach)} requests a second, with ${n(COPIES.rps)} arriving. If one copy fails, two remain and handle ${n(2 * COPIES.capacityEach)}, so ${pct(threeCopies.oneDown.served)} of requests are still served. A single copy that fails leaves nothing standing. Each copy adds to the monthly cost. The numbers are invented; copies are identical and keep no shared state.`,
     Component: CopiesDemo,
   },
   "d0-edge-origin": {
     title: "How much does a CDN take off the origin?",
     model: "analyze",
-    text: `Uses the app's simulator. ${n(EDGE.rps)} requests a second arrive for a school timetable PDF and the origin, which is blob storage, answers ${n(EDGE.originCapacity)}. Without a CDN ${pct(timetable.withoutCdn.served)} are served. With a CDN answering 90% at the edge, ${n(timetable.withCdn.reaching)} requests a second reach the origin and all are served, at some extra monthly cost. The numbers are invented; every request is a read, and the model never loses a file.`,
+    text: `${n(EDGE.rps)} requests a second arrive for a school timetable PDF and the origin, which is blob storage, answers ${n(EDGE.originCapacity)}. Without a CDN ${pct(timetable.withoutCdn.served)} are served. With a CDN answering 90% at the edge, ${n(timetable.withCdn.reaching)} requests a second reach the origin and all are served, at some extra monthly cost. The numbers are invented; every request is a read, and the model never loses a file.`,
     Component: EdgeDemo,
   },
   "d1-mix": {
@@ -133,7 +133,7 @@ export const DEMOS: Record<string, DemoDef> = {
   "d1-replicas": {
     title: "What do copies add, and what do slices add?",
     model: "analyze",
-    text: `Uses the app's simulator. A forum receives ${n(FORUM.rps)} requests a second. With one read copy its database can answer ${n(forumOne.readLimit)} reads and ${n(forumOne.writeLimit)} writes a second. With three read copies the read limit rises to ${n(forumThree.readLimit)} and the write limit stays at ${n(forumThree.writeLimit)}: copies add read capacity, not write capacity. Slices of the data raise both limits, but a request has to say which slice it needs. A copy can be a moment behind the original, and the app does not model that. The numbers are invented.`,
+    text: `A forum receives ${n(FORUM.rps)} requests a second. With one read copy its database can answer ${n(forumOne.readLimit)} reads and ${n(forumOne.writeLimit)} writes a second. With three read copies the read limit rises to ${n(forumThree.readLimit)} and the write limit stays at ${n(forumThree.writeLimit)}: copies add read capacity, not write capacity. Slices of the data raise both limits, but a request has to say which slice it needs. A copy can be a moment behind the original, and the app does not model that. The numbers are invented.`,
     Component: ReplicasDemo,
   },
   "d1-race": {
@@ -145,7 +145,7 @@ export const DEMOS: Record<string, DemoDef> = {
   "d1-regions": {
     title: "Where does the time go?",
     model: "analyze",
-    text: `Uses the app's simulator. A school-notices app has readers in three regions and its server and database are in US East. A reader in US East waits about ${n(noticesHome.byRegion.us)} ms, in Europe about ${n(noticesHome.byRegion.eu)} ms and in Asia Pacific about ${n(noticesHome.byRegion.ap)} ms. A server in each region does not help while the data stays in US East. Servers plus a read copy of the data in each region bring every region to about ${n(noticesBoth.byRegion.us)} ms for reads. Writes still go to US East. The delays are the app's own fixed simplification, not a rule for real systems. Readers: ${pct(NOTICES.mix.us)} US East, ${pct(NOTICES.mix.eu)} Europe, ${pct(NOTICES.mix.ap)} Asia Pacific.`,
+    text: `A school-notices app has readers in three regions and its server and database are in US East. A reader in US East waits about ${n(noticesHome.byRegion.us)} ms, in Europe about ${n(noticesHome.byRegion.eu)} ms and in Asia Pacific about ${n(noticesHome.byRegion.ap)} ms. A server in each region does not help while the data stays in US East. Servers plus a read copy of the data in each region bring every region to about ${n(noticesBoth.byRegion.us)} ms for reads. Writes still go to US East. The delays are the app's own fixed simplification, not a rule for real systems. Readers: ${pct(NOTICES.mix.us)} US East, ${pct(NOTICES.mix.eu)} Europe, ${pct(NOTICES.mix.ap)} Asia Pacific.`,
     Component: RegionsDemo,
   },
   "d2-queue": {
@@ -163,19 +163,19 @@ export const DEMOS: Record<string, DemoDef> = {
   "d3-query-plan": {
     title: "How much work is one question?",
     model: "analyze",
-    text: `Uses the app's simulator. A town shop keeps ${n(SHOP.rows)} orders. Finding a customer's three latest with no index reads every row: about ${n(shopNone.readUnits)} units of work against about ${shopBest.bestUnits.toFixed(1)} for the best plan, so the shop serves ${pct(shopNone.served)} of its ${n(SHOP.rps)} requests a second. An index on the customer and then the date brings it to the best plan and serves ${pct(shopBest.served)}. Every index makes taking an order dearer: with four indexes on a half-writes mix the most writes a second falls from ${n(shop(["orders:customer_id,placed_at"], 0.5).writeLimit)} to ${n(shopMany.writeLimit)}. The shop and its numbers are invented; the app allows six indexes at most.`,
+    text: `A town shop keeps ${n(SHOP.rows)} orders. Finding a customer's three latest with no index reads every row: about ${n(shopNone.readUnits)} units of work against about ${shopBest.bestUnits.toFixed(1)} for the best plan, so the shop serves ${pct(shopNone.served)} of its ${n(SHOP.rps)} requests a second. An index on the customer and then the date brings it to the best plan and serves ${pct(shopBest.served)}. Every index makes taking an order dearer: with four indexes on a half-writes mix the most writes a second falls from ${n(shop(["orders:customer_id,placed_at"], 0.5).writeLimit)} to ${n(shopMany.writeLimit)}. The shop and its numbers are invented; the app allows six indexes at most.`,
     Component: QueryPlanDemo,
   },
   "d3-shard-key": {
     title: "Which key spreads the load?",
     model: "analyze",
-    text: `Uses the app's simulator. A delivery company logs ${n(PARCELS.rows)} scans in ${PARCELS.shards} slices. With the time of the scan as the key, about ${pct(parcelTime.busiest)} of the work lands on one slice and ${pct(parcelTime.served)} of requests are served. With the parcel number, the work is spread almost evenly and ${pct(parcelKey.served)} are served, and a parcel's history goes to one slice. A depot list, which does not name the parcel, is then asked of every slice. No key suits every question. The company and its numbers are invented.`,
+    text: `A delivery company logs ${n(PARCELS.rows)} scans in ${PARCELS.shards} slices. With the time of the scan as the key, about ${pct(parcelTime.busiest)} of the work lands on one slice and ${pct(parcelTime.served)} of requests are served. With the parcel number, the work is spread almost evenly and ${pct(parcelKey.served)} are served, and a parcel's history goes to one slice. A depot list, which does not name the parcel, is then asked of every slice. No key suits every question. The company and its numbers are invented.`,
     Component: ShardKeyDemo,
   },
   "d3-search": {
     title: "Where should a word search go?",
     model: "analyze",
-    text: `Uses the app's simulator. The shop's ${n(NOTES.rows)} order notes are searched for words. With every search sent to the main database the app warns: ${notesPlain.searchFinding ? "text queries scan the stored data and slow other queries" : "no warning"}. With a search index the warning goes${notesIndexed.searchFinding ? " (it did not in the run)" : ""}, at an extra cost of about $${Math.round(notesIndexed.monthlyCost - notesPlain.monthlyCost).toLocaleString("en-US")} a month. The index is a second copy and can be a moment behind. The app does not model how words are matched, or that delay. The numbers are invented.`,
+    text: `The shop's ${n(NOTES.rows)} order notes are searched for words. With every search sent to the main database the app warns: ${notesPlain.searchFinding ? "text queries scan the stored data and slow other queries" : "no warning"}. With a search index the warning goes${notesIndexed.searchFinding ? " (it did not in the run)" : ""}, at an extra cost of about $${Math.round(notesIndexed.monthlyCost - notesPlain.monthlyCost).toLocaleString("en-US")} a month. The index is a second copy and can be a moment behind. The app does not model how words are matched, or that delay. The numbers are invented.`,
     Component: SearchDemo,
   },
   "d3-transaction": {
@@ -211,7 +211,7 @@ export const DEMOS: Record<string, DemoDef> = {
   "d4-geo-structure": {
     title: "Which structure suits which traffic?",
     model: "analyze",
-    text: `Uses the app's simulator. A bike-share app has ${n(STANDS.rps)} requests a second, nearly all of them "find the nearest stand". With one area and one copy, a geohash grid answers up to ${n(standGrid.queryLimit)} questions a second and an R-tree up to ${n(standTree.queryLimit)}, so the R-tree serves ${pct(standTree.served)} of the traffic against the grid's ${pct(standGrid.served)}. If most requests move a place, like a fleet of cars, the R-tree costs most to update and serves ${pct(standTreeMoving.served)} against the grid's ${pct(standGridMoving.served)}. Copies add question capacity and not update capacity, and more areas spread a crowded centre. The app gives each structure a multiplier and does not draw maps. The numbers are invented.`,
+    text: `A bike-share app has ${n(STANDS.rps)} requests a second, nearly all of them "find the nearest stand". With one area and one copy, a geohash grid answers up to ${n(standGrid.queryLimit)} questions a second and an R-tree up to ${n(standTree.queryLimit)}, so the R-tree serves ${pct(standTree.served)} of the traffic against the grid's ${pct(standGrid.served)}. If most requests move a place, like a fleet of cars, the R-tree costs most to update and serves ${pct(standTreeMoving.served)} against the grid's ${pct(standGridMoving.served)}. Copies add question capacity and not update capacity, and more areas spread a crowded centre. The app gives each structure a multiplier and does not draw maps. The numbers are invented.`,
     Component: GeoStructureDemo,
   },
   "d4-chunks": {
@@ -229,7 +229,7 @@ export const DEMOS: Record<string, DemoDef> = {
   "d5-region-failure": {
     title: "What survives when a region is lost?",
     model: "analyze",
-    text: `Uses the app's simulator. A weather-alert app gets ${n(ALERTS.rps)} requests a second, ${pct(ALERTS.mix.us)} from US East and ${pct(ALERTS.mix.eu)} from Europe. With servers in both regions but the database only in US East, losing US East leaves ${pct(alertsServers.downServed)} of requests served: the servers work but the data is gone. With a copy of the data in Europe the copy takes over, but servers sized for only their own region's share serve ${pct(alertsStandbySmall.downServed)}. Sized to carry everything, they serve ${pct(alertsStandbyFull.downServed)}, at a higher monthly cost. How long the switch takes, and the last writes that had not reached the copy, are not modelled. The numbers are invented.`,
+    text: `A weather-alert app gets ${n(ALERTS.rps)} requests a second, ${pct(ALERTS.mix.us)} from US East and ${pct(ALERTS.mix.eu)} from Europe. With servers in both regions but the database only in US East, losing US East leaves ${pct(alertsServers.downServed)} of requests served: the servers work but the data is gone. With a copy of the data in Europe the copy takes over, but servers sized for only their own region's share serve ${pct(alertsStandbySmall.downServed)}. Sized to carry everything, they serve ${pct(alertsStandbyFull.downServed)}, at a higher monthly cost. How long the switch takes, and the last writes that had not reached the copy, are not modelled. The numbers are invented.`,
     Component: RegionFailureDemo,
   },
   "d5-matching": {

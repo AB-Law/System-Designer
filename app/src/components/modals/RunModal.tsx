@@ -200,13 +200,21 @@ export function RunModal() {
               {interview.length > 0 && (
                 <>
                   <h4 className="h">
-                    The interviewer's questions <small>run on your design as it changes, and are not part of the score</small>
+                    The interviewer's questions{" "}
+                    <small>
+                      the simulator only checks traffic served and latency, so a green badge does not mean your design answers the question. Not part of the score
+                    </small>
                   </h4>
                   {run.interview.map((r, i) => (
                     <div className={"iv " + (r.pass ? "ok" : "bad")} key={r.scenarioId}>
                       <div className="iv-head">
                         <b>{r.title}</b>
-                        <span className={`res ${r.pass ? "pass" : "fail"}`}>{r.pass ? "Pass" : "Fail"}</span>
+                        <span
+                          className={`res ${r.pass ? "pass" : "fail"}`}
+                          title="The simulator ran this situation on your design. It checks traffic served and latency, not whether your design answers the question."
+                        >
+                          {r.pass ? "Still serves" : "Breaks"}
+                        </span>
                       </div>
                       <p className="iv-q">“{interview[i]?.interviewQuestion}”</p>
                       <small>{interview[i]?.description}</small>
