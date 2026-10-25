@@ -202,7 +202,8 @@ export function RunModal() {
                   <h4 className="h">
                     The interviewer's questions{" "}
                     <small>
-                      the simulator only checks traffic served and latency, so a green badge does not mean your design answers the question. Not part of the score
+                      the simulator only checks traffic served and latency, so a green badge does not mean your design answers the question.
+                      Not part of the score
                     </small>
                   </h4>
                   {run.interview.map((r, i) => (
