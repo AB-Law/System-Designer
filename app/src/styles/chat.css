@@ -243,3 +243,34 @@ textarea.resp-input {
   line-height: 1.45;
 }
 
+
+.advisor-actions {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+.advisor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.advisor-result .proposal {
+  margin: 8px 0;
+}
+.proposal-title {
+  display: block;
+  font-size: 13px;
+}
+.proposal-why {
+  margin: 4px 0 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.proposal-effect {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.proposal-effect.worse {
+  color: var(--gold);
+}

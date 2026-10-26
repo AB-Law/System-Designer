@@ -27,7 +27,9 @@ CREATE INDEX IF NOT EXISTS ix_rate_limits ON rate_limits(key, at);
 def connect() -> sqlite3.Connection:
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    # FastAPI runs a sync dependency's setup, the endpoint and its teardown on different threadpool threads.
+    # Each connection serves one request at a time, so sharing it across those threads is safe.
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     # WAL is required for Litestream; busy_timeout avoids lock errors under concurrent reads.
     conn.execute("PRAGMA journal_mode=WAL")

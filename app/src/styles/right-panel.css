@@ -725,3 +725,7 @@ b.strong {
 .walk-chips i.miss {
   color: var(--bad);
 }
+.fix-ai {
+  margin-left: 8px;
+  font-size: 11px;
+}

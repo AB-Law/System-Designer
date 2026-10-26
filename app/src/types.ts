@@ -435,3 +435,27 @@ export interface ChatMessage {
   /** pending: waiting for the learner to approve or dismiss */
   status?: "pending" | "applied" | "dismissed";
 }
+
+/** One self-contained suggestion from the AI advisor: a few changes that belong together, and why they help. */
+export interface AdvisorProposal {
+  id: string;
+  title: string;
+  /** the reasoning, in plain words, so the learner can see why the change helps */
+  why: string;
+  changes: Change[];
+  /** the changes in plain words, written when they were proposed */
+  summary: string[];
+  /** what the simulator says happens if this proposal is applied on its own */
+  effect?: string;
+  /** the simulator scores the design lower with this applied */
+  worse?: boolean;
+  status: "pending" | "applied" | "rejected" | "stale";
+}
+
+export interface AdvisorResult {
+  /** fix: build what is missing for a weak rating. tune: review the current setup and suggest changes */
+  mode: "fix" | "tune";
+  focus?: Dimension;
+  summary: string;
+  proposals: AdvisorProposal[];
+}
