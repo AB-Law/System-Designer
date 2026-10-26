@@ -13,6 +13,7 @@ import { isStepDone, validateRoadmap } from "../roadmap";
 import { learnHash, parseLearnHash } from "../lessons/route";
 import type { ChatMessage, Problem, RunResult, Scenario, Submission } from "../types";
 import { edgeProps, errText, freeSpot, layered, nextId, toDesign } from "./canvas";
+import { useMode } from "./mode";
 import { fromDoc, persist, restore, wipeLocalData } from "./persist";
 import type { RFEdge, RFNode, SharedComment, State, User } from "./types";
 
@@ -204,7 +205,7 @@ export const useStore = create<State>((set, get) => {
         type: "block",
         position: freeSpot(existing, start),
         data: { blockId, cfg, responsibilities: [], capabilities },
-        selected: true,
+        selected: useMode.getState().mode === "configure",
       };
       set({ nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), node], selectedEdgeId: undefined });
       save();

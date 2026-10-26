@@ -176,7 +176,287 @@ const LIBRARY: Tour = {
   ],
 };
 
-export const TOURS: Record<string, Tour> = { [LIBRARY.problemId]: LIBRARY };
+const cfgOf = (s: TourState, blockId: string) => s.nodes.find((n) => n.data.blockId === blockId)?.data.cfg;
+const num = (v: unknown, d = 0) => (typeof v === "number" && !Number.isNaN(v) ? v : d);
+/** The block is overloaded (or down) in any scenario, not just the first. */
+const hotAnywhere = (s: TourState, blockId: string): boolean => {
+  const n = s.nodes.find((x) => x.data.blockId === blockId);
+  return !!n && !!s.run?.scenarios.some((sc) => {
+    const r = sc.nodes[n.id];
+    return !!r && (r.down === true || (r.incoming > 0 && r.utilization >= 1));
+  });
+};
+/** Requests a second the servers could still answer if one replica were lost. */
+const withOneLost = (s: TourState): number => {
+  const c = cfgOf(s, "server");
+  return c ? Math.max(0, num(c.replicas, 1) - 1) * num(c.capacity, 1000) : 0;
+};
+
+const BLOG: Tour = {
+  problemId: "personal_blog",
+  title: "How to think about a small site",
+  pitch: "Size the traffic first, then add only what the simulator says you need.",
+  steps: [
+    {
+      id: "think-traffic",
+      title: "First, count the traffic",
+      body: "Before placing anything, work out the load. 5,000 readers, each making 0.02 requests a second, is about 100 requests a second on a normal day. When a news site shares a post that is 12 times more: about 1,200 a second. Design for the peak, not the quiet day.",
+    },
+    {
+      id: "think-small",
+      title: "Start with the smallest thing that could work",
+      body: "A beginner's mistake is to add every block you know. Instead build the minimum, run it, and let the simulator tell you what is missing. Each block you add costs money every month.",
+    },
+    {
+      id: "add-user",
+      title: "1. Add the readers",
+      body: "Double-click User in the block list (or drag it over). It already holds this blog's numbers.",
+      target: '[data-tour="palette-user"]',
+      done: (s) => has(s, "user"),
+    },
+    {
+      id: "add-server",
+      title: "2. Add a Server",
+      body: "The server builds each page from the posts. Add one.",
+      target: '[data-tour="palette-server"]',
+      done: (s) => has(s, "server"),
+    },
+    {
+      id: "add-db",
+      title: "3. Add a Database",
+      body: "The posts have to live somewhere. Add a Database.",
+      target: '[data-tour="palette-database"]',
+      done: (s) => has(s, "database"),
+    },
+    {
+      id: "link",
+      title: "4. Connect them in order",
+      body: "Drag from a dot on User to the Server, then from the Server to the Database. A request travels along those lines.",
+      target: nodeOf("user"),
+      place: "below",
+      done: (s) => joined(s, "user", "server") && joined(s, "server", "database"),
+    },
+    {
+      id: "simulate",
+      title: "5. Run it",
+      body: "Open Simulate. Look at each scenario: one server copes on a normal day, but see what the shared-post scenario and 'A server fails' do to it.",
+      target: '[data-tour="tab-simulate"]',
+      done: (s) => s.rightTab === "simulate",
+    },
+    {
+      id: "think-fix",
+      title: "Read the red, then reason",
+      body: "The spike is about 1,200 a second and one server handles about 1,000. And with a single server, losing it means the blog is gone. Two different problems, one fix: several identical servers, so the spike is shared and losing one still leaves the rest.",
+    },
+    {
+      id: "scale",
+      title: "6. Add copies",
+      body: "Select the Server and raise Replicas. Rule of thumb: the copies left after losing one must still cover the peak.",
+      target: '[data-field="replicas"]',
+      done: (s) => withOneLost(s) >= 1200,
+    },
+    {
+      id: "add-lb",
+      title: "7. Add a Load Balancer",
+      body: "Something has to hand each visitor to one of the copies. Add a Load Balancer between User and Server: remove the direct line by selecting it and pressing Delete, then connect User to the Load Balancer, and the Load Balancer to the Server.",
+      target: '[data-tour="palette-load_balancer"]',
+      done: (s) => joined(s, "user", "load_balancer") && joined(s, "load_balancer", "server"),
+    },
+    {
+      id: "finish",
+      title: "That is the way to think about it",
+      body: "Count the peak, build the minimum, read what is red, add the one thing that fixes it. Check the cost at the top: three modest servers are cheaper than one huge one. Submit when the scenarios are green and you are under budget.",
+    },
+  ],
+};
+
+const PORTFOLIO: Tour = {
+  problemId: "photo_portfolio",
+  title: "How to think about files and cost",
+  pitch: "Work out which requests are heavy, and answer them somewhere cheaper.",
+  steps: [
+    {
+      id: "think-traffic",
+      title: "First, ask what the requests are for",
+      body: "50,000 visitors at 0.02 requests a second is about 1,000 a second normally, and 5 times that (5,000) when a gallery is featured. But look at the brief: 9 in 10 requests are for a photo file. Big files and small records are different jobs.",
+    },
+    {
+      id: "think-store",
+      title: "Where do files go?",
+      body: "The originals are the only copies and must never be lost, so they belong in storage built for files, not in the database. Records (titles, captions) go in the database.",
+    },
+    {
+      id: "add-user",
+      title: "1. Add the visitors",
+      body: "Add User from the block list.",
+      target: '[data-tour="palette-user"]',
+      done: (s) => has(s, "user"),
+    },
+    {
+      id: "add-server",
+      title: "2. Add a Server",
+      body: "Add a Server to put pages together.",
+      target: '[data-tour="palette-server"]',
+      done: (s) => has(s, "server"),
+    },
+    {
+      id: "add-db",
+      title: "3. Add a Database",
+      body: "For the small records.",
+      target: '[data-tour="palette-database"]',
+      done: (s) => has(s, "database"),
+    },
+    {
+      id: "add-blob",
+      title: "4. Add Blob Storage",
+      body: "For the original photos. Blob means a big chunk of file data.",
+      target: '[data-tour="palette-blob_storage"]',
+      done: (s) => has(s, "blob_storage"),
+    },
+    {
+      id: "link",
+      title: "5. Connect them",
+      body: "User to Server, then the Server to both the Database and Blob Storage.",
+      target: nodeOf("user"),
+      place: "below",
+      done: (s) => joined(s, "user", "server") && joined(s, "server", "database") && joined(s, "server", "blob_storage"),
+    },
+    {
+      id: "simulate",
+      title: "6. Run it",
+      body: "Open Simulate and try the featured scenario. Work out which blocks go red and notice that the same few photos are asked for over and over.",
+      target: '[data-tour="tab-simulate"]',
+      done: (s) => s.rightTab === "simulate",
+    },
+    {
+      id: "think-cdn",
+      title: "Do not buy bigger servers: answer the repeats elsewhere",
+      body: "Sending the same photo from your server 5,000 times a second is waste. A CDN keeps copies close to visitors and answers most of the surge itself. Your servers and storage only see what gets through.",
+    },
+    {
+      id: "add-cdn",
+      title: "7. Put a CDN in front",
+      body: "Add a CDN and put it between User and Server: User to CDN, CDN to Server.",
+      target: '[data-tour="palette-cdn"]',
+      done: (s) => joined(s, "user", "cdn") && (joined(s, "cdn", "server") || joined(s, "cdn", "load_balancer")),
+    },
+    {
+      id: "static",
+      title: "8. Tell it what it can keep",
+      body: "Select the CDN and set Static share of traffic to 0.9, because 9 in 10 requests are photos. Its Hit Ratio (how often the copy is already there) is already 0.9.",
+      target: '[data-field="staticShare"]',
+      done: (s) => num(cfgOf(s, "cdn")?.staticShare) >= 0.85,
+    },
+    {
+      id: "think-math",
+      title: "Check the maths",
+      body: "Share that gets through = 1 minus (0.9 hit x 0.9 static) = about 19%. So 5,000 a second at the front becomes about 950 a second at the Server. Size the Server for 950, not 5,000. That is why a CDN is cheaper than big servers.",
+    },
+    {
+      id: "think-cost",
+      title: "Watch the bill",
+      body: "Select the Server and look at its Autoscaling. A big Max replicas is billed even when unused: you pay for the headroom you reserve. Keep it near what the 950 a second needs.",
+      target: nodeOf("server"),
+      place: "below",
+    },
+    {
+      id: "finish",
+      title: "That is the way to think about it",
+      body: "Split heavy files from small records, answer repeats near the visitor, size each block for the traffic that actually reaches it. Submit when the scenarios are green and you are under the $2,200 budget.",
+    },
+  ],
+};
+
+const POLL: Tour = {
+  problemId: "class_poll",
+  title: "How to think about many writers",
+  pitch: "When everyone writes at once, correctness matters as much as speed.",
+  steps: [
+    {
+      id: "think-traffic",
+      title: "First, read the shape of the load",
+      body: "2,000 students at 0.1 requests a second is about 200 a second when idle, and 6 times that (1,200) when a question opens. And 70% of the requests are votes, which are writes. Writes are harder than reads because they change data.",
+    },
+    {
+      id: "think-race",
+      title: "What goes wrong when two vote at once?",
+      body: "Voting means: read the tally, add one, write it back. If two students do this at the same instant, both read 41 and both write 42. One vote is lost. At this scale it is certain, not rare. This problem is about stopping that.",
+    },
+    {
+      id: "add-user",
+      title: "1. Add the students",
+      body: "Add User from the block list.",
+      target: '[data-tour="palette-user"]',
+      done: (s) => has(s, "user"),
+    },
+    {
+      id: "add-server",
+      title: "2. Add a Server",
+      body: "Add a Server to take the votes.",
+      target: '[data-tour="palette-server"]',
+      done: (s) => has(s, "server"),
+    },
+    {
+      id: "add-db",
+      title: "3. Add a Database",
+      body: "The tally lives here. Add a Database.",
+      target: '[data-tour="palette-database"]',
+      done: (s) => has(s, "database"),
+    },
+    {
+      id: "link",
+      title: "4. Connect them",
+      body: "User to Server, then Server to Database.",
+      target: nodeOf("user"),
+      place: "below",
+      done: (s) => joined(s, "user", "server") && joined(s, "server", "database"),
+    },
+    {
+      id: "open-db",
+      title: "5. Open the Database settings",
+      body: "Click the Database. Find Locking: it is how the database stops two writers overwriting each other.",
+      target: nodeOf("database"),
+      done: (s) => s.selectedBlock === "database",
+    },
+    {
+      id: "lock",
+      title: "6. Protect the tally",
+      body: "Set Locking to Row locks. Each vote now waits its turn on the tally, so none are lost. Note the cost: waiting makes writes slower.",
+      target: '[data-field="consistency"]',
+      done: (s) => ["Row locks", "Serializable"].includes(String(cfgOf(s, "database")?.consistency)),
+    },
+    {
+      id: "simulate",
+      title: "7. Run it",
+      body: "Open Simulate and try 'A question opens'. Protection has a price: the database may now be too slow for 1,200 votes a second.",
+      target: '[data-tour="tab-simulate"]',
+      done: (s) => s.rightTab === "simulate",
+    },
+    {
+      id: "db-capacity",
+      title: "8. Give the database room",
+      body: "If the Database is red, raise its Capacity until it is not. Locking costs speed, so it needs more headroom than without it.",
+      target: '[data-field="capacity"]',
+      done: (s) => !!s.run && !hotAnywhere(s, "database"),
+      skip: (s) => !!s.run && !hotAnywhere(s, "database"),
+    },
+    {
+      id: "server-capacity",
+      title: "9. Check the Server too",
+      body: "If the Server is red in the opening scenario, add Replicas. Votes should not queue before they reach the database.",
+      target: nodeOf("server"),
+      done: (s) => !!s.run && !hotAnywhere(s, "server"),
+      skip: (s) => !!s.run && !hotAnywhere(s, "server"),
+    },
+    {
+      id: "finish",
+      title: "That is the way to think about it",
+      body: "When many people write at once, protect the shared value first, then pay for the capacity that protection costs. Note the limit: row locks keep every vote but do not make the poll scale to unlimited voters. Submit when it is green and under budget.",
+    },
+  ],
+};
+
+export const TOURS: Record<string, Tour> = { [LIBRARY.problemId]: LIBRARY, [BLOG.problemId]: BLOG, [PORTFOLIO.problemId]: PORTFOLIO, [POLL.problemId]: POLL };
 export const tourFor = (problemId: string): Tour | undefined => TOURS[problemId];
 
 /** Index of the next step to show after `from`, passing over steps that do not apply. */

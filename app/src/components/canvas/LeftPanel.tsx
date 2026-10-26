@@ -6,6 +6,7 @@ import { DataModelEditor } from "./DataModelEditor";
 import { RegionEditor } from "./RegionEditor";
 import { WhyPanel } from "./WhyPanel";
 import { useStore } from "../../store";
+import { useMode } from "../../store/mode";
 import type { FieldDef, SectionDef } from "../../types";
 
 export function LeftPanel() {
@@ -55,11 +56,26 @@ function Palette() {
   const [q, setQ] = useState("");
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const addNode = useStore((s) => s.addNode);
+  const mode = useMode((s) => s.mode);
+  const setMode = useMode((s) => s.setMode);
   const query = q.trim().toLowerCase();
 
   return (
     <>
       <div className="panel-title">Building Blocks</div>
+      <div className="mode-switch" role="group" aria-label="What happens when you add a block">
+        {(["build", "configure"] as const).map((m) => (
+          <button
+            key={m}
+            className={mode === m ? "active" : ""}
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            title={m === "build" ? "Added blocks stay unselected, so you can keep placing blocks" : "Added blocks open their settings"}
+          >
+            {m === "build" ? "Build" : "Configure"}
+          </button>
+        ))}
+      </div>
       <input className="search" placeholder="Search blocks" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="scroll">
         {CATEGORIES.map((cat) => {
@@ -97,7 +113,7 @@ function Palette() {
           );
         })}
       </div>
-      <div className="hint">Drag a block onto the canvas. Click one to edit it; Ctrl+click or Shift+drag to select several.</div>
+      <div className="hint">Drag a block onto the canvas. Build keeps this list open; Configure opens each new block's settings. Click one to edit it; Ctrl+click or Shift+drag to select several.</div>
     </>
   );
 }
