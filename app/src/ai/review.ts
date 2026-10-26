@@ -405,13 +405,24 @@ function parseReview(answer: string, problem: Problem, design: Design): AiReview
  * directly. The FastAPI proxy is only used for LM Studio (CORS) or when the OpenAI key is
  * blank and the server has OPENAI_API_KEY (server key, not the user's).
  */
-export async function callModel(settings: AiSettings, messages: { role: string; content: string }[]): Promise<string> {
+/**
+ * Ask the model. `jsonSchema` makes a local or OpenAI endpoint constrain its answer to JSON (it is dropped if the endpoint rejects it,
+ * and is not sent through the backend proxy), so callers must still cope with a reply that has text around the JSON.
+ */
+export async function callModel(
+  settings: AiSettings,
+  messages: { role: string; content: string }[],
+  jsonSchema?: Record<string, unknown>,
+): Promise<string> {
   if (settings.provider === "off") throw new Error("AI is turned off. Choose LM Studio or OpenAI in AI settings.");
   // Thinking control is LM Studio–only in the UI; OpenAI uses the API default (medium on gpt-6-luna).
   const reasoningEffort =
     settings.provider === "lmstudio" ? (settings.thinking === "off" ? "none" : settings.thinking === "low" ? "low" : undefined) : undefined;
   const model = settings.model || (settings.provider === "openai" ? DEFAULT_OPENAI_MODEL : undefined);
   const body = buildCompletionsBody({ model, messages, temperature: 0.2, reasoningEffort });
+  const schemaBody = jsonSchema
+    ? { ...body, response_format: { type: "json_schema", json_schema: { name: "answer", strict: false, schema: jsonSchema } } }
+    : body;
 
   // BYOK OpenAI: browser → OpenAI only (key never posted to our backend).
   const byokOpenAi = settings.provider === "openai" && Boolean(settings.apiKey?.trim());
@@ -439,7 +450,7 @@ export async function callModel(settings: AiSettings, messages: { role: string; 
       res = await fetch(`${base}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}) },
-        body: JSON.stringify(body),
+        body: JSON.stringify(schemaBody),
       });
     }
   } catch {
@@ -449,6 +460,7 @@ export async function callModel(settings: AiSettings, messages: { role: string; 
         : "Could not reach the AI endpoint. Check the network, base URL and key.",
     );
   }
+  if (!res.ok && jsonSchema && res.status === 400 && !useProxy) return callModel(settings, messages);
   if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await errorText(res)}`);
   const json = await res.json();
   const choice = json?.choices?.[0];

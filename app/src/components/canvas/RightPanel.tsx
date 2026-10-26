@@ -7,6 +7,7 @@ import { toDesign, useProblem, useStore } from "../../store";
 import type { Dimension, Finding, RunResult, ScenarioResult } from "../../types";
 import { blockCost, money } from "../../blocks";
 import { ReviewView } from "./ReviewView";
+import { AdvisorCard } from "./AdvisorCard";
 import { EstimateWorksheet } from "./EstimateWorksheet";
 import { WalkthroughCard } from "./WalkthroughCard";
 import { beginTour } from "../tour/TourLayer";
@@ -271,27 +272,42 @@ function Debrief({ res }: { res: ScenarioResult }) {
   );
 }
 
-export function Confidence({ run }: { run: RunResult }) {
+export function Confidence({ run, fixable }: { run: RunResult; fixable?: boolean }) {
   const [open, setOpen] = useState(false);
+  const aiOn = useStore((s) => s.ai.provider !== "off");
+  const busy = useStore((s) => s.advisorBusy);
+  const advise = useStore((s) => s.runAdvisor);
   const detailRows: [string, Dimension][] = [
     ["Scalability", "scalability"],
     ["Reliability", "reliability"],
     ["Fault isolation", "faultIsolation"],
     ["Latency", "latency"],
   ];
-  const rows: [string, number][] = [
-    ["Scalability", run.confidence.scalability],
-    ["Reliability", run.confidence.reliability],
-    ["Fault isolation", run.confidence.faultIsolation],
-    ["Latency", run.confidence.latency],
+  const rows: [string, number, Dimension][] = [
+    ["Scalability", run.confidence.scalability, "scalability"],
+    ["Reliability", run.confidence.reliability, "reliability"],
+    ["Fault isolation", run.confidence.faultIsolation, "faultIsolation"],
+    ["Latency", run.confidence.latency, "latency"],
   ];
   return (
     <div className="conf">
-      {rows.map(([name, v]) => {
+      {rows.map(([name, v, dim]) => {
         const lvl = levelOf(v);
         return (
           <div className="conf-row" key={name}>
-            <span>{name}</span>
+            <span>
+              {name}
+              {fixable && aiOn && v < 100 && (
+                <button
+                  className="link fix-ai"
+                  disabled={busy}
+                  onClick={() => void advise("fix", dim)}
+                  title={`Ask the AI how to bring ${name.toLowerCase()} to 100`}
+                >
+                  Fix with AI
+                </button>
+              )}
+            </span>
             <span className="dots">
               {[0, 1, 2].map((i) => (
                 <i key={i} className={i <= (lvl === "Weak" ? 0 : lvl === "Fair" ? 1 : 2) ? lvl.toLowerCase() : ""} />
@@ -555,7 +571,8 @@ function SimulateTab() {
         Architecture confidence <b className="score">{run.confidenceTotal}</b>
         <small>/100</small>
       </h4>
-      <Confidence run={run} />
+      <Confidence run={run} fixable />
+      <AdvisorCard weak={Object.values(run.confidence).some((v) => v < 100)} />
     </>
   );
 }

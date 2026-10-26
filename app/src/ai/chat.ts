@@ -9,7 +9,7 @@ export type { Change, ChatMessage };
 const fieldsOf = (blockId: string): FieldDef[] => (BLOCK_MAP[blockId]?.sections ?? []).flatMap((s) => s.fields);
 
 /** The blocks and settings the coach may use, so its proposals stay inside what the tool supports. */
-const CATALOG = BLOCKS.filter((b) => b.id !== "user")
+export const CATALOG = BLOCKS.filter((b) => b.id !== "user")
   .map((b) => {
     const f = fieldsOf(b.id)
       .map(
@@ -106,19 +106,9 @@ function cleanSettings(blockId: string, input: unknown): Cfg {
   return out;
 }
 
-/** Split the model's reply into what to show and the changes it proposed. */
-export function parseChanges(reply: string, problem: Problem, design: Design): { text: string; changes: Change[] } {
-  const clean = reply.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-  const m = clean.match(/```changes\s*([\s\S]*?)```/);
-  const text = clean.replace(/```changes[\s\S]*?```/g, "").trim();
-  if (!m) return { text, changes: [] };
-  let raw: any;
-  try {
-    raw = JSON.parse(m[1]);
-  } catch {
-    return { text, changes: [] };
-  }
-  const list: any[] = Array.isArray(raw?.changes) ? raw.changes.slice(0, 8) : [];
+/** Check a list of proposed changes against the real blocks, settings and ids. `dropped` counts the ones that could not be kept. */
+export function sanitizeChanges(rawList: unknown[], problem: Problem, design: Design): { changes: Change[]; dropped: number } {
+  const list: any[] = rawList.slice(0, 8);
   const capIds = new Set((problem.capabilities ?? []).map((c) => c.id));
   const existing = new Set(design.nodes.map((n) => n.id));
   const refs = new Set<string>();
@@ -152,10 +142,8 @@ export function parseChanges(reply: string, problem: Problem, design: Design): {
       }
       const settings = cleanSettings(node.blockId, c.settings);
       const capabilities = caps(c.capabilities);
-      if (!Object.keys(settings).length && !capabilities) {
-        dropped++;
-        continue;
-      }
+      // a setting that is not real is ignored; if nothing real is left, the change does nothing, which is harmless
+      if (!Object.keys(settings).length && !capabilities) continue;
       out.push({ op: "set_settings", nodeId: node.id, settings, capabilities });
     } else if (c.op === "connect") {
       const ok = (id: string) => existing.has(id) || refs.has(id);
@@ -175,6 +163,22 @@ export function parseChanges(reply: string, problem: Problem, design: Design): {
       out.push({ op: "disconnect", from, to });
     } else dropped++;
   }
+  return { changes: out, dropped };
+}
+
+/** Split the model's reply into what to show and the changes it proposed. */
+export function parseChanges(reply: string, problem: Problem, design: Design): { text: string; changes: Change[] } {
+  const clean = reply.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  const m = clean.match(/```changes\s*([\s\S]*?)```/);
+  const text = clean.replace(/```changes[\s\S]*?```/g, "").trim();
+  if (!m) return { text, changes: [] };
+  let raw: any;
+  try {
+    raw = JSON.parse(m[1]);
+  } catch {
+    return { text, changes: [] };
+  }
+  const { changes: out, dropped } = sanitizeChanges(Array.isArray(raw?.changes) ? raw.changes : [], problem, design);
   // all or nothing: a proposal with a part that cannot be applied may be incoherent (a connection removed and its replacement lost)
   if (dropped > 0)
     return {

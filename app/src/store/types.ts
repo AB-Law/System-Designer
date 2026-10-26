@@ -3,7 +3,9 @@ import type { DesignDoc } from "../cloud/doc";
 import type { Version } from "../cloud/versions";
 import type {
   AiReview,
+  AdvisorResult,
   AiSettings,
+  Dimension,
   ChatMessage,
   EdgeData,
   EdgeKind,
@@ -49,6 +51,9 @@ export interface State {
   chatOpen: boolean;
   chat: ChatMessage[];
   chatBusy: boolean;
+  advisor?: AdvisorResult;
+  advisorBusy: boolean;
+  advisorError?: string;
 
   /** home page, canvas workbench, learning roadmap, a design someone shared, or the lessons */
   view: "home" | "canvas" | "roadmap" | "shared" | "learn";
@@ -117,6 +122,10 @@ export interface State {
   sendChat: (text: string) => Promise<void>;
   applyChat: (index: number) => void;
   dismissChat: (index: number) => void;
+  runAdvisor: (mode: "fix" | "tune", focus?: Dimension) => Promise<void>;
+  applyProposal: (id: string) => void;
+  rejectProposal: (id: string) => void;
+  clearAdvisor: () => void;
   clearChat: () => void;
   runReview: () => Promise<void>;
   submit: () => Promise<void>;

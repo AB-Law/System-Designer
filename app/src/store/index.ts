@@ -6,12 +6,13 @@ import { decodeShareHash, docToDesign, sanitizeDoc, toDoc } from "../cloud/doc";
 import { flushDesign, pullDesign, syncSubmissionsDown, syncUp } from "../cloud/sync";
 import { addVersion, listVersions, removeVersion, renameVersion, sameAsNewest, type VersionKind } from "../cloud/versions";
 import { callModel, loadAiSettings, reviewDesign, saveAiSettings } from "../ai/review";
-import { buildChatMessages, describeChange, parseChanges } from "../ai/chat";
+import { buildChatMessages, describeChange, parseChanges, sanitizeChanges } from "../ai/chat";
+import { ADVISOR_SCHEMA, buildAdvisorMessages, parseAdvisor } from "../ai/advisor";
 import { analyze } from "../sim/analyze";
 import { capIdsOf, primaryCapability } from "../sim/caps";
 import { isStepDone, validateRoadmap } from "../roadmap";
 import { learnHash, parseLearnHash } from "../lessons/route";
-import type { ChatMessage, Problem, RunResult, Scenario, Submission } from "../types";
+import type { AdvisorResult, Change, ChatMessage, Dimension, Problem, RunResult, Scenario, Submission } from "../types";
 import { edgeProps, errText, freeSpot, layered, nextId, toDesign } from "./canvas";
 import { useMode } from "./mode";
 import { fromDoc, persist, restore, wipeLocalData } from "./persist";
@@ -19,6 +20,70 @@ import type { RFEdge, RFNode, SharedComment, State, User } from "./types";
 
 export type { RFEdge, RFNode, SharedComment, SharedView, Snapshot, State, User } from "./types";
 export { edgeProps, toDesign } from "./canvas";
+
+/** Apply proposed changes to the canvas. New blocks are placed in free space and selected; the caller commits the undo step. */
+function applyChanges(
+  nodes: RFNode[],
+  edges: RFEdge[],
+  changes: Change[],
+  problem: Problem | undefined,
+): { nodes: RFNode[]; edges: RFEdge[] } {
+  const primary = problem ? primaryCapability(problem) : undefined;
+  let newNodes = nodes.map((n) => ({ ...n, selected: false }));
+  let newEdges = [...edges];
+  const refToId = new Map<string, string>();
+  let nextX = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) + 210 : 60;
+  for (const ch of changes) {
+    if (ch.op === "add_block") {
+      const def = BLOCK_MAP[ch.blockId];
+      if (!def) continue;
+      const id = nextId(ch.blockId);
+      refToId.set(ch.ref, id);
+      const cfg = clampCfg(def, { ...defaultCfg(def), ...ch.settings });
+      const capabilities =
+        ch.capabilities ??
+        (problem?.capabilities?.length
+          ? ["server", "service", "websocket"].includes(ch.blockId) && primary
+            ? [primary.id]
+            : []
+          : undefined);
+      newNodes.push({
+        id,
+        type: "block",
+        position: freeSpot(newNodes, { x: nextX, y: 200 }),
+        data: { blockId: ch.blockId, cfg, responsibilities: [], capabilities },
+        selected: true,
+      });
+      nextX += 210;
+    } else if (ch.op === "set_settings") {
+      newNodes = newNodes.map((n) => {
+        if (n.id !== ch.nodeId) return n;
+        const def = BLOCK_MAP[n.data.blockId];
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            cfg: clampCfg(def, { ...n.data.cfg, ...ch.settings }),
+            capabilities: ch.capabilities ?? n.data.capabilities,
+          },
+        };
+      });
+    } else if (ch.op === "disconnect") {
+      newEdges = newEdges.filter((e) => !(e.source === ch.from && e.target === ch.to));
+    } else {
+      const source = refToId.get(ch.from) ?? ch.from;
+      const target = refToId.get(ch.to) ?? ch.to;
+      if (
+        !newNodes.some((n) => n.id === source) ||
+        !newNodes.some((n) => n.id === target) ||
+        newEdges.some((e) => e.source === source && e.target === target)
+      )
+        continue;
+      newEdges.push({ id: `e-${source}-${target}`, source, target, ...edgeProps(ch.kind) } as RFEdge);
+    }
+  }
+  return { nodes: newNodes, edges: newEdges };
+}
 
 let lastCfgEdit = { key: "", at: 0 };
 
@@ -76,6 +141,9 @@ export const useStore = create<State>((set, get) => {
     chatOpen: false,
     chat: [],
     chatBusy: false,
+    advisor: undefined,
+    advisorBusy: false,
+    advisorError: undefined,
     view: "home",
     user: null,
     authOpen: false,
@@ -139,7 +207,7 @@ export const useStore = create<State>((set, get) => {
 
     startRoadmapStep: async (problemId) => {
       await get().setProblem(problemId);
-      set({ view: "canvas", roadmapSelectedStepId: null, primerOpen: false, primerProblemId: null });
+      set({ view: "canvas", rightTab: "problem", roadmapSelectedStepId: null, primerOpen: false, primerProblemId: null });
     },
 
     setProblem: async (id) => {
@@ -159,6 +227,9 @@ export const useStore = create<State>((set, get) => {
         interview: lsGet<Scenario[]>(`dc:interview:${id}`, []),
         chat: lsGet<ChatMessage[]>(`dc:chat:${id}`, []),
         chatBusy: false,
+        advisor: undefined,
+        advisorBusy: false,
+        advisorError: undefined,
         reviewKey: undefined,
         reviewError: undefined,
         versions: [],
@@ -446,62 +517,9 @@ export const useStore = create<State>((set, get) => {
       const msg = chat[index];
       if (!msg?.changes || msg.status !== "pending") return;
       const problem = problems.find((p) => p.id === problemId);
-      const primary = problem ? primaryCapability(problem) : undefined;
       void autoVersion("coach", "Before the coach's change");
       commit();
-      let newNodes = nodes.map((n) => ({ ...n, selected: false }));
-      let newEdges = [...edges];
-      const refToId = new Map<string, string>();
-      let nextX = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) + 210 : 60;
-      for (const ch of msg.changes) {
-        if (ch.op === "add_block") {
-          const def = BLOCK_MAP[ch.blockId];
-          if (!def) continue;
-          const id = nextId(ch.blockId);
-          refToId.set(ch.ref, id);
-          const cfg = clampCfg(def, { ...defaultCfg(def), ...ch.settings });
-          const capabilities =
-            ch.capabilities ??
-            (problem?.capabilities?.length
-              ? ["server", "service", "websocket"].includes(ch.blockId) && primary
-                ? [primary.id]
-                : []
-              : undefined);
-          newNodes.push({
-            id,
-            type: "block",
-            position: freeSpot(newNodes, { x: nextX, y: 200 }),
-            data: { blockId: ch.blockId, cfg, responsibilities: [], capabilities },
-            selected: true,
-          });
-          nextX += 210;
-        } else if (ch.op === "set_settings") {
-          newNodes = newNodes.map((n) => {
-            if (n.id !== ch.nodeId) return n;
-            const def = BLOCK_MAP[n.data.blockId];
-            return {
-              ...n,
-              data: {
-                ...n.data,
-                cfg: clampCfg(def, { ...n.data.cfg, ...ch.settings }),
-                capabilities: ch.capabilities ?? n.data.capabilities,
-              },
-            };
-          });
-        } else if (ch.op === "disconnect") {
-          newEdges = newEdges.filter((e) => !(e.source === ch.from && e.target === ch.to));
-        } else {
-          const source = refToId.get(ch.from) ?? ch.from;
-          const target = refToId.get(ch.to) ?? ch.to;
-          if (
-            !newNodes.some((n) => n.id === source) ||
-            !newNodes.some((n) => n.id === target) ||
-            newEdges.some((e) => e.source === source && e.target === target)
-          )
-            continue;
-          newEdges.push({ id: `e-${source}-${target}`, source, target, ...edgeProps(ch.kind) } as RFEdge);
-        }
-      }
+      const { nodes: newNodes, edges: newEdges } = applyChanges(nodes, edges, msg.changes, problem);
       const out = chat.map((m, i) => (i === index ? { ...m, status: "applied" as const } : m));
       set({ nodes: newNodes, edges: newEdges, chat: out });
       lsSet(`dc:chat:${problemId}`, out.slice(-40));
@@ -518,6 +536,83 @@ export const useStore = create<State>((set, get) => {
       lsSet(`dc:chat:${get().problemId}`, []);
       set({ chat: [] });
     },
+
+    // The advisor only proposes. Each proposal is approved or rejected on its own, and approving is one undo step.
+    runAdvisor: async (mode, focus) => {
+      const { problems, problemId, nodes, edges, ai, interview, advisorBusy } = get();
+      const problem = problems.find((p) => p.id === problemId);
+      if (!problem || advisorBusy) return;
+      if (ai.provider === "off") return;
+      if (!nodes.length) {
+        set({ advisorError: "Put at least one block on the canvas first, so there is something to look at." });
+        return;
+      }
+      set({ advisorBusy: true, advisorError: undefined, advisor: undefined });
+      try {
+        const design = toDesign(nodes, edges);
+        const run = analyze(design, problem, { followUps: interview });
+        const reply = await callModel(ai, buildAdvisorMessages(problem, design, run, mode, focus), ADVISOR_SCHEMA);
+        const result = parseAdvisor(reply, problem, design, mode, focus);
+        // what each proposal would do on its own, worked out by the simulator
+        for (const p of result.proposals) {
+          try {
+            const after = applyChanges(nodes, edges, p.changes, problem);
+            const r = analyze(toDesign(after.nodes, after.edges), problem, { followUps: interview });
+            const bits: string[] = [];
+            const was = run.scenarios.filter((x) => x.pass).length;
+            const now = r.scenarios.filter((x) => x.pass).length;
+            if (r.score !== run.score) bits.push(`score ${run.score} to ${r.score}`);
+            for (const d of Object.keys(run.confidence) as Dimension[])
+              if (r.confidence[d] !== run.confidence[d])
+                bits.push(`${d === "faultIsolation" ? "fault isolation" : d} ${run.confidence[d]} to ${r.confidence[d]}`);
+            if (was !== now) bits.push(`scenarios passing ${was} to ${now} of ${r.scenarios.length}`);
+            if (Math.abs(r.cost - run.cost) >= 25)
+              bits.push(`monthly cost $${Math.round(run.cost).toLocaleString()} to $${Math.round(r.cost).toLocaleString()}`);
+            p.effect = bits.length ? bits.join("; ") : "no change to the score";
+            p.worse = r.score < run.score;
+          } catch {
+            /* a proposal still shows without a simulated effect */
+          }
+        }
+        if (get().problemId === problemId) set({ advisor: result, advisorBusy: false });
+      } catch (e) {
+        if (get().problemId === problemId) set({ advisorBusy: false, advisorError: e instanceof Error ? e.message : String(e) });
+      }
+    },
+
+    applyProposal: (id) => {
+      const { advisor, nodes, edges, problems, problemId } = get();
+      const prop = advisor?.proposals.find((p) => p.id === id);
+      if (!advisor || !prop || prop.status !== "pending") return;
+      const problem = problems.find((p) => p.id === problemId);
+      if (!problem) return;
+      const mark = (status: "applied" | "stale") =>
+        ({ ...advisor, proposals: advisor.proposals.map((p) => (p.id === id ? { ...p, status } : p)) }) as AdvisorResult;
+      // the canvas may have changed since the proposal was written: only apply it if every part still makes sense
+      const still = sanitizeChanges(prop.changes, problem, toDesign(nodes, edges));
+      if (still.dropped > 0) {
+        set({ advisor: mark("stale") });
+        return;
+      }
+      void autoVersion("coach", "Before the AI advisor's change");
+      commit();
+      const next = applyChanges(nodes, edges, prop.changes, problem);
+      set({ nodes: next.nodes, edges: next.edges, advisor: mark("applied") });
+      save();
+    },
+
+    rejectProposal: (id) => {
+      const { advisor } = get();
+      if (!advisor) return;
+      set({
+        advisor: {
+          ...advisor,
+          proposals: advisor.proposals.map((p) => (p.id === id && p.status === "pending" ? { ...p, status: "rejected" as const } : p)),
+        },
+      });
+    },
+
+    clearAdvisor: () => set({ advisor: undefined, advisorError: undefined }),
 
     runReview: async () => {
       const { problems, problemId, nodes, edges, ai } = get();
