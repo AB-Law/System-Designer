@@ -20,7 +20,13 @@ const edge = (s: string, t: string): RFEdge => ({ id: s + t, source: s, target: 
 
 function stateOf(p: Problem, nodes: RFNode[], edges: RFEdge[], extra: Partial<TourState> = {}): TourState {
   const design: Design = {
-    nodes: nodes.map((n) => ({ id: n.id, blockId: n.data.blockId, cfg: n.data.cfg, responsibilities: [], capabilities: n.data.capabilities })),
+    nodes: nodes.map((n) => ({
+      id: n.id,
+      blockId: n.data.blockId,
+      cfg: n.data.cfg,
+      responsibilities: [],
+      capabilities: n.data.capabilities,
+    })),
     edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, kind: "sync" as const })),
   };
   return { nodes, edges, rightTab: "simulate", problem: p, run: analyze(design, p), ...extra };
@@ -80,18 +86,18 @@ describe("portfolio tour", () => {
   const step = (id: string) => tour.steps.find((s) => s.id === id)!;
   it("needs the CDN in front and its static share set", () => {
     const withCdn = (share: number) =>
-      stateOf(
-        PORTFOLIO,
-        [rf("u", "user"), rf("c", "cdn", { staticShare: share }), rf("s", "server")],
-        [edge("u", "c"), edge("c", "s")],
-      );
+      stateOf(PORTFOLIO, [rf("u", "user"), rf("c", "cdn", { staticShare: share }), rf("s", "server")], [edge("u", "c"), edge("c", "s")]);
     expect(step("add-cdn").done!(withCdn(0.3))).toBe(true);
     expect(step("static").done!(withCdn(0.3))).toBe(false);
     expect(step("static").done!(withCdn(0.9))).toBe(true);
     expect(step("add-cdn").done!(stateOf(PORTFOLIO, [rf("u", "user"), rf("s", "server")], [edge("u", "s")]))).toBe(false);
   });
   it("needs the server joined to both the database and blob storage", () => {
-    const part = stateOf(PORTFOLIO, [rf("u", "user"), rf("s", "server"), rf("db", "database"), rf("b", "blob_storage")], [edge("u", "s"), edge("s", "db")]);
+    const part = stateOf(
+      PORTFOLIO,
+      [rf("u", "user"), rf("s", "server"), rf("db", "database"), rf("b", "blob_storage")],
+      [edge("u", "s"), edge("s", "db")],
+    );
     expect(step("link").done!(part)).toBe(false);
     const all = stateOf(
       PORTFOLIO,
@@ -106,7 +112,11 @@ describe("poll tour", () => {
   const tour = tourFor("class_poll")!;
   const step = (id: string) => tour.steps.find((s) => s.id === id)!;
   const withLocking = (consistency: string) =>
-    stateOf(POLL, [rf("u", "user"), rf("s", "server", {}, ["vote"]), rf("db", "database", { consistency })], [edge("u", "s"), edge("s", "db")]);
+    stateOf(
+      POLL,
+      [rf("u", "user"), rf("s", "server", {}, ["vote"]), rf("db", "database", { consistency })],
+      [edge("u", "s"), edge("s", "db")],
+    );
   it("finishes the locking step only when writes are protected", () => {
     expect(step("lock").done!(withLocking("Eventual"))).toBe(false);
     expect(step("lock").done!(withLocking("Row locks"))).toBe(true);
@@ -115,7 +125,11 @@ describe("poll tour", () => {
   it("skips a capacity step when that block is not overloaded", () => {
     const big = stateOf(
       POLL,
-      [rf("u", "user"), rf("s", "server", { replicas: 10 }, ["vote"]), rf("db", "database", { consistency: "Row locks", capacity: 100000 })],
+      [
+        rf("u", "user"),
+        rf("s", "server", { replicas: 10 }, ["vote"]),
+        rf("db", "database", { consistency: "Row locks", capacity: 100000 }),
+      ],
       [edge("u", "s"), edge("s", "db")],
     );
     expect(step("db-capacity").skip!(big)).toBe(true);

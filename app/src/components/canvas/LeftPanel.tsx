@@ -113,7 +113,10 @@ function Palette() {
           );
         })}
       </div>
-      <div className="hint">Drag a block onto the canvas. Build keeps this list open; Configure opens each new block's settings. Click one to edit it; Ctrl+click or Shift+drag to select several.</div>
+      <div className="hint">
+        Drag a block onto the canvas. Build keeps this list open; Configure opens each new block's settings. Click one to edit it;
+        Ctrl+click or Shift+drag to select several.
+      </div>
     </>
   );
 }

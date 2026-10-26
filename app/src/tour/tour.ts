@@ -181,10 +181,13 @@ const num = (v: unknown, d = 0) => (typeof v === "number" && !Number.isNaN(v) ? 
 /** The block is overloaded (or down) in any scenario, not just the first. */
 const hotAnywhere = (s: TourState, blockId: string): boolean => {
   const n = s.nodes.find((x) => x.data.blockId === blockId);
-  return !!n && !!s.run?.scenarios.some((sc) => {
-    const r = sc.nodes[n.id];
-    return !!r && (r.down === true || (r.incoming > 0 && r.utilization >= 1));
-  });
+  return (
+    !!n &&
+    !!s.run?.scenarios.some((sc) => {
+      const r = sc.nodes[n.id];
+      return !!r && (r.down === true || (r.incoming > 0 && r.utilization >= 1));
+    })
+  );
 };
 /** Requests a second the servers could still answer if one replica were lost. */
 const withOneLost = (s: TourState): number => {
@@ -456,7 +459,12 @@ const POLL: Tour = {
   ],
 };
 
-export const TOURS: Record<string, Tour> = { [LIBRARY.problemId]: LIBRARY, [BLOG.problemId]: BLOG, [PORTFOLIO.problemId]: PORTFOLIO, [POLL.problemId]: POLL };
+export const TOURS: Record<string, Tour> = {
+  [LIBRARY.problemId]: LIBRARY,
+  [BLOG.problemId]: BLOG,
+  [PORTFOLIO.problemId]: PORTFOLIO,
+  [POLL.problemId]: POLL,
+};
 export const tourFor = (problemId: string): Tour | undefined => TOURS[problemId];
 
 /** Index of the next step to show after `from`, passing over steps that do not apply. */
