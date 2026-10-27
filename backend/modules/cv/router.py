@@ -20,19 +20,6 @@ router = APIRouter(tags=["cv"])
 MIN_TEXT = 40
 
 
-async def _read_body(request: Request) -> bytes:
-    cap = files.max_file_bytes()
-    declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > cap:
-        raise HTTPException(413, f"File is larger than {cap // (1024 * 1024)} MB.")
-    buf = bytearray()
-    async for chunk in request.stream():
-        buf += chunk
-        if len(buf) > cap:
-            raise HTTPException(413, f"File is larger than {cap // (1024 * 1024)} MB.")
-    return bytes(buf)
-
-
 def _parse_or_422(data: bytes, name: str) -> parsing.Parsed:
     parsed = parsing.parse_bytes(data, name)
     if len(parsed.text.strip()) < MIN_TEXT:
@@ -45,7 +32,7 @@ def _parse_or_422(data: bytes, name: str) -> parsing.Parsed:
 @router.post("/jd/upload")
 async def upload_jd(request: Request, user: CurrentUser, name: str = Query(max_length=200)) -> dict[str, Any]:
     """Turn a JD file into text for the score form. Nothing is stored."""
-    data = await _read_body(request)
+    data = await files.read_upload(request)
 
     def work() -> dict[str, Any]:
         meter(f"cv_upload|{user['id']}", limit=30)
@@ -57,7 +44,7 @@ async def upload_jd(request: Request, user: CurrentUser, name: str = Query(max_l
 
 @router.post("/upload")
 async def upload_cv(request: Request, user: CurrentUser, name: str = Query(max_length=200), cvName: str = Query(default="", max_length=120)) -> dict[str, Any]:
-    data = await _read_body(request)
+    data = await files.read_upload(request)
     mime = request.headers.get("content-type", "application/octet-stream")
 
     def work() -> dict[str, Any]:

@@ -5,7 +5,7 @@ import os
 import time
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from db import open_db
 
@@ -21,6 +21,13 @@ def user_quota_bytes() -> int:
 def used_bytes(user_id: int) -> int:
     with open_db() as db:
         return int(db.execute("SELECT COALESCE(SUM(size), 0) FROM files WHERE user_id=?", (user_id,)).fetchone()[0])
+
+
+async def read_upload(request: Request) -> bytes:
+    """Read a raw request body up to the per-file cap. Shared by every module that accepts file bytes."""
+    from dc_platform.http_body import read_capped
+
+    return await read_capped(request)
 
 
 def save_file(user_id: int, name: str, mime: str, data: bytes, text: str | None = None) -> int:

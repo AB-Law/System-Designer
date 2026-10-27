@@ -4,7 +4,7 @@ import type { Access, Availability, ModuleDef } from "./types";
 /** Design Canvas: always present, always first, owns every hash the other modules do not. */
 export { DESIGN };
 
-/** Parse a comma list such as "design,cv" (the build flag). Design is always on. */
+/** Parse a comma list such as "design,cv" (the build flag). Design is always on. Dotted tokens are slice flags (e.g. interview.voice). */
 export function enabledFlags(raw: string | undefined): Set<string> {
   const names = (raw ?? "design")
     .split(",")
@@ -13,7 +13,13 @@ export function enabledFlags(raw: string | undefined): Set<string> {
   return new Set(["design", ...names]);
 }
 
-/** Keep the modules whose flag is on, Design first, no duplicate ids. */
+/** True when an exact token (module or slice flag) is listed in VITE_ENABLED_MODULES. */
+export function featureOn(flag: string): boolean {
+  const raw = (import.meta.env as Record<string, string | undefined>).VITE_ENABLED_MODULES;
+  return enabledFlags(raw).has(flag);
+}
+
+/** Keep the modules whose flag is on, Design first, no duplicate ids. Slice flags (dotted) never match a ModuleDef.flag. */
 export function enabledModules(defs: ModuleDef[], flags: Set<string>): ModuleDef[] {
   const seen = new Set<string>(["design"]);
   const out: ModuleDef[] = [DESIGN];

@@ -35,8 +35,11 @@ def detect_kind(data: bytes, name: str) -> str:
         return "pdf"
     if data[:2] == b"PK" and zipfile.is_zipfile(io.BytesIO(data)):
         return "docx"
-    if name.lower().endswith((".pdf", ".docx")):
+    lower = name.lower()
+    if lower.endswith((".pdf", ".docx")):
         raise HTTPException(400, "That file looks damaged or is not a real PDF or DOCX.")
+    if lower.endswith(".md"):
+        return "md"
     return "txt"
 
 

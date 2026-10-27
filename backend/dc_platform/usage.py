@@ -42,9 +42,14 @@ def summary(user_id: int) -> dict[str, int]:
     return {"monthTokens": month_tokens(user_id), "quota": monthly_quota()}
 
 
-def check_quota(user_id: int) -> None:
-    """Call before spending: rate-limits the user (existing meter) and rejects once the month's quota is used."""
-    meter(f"llm|{user_id}", limit=int(os.environ.get("LLM_CALLS_PER_10MIN", "60")), window=600.0)
+def check_quota(user_id: int, *, rate_limited: bool = True) -> None:
+    """Call before spending: rate-limits the user (existing meter) and rejects once the month's quota is used.
+
+    Bulk work such as embedding a document passes rate_limited=False: it is paid for by the monthly quota only,
+    so one large upload cannot use up the calls that interviews and scoring need.
+    """
+    if rate_limited:
+        meter(f"llm|{user_id}", limit=int(os.environ.get("LLM_CALLS_PER_10MIN", "60")), window=600.0)
     quota = monthly_quota()
     if quota and month_tokens(user_id) >= quota:
         raise HTTPException(429, "Monthly AI usage limit reached.")

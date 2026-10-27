@@ -1,40 +1,12 @@
-import { ApiError, call } from "../../api";
+import { call, postBinary } from "../../api";
 import type { CvDetail, CvStructure, CvSummary, Job, LlmSettings, Mode, Rewrite, Run, RunSummary } from "./types";
-
-/** Upload raw file bytes (no multipart): the file name travels in the query string. */
-async function sendFile<T>(path: string, params: Record<string, string>, file: File): Promise<T> {
-  const qs = new URLSearchParams(params).toString();
-  let r: Response;
-  try {
-    r = await fetch(`/api${path}?${qs}`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-      signal: AbortSignal.timeout(60000),
-    });
-  } catch {
-    throw new ApiError(0, "Could not reach the server.");
-  }
-  if (!r.ok) {
-    let msg = r.statusText || "Upload failed";
-    try {
-      const j = (await r.json()) as { detail?: unknown };
-      if (typeof j.detail === "string") msg = j.detail;
-    } catch {
-      /* not JSON */
-    }
-    throw new ApiError(r.status, msg);
-  }
-  return (await r.json()) as T;
-}
 
 export const cvApi = {
   list: () => call<CvSummary[]>("/cv"),
   get: (id: number) => call<CvDetail>(`/cv/${id}`),
-  upload: (file: File, name?: string) => sendFile<CvDetail>("/cv/upload", { name: file.name, ...(name ? { cvName: name } : {}) }, file),
+  upload: (file: File, name?: string) => postBinary<CvDetail>("/cv/upload", { name: file.name, ...(name ? { cvName: name } : {}) }, file),
   uploadJd: (file: File) =>
-    sendFile<{ text: string; parseQuality: number; warnings: string[] }>("/cv/jd/upload", { name: file.name }, file),
+    postBinary<{ text: string; parseQuality: number; warnings: string[] }>("/cv/jd/upload", { name: file.name }, file),
   rename: (id: number, name: string) => call<CvDetail>(`/cv/${id}`, "PATCH", { name }),
   saveStructure: (id: number, s: CvStructure) => call<CvDetail>(`/cv/${id}/structure`, "PATCH", s),
   reExtract: (id: number) => call<{ jobId: string }>(`/cv/${id}/extract`, "POST"),
@@ -72,27 +44,4 @@ export const cvApi = {
   testLlm: () => call<{ ok: boolean; reply?: string; error?: string }>("/llm/test", "POST"),
 };
 
-const FINAL = new Set(["done", "failed", "cancelled"]);
-
-/** Follow a background job until it ends. Polls the status endpoint (the server also offers SSE at /api/tasks/{id}/events). */
-export function watchJob(jobId: string, onUpdate: (j: Job) => void, intervalMs = 700): () => void {
-  let stopped = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const tick = async () => {
-    if (stopped) return;
-    try {
-      const j = await cvApi.job(jobId);
-      if (stopped) return;
-      onUpdate(j);
-      if (FINAL.has(j.status)) return;
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) return;
-    }
-    timer = setTimeout(() => void tick(), intervalMs);
-  };
-  void tick();
-  return () => {
-    stopped = true;
-    if (timer) clearTimeout(timer);
-  };
-}
+export { watchJob } from "../../shared/async";

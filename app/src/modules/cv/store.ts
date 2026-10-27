@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import { ApiError } from "../../api";
+import { errText } from "../../shared/async";
 import { cvApi } from "./api";
 import type { CvSummary } from "./types";
 
-export const errText = (e: unknown): string => (e instanceof ApiError || e instanceof Error ? e.message : "Something went wrong.");
+export { errText };
 
 interface CvState {
   cvs: CvSummary[] | null;

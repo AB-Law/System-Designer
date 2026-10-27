@@ -7,7 +7,7 @@ import { ProgressBar, pct } from "../ui/ProgressBar";
 import { ScoreRing, ringTone } from "../ui/ScoreRing";
 import { Tabs } from "../ui/Tabs";
 import { Table } from "../ui/Table";
-import { DESIGN, activeModules, availability, enabledFlags, enabledModules } from "./registry";
+import { DESIGN, activeModules, availability, enabledFlags, enabledModules, featureOn } from "./registry";
 import { moduleHash, parseModuleHash } from "./route";
 import type { ModuleDef } from "./types";
 
@@ -30,6 +30,18 @@ describe("module flags", () => {
   });
   it("a default build shows no module switcher (only Design)", () => {
     expect(activeModules().map((m) => m.id)).toEqual(["design"]);
+  });
+  it("slice flags are tokens, not modules", () => {
+    expect(enabledFlags("interview,interview.voice").has("interview.voice")).toBe(true);
+    expect(enabledModules([cv], enabledFlags("interview,interview.voice")).map((m) => m.id)).toEqual(["design"]);
+  });
+});
+
+describe("featureOn", () => {
+  it("reads the same flag set as modules (default off for voice)", () => {
+    // Without VITE_ENABLED_MODULES in the test env, only design is on.
+    expect(featureOn("design")).toBe(true);
+    expect(featureOn("interview.voice")).toBe(false);
   });
 });
 

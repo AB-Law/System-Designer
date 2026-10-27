@@ -95,6 +95,13 @@ def test_default_is_design_only(monkeypatch: pytest.MonkeyPatch) -> None:
     assert modules.enabled_modules() == ["design"]
 
 
+def test_slice_flags_are_not_mounted_as_modules(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENABLED_MODULES", "design,interview,interview.voice")
+    assert modules.enabled_modules() == ["design", "interview"]
+    assert modules.feature_on("interview.voice")
+    assert not modules.feature_on("interview.docs")
+
+
 def test_broken_module_is_skipped(scratch: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLED_MODULES", "design,brokenmod,okmod")
     with make_client() as c:
