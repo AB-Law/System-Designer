@@ -34,9 +34,10 @@ def migration_dirs() -> dict[str, Path]:
 def register(app: FastAPI) -> list[str]:
     """Mount every enabled module that imports cleanly. Returns the names mounted."""
     _loaded.clear()
-    from dc_platform import jobs
+    from dc_platform import jobs, llm_routes
 
     app.include_router(jobs.router)
+    app.include_router(llm_routes.router)
     mounted: list[str] = []
     for name in enabled_modules():
         if name in BUILTIN:

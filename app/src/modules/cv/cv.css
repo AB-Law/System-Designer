@@ -1,0 +1,271 @@
+/* CV module. Loaded with the module's screen, so Design Canvas never pays for it. Built from the shared tokens and ui- kit. */
+.cv-module {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.cv-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 400;
+}
+.cv-body {
+  display: grid;
+  gap: 16px;
+}
+.cv-stack {
+  display: grid;
+  gap: 16px;
+}
+.cv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cv-filters {
+  margin: 0 0 12px;
+}
+.cv-hint {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.cv-warn {
+  margin: 6px 0;
+  color: var(--warn);
+  font-size: 13px;
+}
+.cv-ok {
+  margin: 8px 0 0;
+  color: var(--good);
+  font-size: 13px;
+}
+.cv-module .link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--gold-hi);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cv-module .link:hover {
+  text-decoration: underline;
+}
+.cv-module .up {
+  color: var(--good);
+}
+.cv-module .down {
+  color: var(--bad);
+}
+
+/* forms */
+.cv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+.cv-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.cv-field.wide {
+  margin: 10px 0;
+}
+.cv-field > span,
+.cv-field > legend {
+  color: var(--faint);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.cv-field input,
+.cv-field select,
+.cv-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+}
+.cv-field textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+.cv-field input:focus,
+.cv-field select:focus,
+.cv-field textarea:focus {
+  outline: 2px solid var(--gold-lo);
+  outline-offset: 0;
+}
+.cv-modes label {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0;
+  color: var(--text);
+}
+.cv-modes small {
+  margin-left: 22px;
+  color: var(--muted);
+}
+.cv-modes input {
+  width: auto;
+  margin-right: 6px;
+}
+
+/* parse review */
+.cv-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.cv-raw {
+  margin: 0;
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.cv-editor h4 {
+  margin: 18px 0 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 400;
+}
+.cv-block {
+  margin: 0 0 10px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+/* score result */
+.cv-score-head {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.cv-bars {
+  display: grid;
+  gap: 14px;
+}
+.cv-bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 4px;
+}
+.cv-bar-head small {
+  margin-left: auto;
+  color: var(--faint);
+}
+.cv-bar.off .ui-progress > div {
+  background: var(--line);
+}
+.cv-gaps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+.cv-evidence blockquote {
+  margin: 0 0 4px;
+  padding-left: 8px;
+  border-left: 2px solid var(--gold-lo);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.cv-evidence blockquote small {
+  color: var(--faint);
+}
+
+/* rewrites */
+.cv-proposal {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.cv-proposal.approved {
+  border-color: var(--green);
+}
+.cv-proposal.rejected {
+  opacity: 0.6;
+}
+.cv-proposal.applied {
+  border-color: var(--green-hi);
+}
+.cv-proposal small {
+  color: var(--faint);
+  font-weight: 600;
+}
+.cv-proposal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+}
+.cv-proposal-why {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+.cv-old {
+  margin: 2px 0 8px;
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--faint);
+}
+.cv-new {
+  margin: 2px 0 8px;
+  color: var(--green-hi);
+}
+
+/* compare */
+.cv-compare-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+.cv-compare-side {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.cv-compare-diff b {
+  font-family: var(--mono);
+  font-size: 22px;
+}
+
+@media (max-width: 800px) {
+  .cv-split {
+    grid-template-columns: 1fr;
+  }
+  .cv-score-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
