@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json --noEmit && vite build",
     "preview": "vite preview",
+    "bundle:check": "node scripts/check-bundle.mjs",
     "test": "vitest run",
     "content:check": "vitest run src/content",
     "test:watch": "vitest",

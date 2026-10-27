@@ -16,6 +16,8 @@ import { AuthModal } from "./components/modals/AuthModal";
 import { ShareModal } from "./components/modals/ShareModal";
 import { CompareModal } from "./components/modals/CompareModal";
 import { TourLayer } from "./components/tour/TourLayer";
+import { ModuleHost } from "./shell/ModuleHost";
+import { useActiveModule } from "./shell/useActiveModule";
 
 export function App() {
   const init = useStore((s) => s.init);
@@ -33,6 +35,7 @@ export function App() {
   const paste = useStore((s) => s.paste);
   const duplicate = useStore((s) => s.duplicate);
   const selectAll = useStore((s) => s.selectAll);
+  const activeModule = useActiveModule();
 
   useEffect(() => {
     void init();
@@ -65,6 +68,16 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, copySelection, paste, duplicate, selectAll]);
+
+  if (activeModule) {
+    return (
+      <div className="app">
+        <TopBar />
+        <ModuleHost module={activeModule.module} rest={activeModule.rest} />
+        {authOpen && <AuthModal />}
+      </div>
+    );
+  }
 
   return (
     <div className="app">

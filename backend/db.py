@@ -6,6 +6,7 @@ from collections.abc import Generator
 from contextlib import closing
 
 from config import db_path
+from dc_platform.migrations import migrate_loaded_modules
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, pw_salt BLOB NOT NULL, pw_hash BLOB NOT NULL, created INTEGER NOT NULL);
@@ -41,6 +42,7 @@ def connect() -> sqlite3.Connection:
         if col not in cols:
             conn.execute(f"ALTER TABLE submissions ADD COLUMN {col} {typ}")
     conn.execute("CREATE INDEX IF NOT EXISTS ix_sub_user ON submissions(user_id, problem_id, at DESC)")
+    migrate_loaded_modules(conn)
     return conn
 
 
