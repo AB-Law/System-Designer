@@ -302,3 +302,70 @@ def test_deleting_a_role_deletes_its_sessions(clients: tuple[TestClient, TestCli
 
 def test_the_module_is_off_unless_enabled(client: TestClient) -> None:
     assert "/api/interview/roles" not in {getattr(r, "path", "") for r in client.app.routes}
+
+
+# ---------------------------------------------------------------- voice / transcribe
+
+
+class _FakeStt:
+    def transcribe(self, audio: bytes, *, mime: str, language: str | None = "en") -> str:
+        if not audio:
+            from dc_platform.stt import SttNoSpeechError
+
+            raise SttNoSpeechError("No audio data was captured.")
+        return "I led the migration and cut release time."
+
+
+@pytest.fixture()
+def voice_clients(app_env: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[tuple[TestClient, TestClient], None, None]:
+    monkeypatch.setenv("ENABLED_MODULES", "design,cv,interview,interview.voice")
+    from dc_platform import stt
+    from main import create_app
+
+    alice, bobby = two_users(lambda: TestClient(create_app()))
+    llm.set_adapter_factory(fake_interview_llm)
+    stt.set_transcriber_factory(lambda: _FakeStt())
+    yield alice, bobby
+    stt.set_transcriber_factory(None)
+    llm.set_adapter_factory(None)
+
+
+def test_transcribe_returns_text(voice_clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = voice_clients
+    sid = start(alice, make_role(alice)["id"])
+    say(alice, sid)  # opening so the session is live
+    r = alice.post(
+        f"/api/interview/sessions/{sid}/transcribe",
+        content=b"fake-audio-bytes",
+        headers={"Content-Type": "audio/webm"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["text"] == "I led the migration and cut release time."
+
+
+def test_transcribe_requires_voice_flag(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    sid = start(alice, make_role(alice)["id"])
+    say(alice, sid)
+    r = alice.post(f"/api/interview/sessions/{sid}/transcribe", content=b"x", headers={"Content-Type": "audio/webm"})
+    assert r.status_code == 404
+
+
+def test_transcribe_rejects_inactive_and_foreign_sessions(voice_clients: tuple[TestClient, TestClient]) -> None:
+    alice, bobby = voice_clients
+    role = make_role(alice)
+    planning = alice.post("/api/interview/sessions", json={"roleId": role["id"], "style": STYLE}).json()["id"]
+    assert alice.post(f"/api/interview/sessions/{planning}/transcribe", content=b"x", headers={"Content-Type": "audio/webm"}).status_code == 409
+    sid = start(alice, role["id"])
+    say(alice, sid)
+    assert bobby.post(f"/api/interview/sessions/{sid}/transcribe", content=b"x", headers={"Content-Type": "audio/webm"}).status_code == 404
+    alice.post(f"/api/interview/sessions/{sid}/end")
+    assert alice.post(f"/api/interview/sessions/{sid}/transcribe", content=b"x", headers={"Content-Type": "audio/webm"}).status_code == 409
+
+
+def test_transcribe_empty_audio_is_422(voice_clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = voice_clients
+    sid = start(alice, make_role(alice)["id"])
+    say(alice, sid)
+    r = alice.post(f"/api/interview/sessions/{sid}/transcribe", content=b"", headers={"Content-Type": "audio/webm"})
+    assert r.status_code == 422

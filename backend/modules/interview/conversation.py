@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from dc_platform import llm
 from dc_platform.rows import now
 
-from . import interviewer, lifecycle, roles, sessions, sources
+from . import interviewer, lifecycle, retrieve, roles, sessions, sources
 from .flow import ANSWER, CANDIDATE, INTERVIEWER, Move, Turn, elapsed_minutes, next_move, tag_for
 from .interviewer import Context
 
@@ -46,9 +46,19 @@ def _check_turn_allowed(turns: list[Turn], text: str | None) -> None:
         raise HTTPException(409, "Your last answer is still waiting for a reply.")
 
 
-def _context(user_id: int, row: Any) -> Context:
+def _context(user_id: int, row: Any, references: str = "") -> Context:
     role = roles.get_row(user_id, row["role_id"])
-    return Context(role, roles.job_text(role), sources.candidate_brief(user_id), sessions.style_of(row), sessions.plan_of(row))
+    return Context(
+        role, roles.job_text(role), sources.candidate_brief(user_id), sessions.style_of(row), sessions.plan_of(row),
+        references=references,
+    )
+
+
+def _references(user_id: int, role_id: int, plan: Any, turns: list[Turn]) -> str:
+    item = interviewer.next_item(plan, turns)
+    last = next((t.text for t in reversed(turns) if t.role == CANDIDATE), None)
+    query = retrieve.query_from_turn(item.question if item else None, last)
+    return retrieve.for_session(user_id, role_id, query)
 
 
 def prepare(user_id: int, session_id: int, text: str | None) -> Prepared:
@@ -59,7 +69,9 @@ def prepare(user_id: int, session_id: int, text: str | None) -> Prepared:
     _check_turn_allowed(turns, text)
     if text is not None:
         turns.append(sessions.add_turn(user_id, session_id, CANDIDATE, ANSWER, text))
-    ctx = _context(user_id, row)
+    plan = sessions.plan_of(row)
+    refs = _references(user_id, row["role_id"], plan, turns)
+    ctx = _context(user_id, row, refs)
     move = next_move(turns, len(ctx.plan.items), ctx.style, elapsed_minutes(turns, now()))
     if move is Move.DONE:
         raise HTTPException(409, "That interview has finished.")

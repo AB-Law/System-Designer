@@ -1,7 +1,11 @@
 import { lazy } from "react";
 import type { ModuleDef } from "../../shell/types";
 
-/** Interview module: practise interviews for a role with a mock interviewer, then get feedback on every answer. Enable with VITE_ENABLED_MODULES=design,interview. */
+/**
+ * Interview module: practise interviews for a role with a mock interviewer, then get feedback.
+ * Enable with VITE_ENABLED_MODULES=design,interview (and ENABLED_MODULES on the server).
+ * Slice flag interview.voice turns on mic transcription and spoken interviewer replies.
+ */
 const def: ModuleDef = {
   id: "interview",
   title: "Interview",

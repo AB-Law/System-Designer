@@ -1,40 +1,12 @@
-import { ApiError, call } from "../../api";
+import { call, postBinary } from "../../api";
 import type { CvDetail, CvStructure, CvSummary, Job, LlmSettings, Mode, Rewrite, Run, RunSummary } from "./types";
-
-/** Upload raw file bytes (no multipart): the file name travels in the query string. */
-async function sendFile<T>(path: string, params: Record<string, string>, file: File): Promise<T> {
-  const qs = new URLSearchParams(params).toString();
-  let r: Response;
-  try {
-    r = await fetch(`/api${path}?${qs}`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-      signal: AbortSignal.timeout(60000),
-    });
-  } catch {
-    throw new ApiError(0, "Could not reach the server.");
-  }
-  if (!r.ok) {
-    let msg = r.statusText || "Upload failed";
-    try {
-      const j = (await r.json()) as { detail?: unknown };
-      if (typeof j.detail === "string") msg = j.detail;
-    } catch {
-      /* not JSON */
-    }
-    throw new ApiError(r.status, msg);
-  }
-  return (await r.json()) as T;
-}
 
 export const cvApi = {
   list: () => call<CvSummary[]>("/cv"),
   get: (id: number) => call<CvDetail>(`/cv/${id}`),
-  upload: (file: File, name?: string) => sendFile<CvDetail>("/cv/upload", { name: file.name, ...(name ? { cvName: name } : {}) }, file),
+  upload: (file: File, name?: string) => postBinary<CvDetail>("/cv/upload", { name: file.name, ...(name ? { cvName: name } : {}) }, file),
   uploadJd: (file: File) =>
-    sendFile<{ text: string; parseQuality: number; warnings: string[] }>("/cv/jd/upload", { name: file.name }, file),
+    postBinary<{ text: string; parseQuality: number; warnings: string[] }>("/cv/jd/upload", { name: file.name }, file),
   rename: (id: number, name: string) => call<CvDetail>(`/cv/${id}`, "PATCH", { name }),
   saveStructure: (id: number, s: CvStructure) => call<CvDetail>(`/cv/${id}/structure`, "PATCH", s),
   reExtract: (id: number) => call<{ jobId: string }>(`/cv/${id}/extract`, "POST"),

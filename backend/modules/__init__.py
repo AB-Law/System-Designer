@@ -22,9 +22,20 @@ BUILTIN = {"design"}
 _loaded: dict[str, Path] = {}  # module name -> migrations directory
 
 
-def enabled_modules() -> list[str]:
+def enabled_tokens() -> list[str]:
+    """All comma-separated ENABLED_MODULES entries, including slice flags like `interview.voice`."""
     raw = os.environ.get("ENABLED_MODULES", "design")
     return [n for n in dict.fromkeys(p.strip() for p in raw.split(",")) if n]
+
+
+def enabled_modules() -> list[str]:
+    """Package names to mount. Dotted tokens (slice flags) are ignored here."""
+    return [n for n in enabled_tokens() if "." not in n]
+
+
+def feature_on(flag: str) -> bool:
+    """True when an exact token (e.g. `interview.voice`) is listed in ENABLED_MODULES."""
+    return flag in enabled_tokens()
 
 
 def migration_dirs() -> dict[str, Path]:

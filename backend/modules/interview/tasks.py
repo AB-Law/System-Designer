@@ -1,11 +1,13 @@
-"""Background jobs for the interview module: planning a session and writing its feedback."""
+"""Background jobs for the interview module: planning, feedback, and document embedding."""
 from __future__ import annotations
 
 from typing import Any
 
-from dc_platform import jobs
+from dc_platform import embeddings, jobs
 
-from . import feedback, planner, roles, sessions, sources
+from . import docs, feedback, planner, roles, sessions, sources
+
+SOURCE_KIND = docs.SOURCE_KIND
 
 
 def plan_job(ctx: jobs.JobContext) -> dict[str, Any]:
@@ -34,6 +36,41 @@ def feedback_job(ctx: jobs.JobContext) -> dict[str, Any]:
     return feedback.write(uid, sid, roles.get_row(uid, row["role_id"])["title"])
 
 
+def _embed_doc(ctx: jobs.JobContext) -> dict[str, Any]:
+    uid, doc_id = ctx.user_id, int(ctx.payload["doc_id"])
+    docs.get_row(uid, doc_id)
+    try:
+        docs.mark_running(uid, doc_id)
+        text = docs.file_text(uid, doc_id)
+        ctx.progress(0.05, "Chunking the document")
+
+        def progress(fraction: float, message: str = "") -> None:
+            ctx.progress(0.05 + 0.9 * fraction, message)
+
+        result = embeddings.embed_and_store(
+            uid, SOURCE_KIND, doc_id, text, module="interview", progress=progress, check=ctx.check,
+        )
+        docs.mark_ready(uid, doc_id, int(result["chunks"]))
+        ctx.progress(1.0, "Ready")
+        return {"docId": doc_id, **result}
+    except jobs.JobCancelled:
+        docs.mark_failed(uid, doc_id, "Cancelled.")
+        raise
+    except Exception as e:
+        docs.mark_failed(uid, doc_id, str(getattr(e, "detail", None) or e))
+        raise
+
+
+def embed_job(ctx: jobs.JobContext) -> dict[str, Any]:
+    return _embed_doc(ctx)
+
+
+def reembed_job(ctx: jobs.JobContext) -> dict[str, Any]:
+    return _embed_doc(ctx)
+
+
 def register() -> None:
     jobs.register_handler("interview.plan", plan_job)
     jobs.register_handler("interview.feedback", feedback_job)
+    jobs.register_handler("interview.embed", embed_job)
+    jobs.register_handler("interview.reembed", reembed_job)

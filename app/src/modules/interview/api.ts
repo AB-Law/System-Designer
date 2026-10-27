@@ -1,6 +1,17 @@
-import { ApiError, call } from "../../api";
+import { ApiError, call, postBinary } from "../../api";
 import { parseSse } from "./sse";
-import type { RoleInput, RoleSummary, ScoreRunOption, SessionDetail, SessionSummary, StreamEvent, Style } from "./types";
+import type {
+  DocChunk,
+  DocScope,
+  DocSummary,
+  RoleInput,
+  RoleSummary,
+  ScoreRunOption,
+  SessionDetail,
+  SessionSummary,
+  StreamEvent,
+  Style,
+} from "./types";
 
 export const interviewApi = {
   roles: () => call<RoleSummary[]>("/interview/roles"),
@@ -11,6 +22,22 @@ export const interviewApi = {
   startSession: (roleId: number, style: Style) => call<{ id: number; jobId: string }>("/interview/sessions", "POST", { roleId, style }),
   end: (id: number) => call<{ jobId: string }>(`/interview/sessions/${id}/end`, "POST"),
   removeSession: (id: number) => call<{ ok: boolean }>(`/interview/sessions/${id}`, "DELETE"),
+  /** Turn a short recording into text. Audio is not stored. Requires `interview.voice`. */
+  transcribe: (sessionId: number, blob: Blob) =>
+    postBinary<{ text: string }>(`/interview/sessions/${sessionId}/transcribe`, {}, blob, 60000),
+  docs: (roleId?: number) => call<DocSummary[]>(`/interview/docs${roleId != null ? `?role_id=${roleId}` : ""}`),
+  uploadDoc: (file: File, scope: DocScope, roleId: number | null) =>
+    postBinary<DocSummary>(
+      "/interview/docs",
+      {
+        name: file.name,
+        scope,
+        ...(scope === "role" && roleId != null ? { roleId: String(roleId) } : {}),
+      },
+      file,
+    ),
+  docChunks: (id: number) => call<DocChunk[]>(`/interview/docs/${id}/chunks`),
+  removeDoc: (id: number) => call<{ ok: boolean }>(`/interview/docs/${id}`, "DELETE"),
   /** Finished CV scores a role can start from. Empty when the CV module is off. */
   scoreRuns: async (): Promise<ScoreRunOption[]> => {
     try {
@@ -21,6 +48,8 @@ export const interviewApi = {
     }
   },
 };
+
+export { watchJob } from "../../shared/async";
 
 async function failure(r: Response): Promise<ApiError> {
   let message = r.statusText || "Something went wrong";

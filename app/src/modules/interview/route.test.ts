@@ -6,6 +6,7 @@ const routes: InterviewRoute[] = [
   { name: "new", roleId: null },
   { name: "new", roleId: 4 },
   { name: "session", sessionId: 12 },
+  { name: "docs" },
 ];
 
 describe("interview routes", () => {
@@ -14,7 +15,17 @@ describe("interview routes", () => {
   });
 
   it("sends unknown or malformed paths to the session list", () => {
-    for (const bad of ["nope", "session", "session/x", "session/1/extra", "new/x", "new/1/2", "session/-1", "session/99999999999"]) {
+    for (const bad of [
+      "nope",
+      "session",
+      "session/x",
+      "session/1/extra",
+      "new/x",
+      "new/1/2",
+      "session/-1",
+      "session/99999999999",
+      "docs/1",
+    ]) {
       expect(parse(bad)).toEqual({ name: "sessions" });
     }
   });
@@ -22,10 +33,12 @@ describe("interview routes", () => {
   it("builds hashes", () => {
     expect(hashFor({ name: "sessions" })).toBe("#/interview");
     expect(hashFor({ name: "session", sessionId: 3 })).toBe("#/interview/session/3");
+    expect(hashFor({ name: "docs" })).toBe("#/interview/docs");
   });
 
   it("puts routes under a tab", () => {
     expect(tabOf({ name: "new", roleId: 2 })).toBe("new");
     expect(tabOf({ name: "session", sessionId: 2 })).toBe("sessions");
+    expect(tabOf({ name: "docs" })).toBe("docs");
   });
 });

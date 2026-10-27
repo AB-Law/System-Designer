@@ -1,5 +1,6 @@
 /** Routes inside `#/interview`. Pure parse/format pair; unknown paths land on the session list. */
-export type InterviewRoute = { name: "sessions" } | { name: "new"; roleId: number | null } | { name: "session"; sessionId: number };
+export type InterviewRoute =
+  { name: "sessions" } | { name: "new"; roleId: number | null } | { name: "session"; sessionId: number } | { name: "docs" };
 
 const id = (s: string | undefined): number | null => (s && /^\d{1,9}$/.test(s) ? Number(s) : null);
 
@@ -8,6 +9,7 @@ export function parse(rest: string): InterviewRoute {
   if (a === "new" && b === undefined) return { name: "new", roleId: null };
   if (a === "new" && id(b) !== null && !more.length) return { name: "new", roleId: id(b) };
   if (a === "session" && id(b) !== null && !more.length) return { name: "session", sessionId: id(b)! };
+  if (a === "docs" && b === undefined) return { name: "docs" };
   return { name: "sessions" };
 }
 
@@ -19,6 +21,8 @@ export function format(r: InterviewRoute): string {
       return r.roleId === null ? "new" : `new/${r.roleId}`;
     case "session":
       return `session/${r.sessionId}`;
+    case "docs":
+      return "docs";
   }
 }
 
@@ -32,4 +36,5 @@ export const go = (r: InterviewRoute): void => {
 };
 
 /** Which top tab a route belongs to. */
-export const tabOf = (r: InterviewRoute): "sessions" | "new" => (r.name === "new" ? "new" : "sessions");
+export const tabOf = (r: InterviewRoute): "sessions" | "new" | "docs" =>
+  r.name === "new" ? "new" : r.name === "docs" ? "docs" : "sessions";

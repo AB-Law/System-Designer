@@ -4,7 +4,9 @@ Adapters speak to a provider (OpenAI, LM Studio) or are faked in tests. Modules 
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import os
 import re
 import threading
@@ -23,6 +25,9 @@ from routes.ai import DEFAULT_OPENAI_MODEL, OPENAI_BASE, _is_reasoning_model, _l
 Message = dict[str, str]
 M = TypeVar("M", bound=BaseModel)
 
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_EMBEDDING_DIMS = 1536
+
 
 class LLMError(Exception):
     """The call failed for good (bad request, bad key, invalid output after repair)."""
@@ -37,6 +42,13 @@ class Completion:
     text: str
     tokens_in: int = 0
     tokens_out: int = 0
+    model: str = ""
+
+
+@dataclass
+class EmbeddingBatch:
+    vectors: list[list[float]]
+    tokens_in: int = 0
     model: str = ""
 
 
@@ -110,6 +122,20 @@ class _HttpAdapter:
         except httpx.HTTPError as e:
             raise LLMTransient(f"could not reach the AI endpoint: {e.__class__.__name__}") from e
 
+    def embed(self, texts: list[str], *, model: str, dims: int | None) -> EmbeddingBatch:
+        raise LLMError(
+            "This AI provider does not support embeddings. Set OPENAI_API_KEY (and EMBEDDING_MODEL) to embed documents."
+        )
+
+
+def _embedding_model() -> str:
+    return os.environ.get("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
+
+
+def _embedding_dims() -> int | None:
+    raw = os.environ.get("EMBEDDING_DIMS")
+    return int(raw) if raw else None
+
 
 class OpenAIAdapter(_HttpAdapter):
     def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
@@ -119,6 +145,23 @@ class OpenAIAdapter(_HttpAdapter):
         self.base = OPENAI_BASE  # fixed: a custom URL could redirect the server key elsewhere
         self.model = model or os.environ.get("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
         self.headers = {"Authorization": f"Bearer {key}"}
+
+    def embed(self, texts: list[str], *, model: str, dims: int | None) -> EmbeddingBatch:
+        body: dict[str, Any] = {"input": texts, "model": model, "encoding_format": "float"}
+        if dims:
+            body["dimensions"] = dims
+        try:
+            r = httpx.post(f"{self.base}/embeddings", json=body, headers=self.headers, timeout=self.timeout, follow_redirects=False)
+        except httpx.HTTPError as e:
+            raise LLMTransient(f"could not reach the AI endpoint: {e.__class__.__name__}") from e
+        self._raise(r)
+        payload = r.json()
+        rows = sorted(payload.get("data") or [], key=lambda row: row.get("index", 0))
+        vectors = [list(row["embedding"]) for row in rows]
+        if len(vectors) != len(texts):
+            raise LLMError("provider returned the wrong number of embeddings")
+        u = payload.get("usage") or {}
+        return EmbeddingBatch(vectors, int(u.get("prompt_tokens", 0) or u.get("total_tokens", 0)), payload.get("model") or model)
 
 
 class LMStudioAdapter(_HttpAdapter):
@@ -136,10 +179,18 @@ class LMStudioAdapter(_HttpAdapter):
 class FakeAdapter:
     """Scripted adapter for tests: no network, no key. `replies` are returned in order (last one repeats)."""
 
-    def __init__(self, replies: list[str | Exception] | Callable[[list[Message]], str] | None = None, model: str = "fake") -> None:
+    def __init__(
+        self,
+        replies: list[str | Exception] | Callable[[list[Message]], str] | None = None,
+        model: str = "fake",
+        *,
+        embed_dims: int = 8,
+    ) -> None:
         self.model = model
         self.replies = replies if replies is not None else ["ok"]
         self.calls: list[list[Message]] = []
+        self.embed_dims = embed_dims
+        self.embed_calls: list[list[str]] = []
 
     def _next(self, messages: list[Message]) -> str:
         self.calls.append(messages)
@@ -158,6 +209,22 @@ class FakeAdapter:
         text = self._next(messages)
         for i in range(0, len(text), 4):
             yield text[i : i + 4]
+
+    def embed(self, texts: list[str], *, model: str, dims: int | None) -> EmbeddingBatch:
+        self.embed_calls.append(list(texts))
+        size = dims or self.embed_dims
+        vectors = [_fake_vector(t, size) for t in texts]
+        return EmbeddingBatch(vectors, sum(estimate_tokens(t) for t in texts), model or "fake-embed")
+
+
+def _fake_vector(text: str, dims: int) -> list[float]:
+    """Deterministic bag-of-tokens unit vector so overlapping words score higher in tests (no network)."""
+    vals = [0.0] * dims
+    for token in re.findall(r"[a-z0-9]+", text.lower()):
+        h = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16)
+        vals[h % dims] += 1.0
+    norm = math.sqrt(sum(v * v for v in vals)) or 1.0
+    return [v / norm for v in vals]
 
 
 def _loads(text: str) -> Any:
@@ -255,6 +322,37 @@ class LLMClient:
                     user_id, module, self.adapter.model, "stream",
                     sum(estimate_tokens(m["content"]) for m in messages), estimate_tokens("".join(out)),
                 )
+
+    @property
+    def embedding_model(self) -> str:
+        return _embedding_model()
+
+    def embed(self, texts: list[str], *, user_id: int, module: str) -> list[list[float]]:
+        if not texts:
+            return []
+        usage.check_quota(user_id, rate_limited=False)
+        model = _embedding_model()
+        dims = _embedding_dims()
+        embed_fn = getattr(self.adapter, "embed", None)
+        if embed_fn is None:
+            raise LLMError(
+                "This AI provider does not support embeddings. Set OPENAI_API_KEY (and EMBEDDING_MODEL) to embed documents."
+            )
+
+        def once() -> EmbeddingBatch:
+            return embed_fn(texts, model=model, dims=dims)
+
+        for attempt in range(self.retries + 1):
+            try:
+                with self._slots:
+                    batch = once()
+                usage.record(user_id, module, batch.model or model, "embed", batch.tokens_in, 0)
+                return batch.vectors
+            except LLMTransient:
+                if attempt == self.retries:
+                    raise
+                self._sleep(self.backoff * 2**attempt)
+        raise AssertionError("unreachable")
 
 
 _factory: Callable[[], Adapter] | None = None

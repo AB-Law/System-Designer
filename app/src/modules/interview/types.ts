@@ -120,3 +120,26 @@ export interface ScoreRunOption {
   jdTitle: string;
   cvName?: string;
 }
+
+export type DocScope = "global" | "role";
+export type DocStatus = "queued" | "running" | "ready" | "failed";
+
+export interface DocSummary {
+  id: number;
+  name: string;
+  scope: DocScope;
+  roleId: number | null;
+  status: DocStatus;
+  error: string | null;
+  chunkCount: number;
+  jobId: string | null;
+  bytes: number;
+  created: number;
+  updated: number;
+}
+
+export interface DocChunk {
+  index: number;
+  page: number;
+  text: string;
+}

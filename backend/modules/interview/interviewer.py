@@ -24,6 +24,7 @@ class Context:
     cv: str
     style: Style
     plan: Plan
+    references: str = ""
 
 
 def next_item(plan: Plan, turns: list[Turn]) -> PlanItem | None:
@@ -44,9 +45,10 @@ def directive(move: Move, plan: Plan, turns: list[Turn]) -> str:
 
 
 def system_prompt(ctx: Context, move_directive: str) -> str:
+    refs = f"\n{ctx.references}\n" if ctx.references else ""
     return prompts.render(
         "interviewer", persona=persona(ctx.role), role=ctx.role["title"], job=ctx.job, cv=candidate_text(ctx.cv),
-        tone=prompts.section("interviewer_moves", f"tone-{ctx.style.tone}"), directive=move_directive,
+        references=refs, tone=prompts.section("interviewer_moves", f"tone-{ctx.style.tone}"), directive=move_directive,
     )
 
 
