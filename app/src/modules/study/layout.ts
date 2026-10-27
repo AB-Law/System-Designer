@@ -1,8 +1,8 @@
 import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
 
-const NODE_W = 180;
-const NODE_H = 48;
+const NODE_W = 230;
+const NODE_H = 60;
 
 /** Tree layout for mind-map nodes using dagre (LR). */
 export function layoutMindMap(nodes: Node[], edges: Edge[]): Node[] {

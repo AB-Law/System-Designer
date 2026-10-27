@@ -24,8 +24,11 @@ export const studyApi = {
   review: (id: number, rating: Rating) => call<Card>(`/study/cards/${id}/review`, "POST", { rating }),
   deckStats: (id: number) => call<StudyStats>(`/study/decks/${id}/stats`),
   stats: () => call<StudyStats>("/study/decks/stats"),
+  /** Past CV scores, each of which holds the job description it was scored against. Fails when the CV module is off. */
+  scoreRuns: () => call<{ id: number; jdTitle: string; cvName?: string }[]>("/cv/score/history"),
   maps: () => call<MapSummary[]>("/study/maps"),
-  createMap: (body: { sourceKind: "lesson" | "jd" | "document"; sourceRef: string }) => call<MindMap>("/study/maps", "POST", body),
+  createMap: (body: { sourceKind: "lesson" | "jd" | "score_run" | "document"; sourceRef: string }) =>
+    call<MindMap>("/study/maps", "POST", body),
   map: (id: number) => call<MindMap>(`/study/maps/${id}`),
   regenerateMap: (id: number) => call<MindMap>(`/study/maps/${id}/regenerate`, "POST"),
   patchNode: (mapId: number, nodeId: string, body: { label?: string; summary?: string; delete?: boolean; addChildLabel?: string }) =>

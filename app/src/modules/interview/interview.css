@@ -377,3 +377,17 @@
     grid-template-columns: 6rem 1fr 2.2rem;
   }
 }
+.iv-jd-tag {
+  display: block;
+  margin-top: 2px;
+  color: var(--gold-hi);
+  font-size: 12px;
+  font-style: normal;
+}
+.iv-jd-fit {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--gold-lo);
+  background: var(--bg-2);
+  font-size: 13.5px;
+}

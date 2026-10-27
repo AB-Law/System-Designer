@@ -12,7 +12,7 @@ from dc_platform import jobs, llm
 
 from . import content, decks, generate, maps, prompts, sources
 
-MapSource = Literal["lesson", "jd", "document"]
+MapSource = Literal["lesson", "jd", "score_run", "document"]
 
 
 class MapNodeIn(BaseModel):
@@ -148,8 +148,10 @@ def json_sources(raw: str) -> list[str]:
 def _corpus(user_id: int, kind: str, ref: str) -> str:
     if kind == "lesson":
         return content.lesson_text(ref)
-    if kind == "jd":
-        analysis = sources.analyse_jd(ref, user_id)
+    if kind in ("jd", "score_run"):
+        if kind == "score_run" and not ref.isdigit():
+            raise HTTPException(422, "Score run id must be a number.")
+        analysis = sources.analyse_jd(ref, user_id) if kind == "jd" else sources.score_run(user_id, int(ref))
         parts = [analysis.get("title") or "", *[r.get("text", "") for r in analysis.get("requirements") or []]]
         parts.extend(analysis.get("talking_points") or [])
         return "\n".join(str(p) for p in parts if p) or ref

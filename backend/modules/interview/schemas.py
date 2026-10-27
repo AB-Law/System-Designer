@@ -38,6 +38,7 @@ class PlanItem(BaseModel):
     category: Category
     question: str = Field(min_length=5, max_length=500)
     focus: str = Field(default="", max_length=80)
+    jd_link: str = Field(default="", max_length=200)  # the requirement in the job description this question probes
 
 
 class Plan(BaseModel):

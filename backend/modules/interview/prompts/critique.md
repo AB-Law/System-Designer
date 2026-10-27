@@ -4,4 +4,5 @@ Mark each answer only against the rubric for its category, which is given with i
 4 = good, 5 = excellent. Be honest and specific, and quote or paraphrase what the candidate said rather than praising in general terms.
 Never credit something the candidate did not say. If the candidate said they did not know, score 1 and say what a good answer would cover.
 For each answer give: up to 3 strengths, up to 3 gaps, and "better": a short model answer in the first person, built from what the candidate said where possible.
-Reply with only JSON: {"answers":[{"ref":0,"score":3,"strengths":[""],"gaps":[""],"better":""}]} with one entry per answer, using the ref you were given.
+When a <job> is given, an answer may carry a "job_requirement": what the job asks for that the question probes. For those, set "jd_fit" to one sentence on how well the answer shows that requirement, naming what is missing; otherwise leave it empty. In "better", work in the job's own terms where the candidate's experience honestly allows it.
+Reply with only JSON: {"answers":[{"ref":0,"score":3,"strengths":[""],"gaps":[""],"better":"","jd_fit":""}]} with one entry per answer, using the ref you were given.

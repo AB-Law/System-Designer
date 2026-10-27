@@ -7,7 +7,7 @@ import { ModuleSwitcher } from "../shell/ModuleSwitcher";
 import { goHub, hubOn } from "../shell/hub";
 import { goModule } from "../shell/route";
 import { DESIGN } from "../shell/registry";
-import { useModules } from "../shell/useActiveModule";
+import { useActiveModule, useModules } from "../shell/useActiveModule";
 
 export function TopBar() {
   const problems = useStore((s) => s.problems);
@@ -25,8 +25,9 @@ export function TopBar() {
   const signOut = useStore((s) => s.signOut);
   const setLandingSeen = useStore((s) => s.setLandingSeen);
   const modules = useModules();
+  const inDesign = useActiveModule() === null; // the problem picker, cost chip and review buttons belong to Design only
   const [menu, setMenu] = useState(false);
-  const workbench = view === "canvas" || view === "roadmap";
+  const workbench = inDesign && (view === "canvas" || view === "roadmap");
   const run = useRun();
   const over = run?.budget !== undefined && run.cost > run.budget;
 
@@ -101,14 +102,16 @@ export function TopBar() {
               Sign in
             </button>
           ))}
-        <button
-          type="button"
-          className={"btn tall" + (view === "roadmap" ? " primary" : " ghost")}
-          onClick={() => setView(view === "roadmap" ? "canvas" : "roadmap")}
-          aria-pressed={view === "roadmap"}
-        >
-          {view === "roadmap" ? "Canvas" : "Roadmap"}
-        </button>
+        {inDesign && (
+          <button
+            type="button"
+            className={"btn tall" + (view === "roadmap" ? " primary" : " ghost")}
+            onClick={() => setView(view === "roadmap" ? "canvas" : "roadmap")}
+            aria-pressed={view === "roadmap"}
+          >
+            {view === "roadmap" ? "Canvas" : "Roadmap"}
+          </button>
+        )}
         {workbench && (
           <>
             <button

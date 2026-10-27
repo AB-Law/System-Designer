@@ -211,6 +211,21 @@ def test_mind_map_lesson_and_node_deck(clients: tuple[TestClient, TestClient]) -
     assert any(n["label"] == "Extra idea" for n in patched["nodes"])
 
 
+def test_mind_map_from_job_description_and_score_run(clients: tuple[TestClient, TestClient], monkeypatch: pytest.MonkeyPatch) -> None:
+    alice, _ = clients
+    from modules.study import sources as study_sources
+
+    analysis = {"title": "Backend engineer", "requirements": [{"text": "Kafka streaming", "kind": "must"}], "talking_points": ["scaling the API"]}
+    monkeypatch.setattr(study_sources, "analyse_jd", lambda text, user_id: analysis)
+    monkeypatch.setattr(study_sources, "score_run", lambda user_id, run_id: analysis)
+    for kind, ref in (("jd", "We need a backend engineer with Kafka and Go for our payments platform."), ("score_run", "7")):
+        m = alice.post("/api/study/maps", json={"sourceKind": kind, "sourceRef": ref})
+        assert m.status_code == 200, m.text
+        assert wait_job(alice, m.json()["jobId"])["status"] == "done"
+        assert alice.get(f"/api/study/maps/{m.json()['id']}").json()["status"] == "ready"
+    assert alice.post("/api/study/maps", json={"sourceKind": "score_run", "sourceRef": "abc"}).status_code == 422
+
+
 def test_maps_hidden_without_flag(app_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLED_MODULES", "design,study")
     from main import create_app

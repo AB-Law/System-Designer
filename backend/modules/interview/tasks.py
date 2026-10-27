@@ -39,7 +39,9 @@ def feedback_job(ctx: jobs.JobContext) -> dict[str, Any]:
     uid, sid = ctx.user_id, int(ctx.payload["session_id"])
     row = sessions.get_row(uid, sid)
     ctx.progress(0.3, "Marking your answers")
-    return feedback.write(uid, sid, roles.get_row(uid, row["role_id"])["title"])
+    role = roles.get_row(uid, row["role_id"])
+    job = roles.job_text(role) if role["jd_text"] else ""  # from the reading stored when the plan was made
+    return feedback.write(uid, sid, role["title"], job)
 
 
 def _embed_doc(ctx: jobs.JobContext) -> dict[str, Any]:

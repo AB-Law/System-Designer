@@ -27,9 +27,15 @@ function Answer({ a }: { a: AnswerFeedback }) {
         <span>
           <small>{CATEGORY_LABELS[a.category]}</small>
           {a.question}
+          {a.jdLink && <em className="iv-jd-tag">From the job: {a.jdLink}</em>}
         </span>
       </summary>
       <blockquote>{a.answer}</blockquote>
+      {a.jdFit && (
+        <p className="iv-jd-fit">
+          <strong>Against the job description:</strong> {a.jdFit}
+        </p>
+      )}
       <div className="iv-two">
         <Bullets title="What worked" items={a.strengths} />
         <Bullets title="What to improve" items={a.gaps} />
