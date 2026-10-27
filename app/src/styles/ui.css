@@ -74,6 +74,29 @@
   background: linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
   transition: width 0.25s;
 }
+.ui-job-progress {
+  display: grid;
+  gap: 8px;
+}
+.ui-job-cancel {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ui-job-cancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line);
+}
+.ui-job-cancel:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .ui-ring {
   position: relative;
   display: grid;

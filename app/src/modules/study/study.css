@@ -1,0 +1,201 @@
+/* Study module. Loaded with the module screen only. */
+.st-module {
+  max-width: 920px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.st-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 400;
+}
+.st-body,
+.st-stack {
+  display: grid;
+  gap: 16px;
+}
+.st-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.st-hint {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.st-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--gold-hi);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.st-link:hover {
+  text-decoration: underline;
+}
+.st-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.st-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.st-field input,
+.st-field textarea,
+.st-field select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+}
+.st-field textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.st-decks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.st-deck {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.st-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-stats li {
+  display: grid;
+  gap: 2px;
+}
+.st-stats b {
+  font-size: 22px;
+  font-family: var(--display);
+  font-weight: 400;
+}
+.st-stats span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.st-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.st-card-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.st-card-row .st-row {
+  justify-content: space-between;
+}
+.st-review {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+  padding: 24px 12px;
+}
+.st-flip {
+  width: min(100%, 520px);
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(160deg, var(--panel) 0%, var(--bg-2) 100%);
+  padding: 28px 24px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--bg) 40%, transparent);
+}
+.st-flip-label {
+  color: var(--faint);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.st-flip-text {
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.st-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.st-rates button kbd {
+  opacity: 0.55;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.st-map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 12px;
+  min-height: 480px;
+}
+@media (max-width: 840px) {
+  .st-map-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.st-map-canvas {
+  height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-2);
+}
+.st-map-panel {
+  align-self: start;
+}
+.st-sources {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.st-reply {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  white-space: pre-wrap;
+  font-size: 13.5px;
+}
