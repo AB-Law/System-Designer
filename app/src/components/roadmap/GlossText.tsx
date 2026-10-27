@@ -22,7 +22,15 @@ export function GlossText({ text }: { text: string }) {
         p.kind === "text" ? (
           <span key={i}>{p.value}</span>
         ) : (
-          <abbr key={i} className="gloss-term" data-tip={p.plain} aria-label={`${p.label}: ${p.plain}`} tabIndex={0} onMouseEnter={placeTip} onFocus={placeTip}>
+          <abbr
+            key={i}
+            className="gloss-term"
+            data-tip={p.plain}
+            aria-label={`${p.label}: ${p.plain}`}
+            tabIndex={0}
+            onMouseEnter={placeTip}
+            onFocus={placeTip}
+          >
             {p.label}
           </abbr>
         ),
@@ -71,7 +79,15 @@ export function glosser() {
       const plain = lookupTerm(x.key)?.plain ?? "";
       if (x.start > last) out.push(text.slice(last, x.start));
       out.push(
-        <abbr key={i} className="gloss-term" data-tip={plain} aria-label={`${text.slice(x.start, x.end)}: ${plain}`} tabIndex={0} onMouseEnter={placeTip} onFocus={placeTip}>
+        <abbr
+          key={i}
+          className="gloss-term"
+          data-tip={plain}
+          aria-label={`${text.slice(x.start, x.end)}: ${plain}`}
+          tabIndex={0}
+          onMouseEnter={placeTip}
+          onFocus={placeTip}
+        >
           {text.slice(x.start, x.end)}
         </abbr>,
       );
