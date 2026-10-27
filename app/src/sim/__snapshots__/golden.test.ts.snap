@@ -1,0 +1,173 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden design analysis > library design stays stable 1`] = `
+{
+  "confidence": {
+    "faultIsolation": 25,
+    "latency": 1,
+    "reliability": 77,
+    "scalability": 40,
+  },
+  "cost": 3474.4,
+  "findings": [
+    "unguarded-db",
+    "query-scan-db",
+    "no-rate-limit",
+    "unhosted-reminders",
+    "monolith",
+    "lb-ok",
+    "sat-db",
+    "sat-db,si",
+  ],
+  "requirements": [
+    [
+      "r-fast",
+      false,
+    ],
+    [
+      "r-rush",
+      false,
+    ],
+    [
+      "r-budget",
+      true,
+    ],
+    [
+      "r-search",
+      true,
+    ],
+    [
+      "r-checkout",
+      true,
+    ],
+    [
+      "r-reminders",
+      false,
+    ],
+    [
+      "r-consistency",
+      null,
+    ],
+    [
+      "r-queries",
+      false,
+    ],
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "score": 53,
+    },
+    {
+      "id": "rush",
+      "score": 26,
+    },
+    {
+      "id": "db_down",
+      "score": 53,
+    },
+  ],
+  "score": 40,
+  "scoreParts": {
+    "capped": undefined,
+    "confidence": 36,
+    "requirements": 38,
+    "scenarios": 44,
+  },
+}
+`;
+
+exports[`golden design analysis > url shortener design stays stable 1`] = `
+{
+  "confidence": {
+    "faultIsolation": 21,
+    "latency": 68,
+    "reliability": 68,
+    "scalability": 28,
+  },
+  "cost": 3450.4,
+  "findings": [
+    "unguarded-db",
+    "single-region",
+    "no-rate-limit",
+    "unhosted-redirect",
+    "unhosted-create_link",
+    "unhosted-click_count",
+    "unhosted-expiry",
+    "lb-ok",
+    "sat-db",
+    "sat-db,si",
+  ],
+  "requirements": [
+    [
+      "r-fast",
+      false,
+    ],
+    [
+      "r-viral",
+      false,
+    ],
+    [
+      "r-budget",
+      true,
+    ],
+    [
+      "r-cache",
+      false,
+    ],
+    [
+      "r-create",
+      false,
+    ],
+    [
+      "r-count",
+      false,
+    ],
+    [
+      "r-count-iso",
+      false,
+    ],
+    [
+      "r-expiry",
+      false,
+    ],
+    [
+      "r-code",
+      null,
+    ],
+    [
+      "r-global",
+      false,
+    ],
+  ],
+  "scenarios": [
+    {
+      "id": "normal",
+      "score": 36,
+    },
+    {
+      "id": "viral",
+      "score": 24,
+    },
+    {
+      "id": "counter_slow",
+      "score": 36,
+    },
+    {
+      "id": "cache_loss",
+      "score": 36,
+    },
+    {
+      "id": "global",
+      "score": 25,
+    },
+  ],
+  "score": 30,
+  "scoreParts": {
+    "capped": undefined,
+    "confidence": 46,
+    "requirements": 10,
+    "scenarios": 31,
+  },
+}
+`;
