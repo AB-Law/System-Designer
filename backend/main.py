@@ -32,6 +32,7 @@ load_env()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     connect().close()
+    modules.on_startup()
     announce_invite_code()
     yield
 

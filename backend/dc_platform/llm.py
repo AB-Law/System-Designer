@@ -1,0 +1,283 @@
+"""One LLM client for every module: JSON mode with validation, streaming, retries, a concurrency limit and usage.
+
+Adapters speak to a provider (OpenAI, LM Studio) or are faked in tests. Modules only call LLMClient.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import threading
+import time
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from typing import Any, Protocol, TypeVar
+
+import httpx
+from fastapi import HTTPException
+from pydantic import BaseModel, ValidationError
+
+from dc_platform import usage
+from routes.ai import DEFAULT_OPENAI_MODEL, OPENAI_BASE, _is_reasoning_model, _loopback_base
+
+Message = dict[str, str]
+M = TypeVar("M", bound=BaseModel)
+
+
+class LLMError(Exception):
+    """The call failed for good (bad request, bad key, invalid output after repair)."""
+
+
+class LLMTransient(LLMError):
+    """Worth retrying: timeout, connection error, 429 or 5xx."""
+
+
+@dataclass
+class Completion:
+    text: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    model: str = ""
+
+
+class Adapter(Protocol):
+    model: str
+
+    def chat(self, messages: list[Message], *, json_mode: bool, temperature: float | None) -> Completion: ...
+
+    def stream(self, messages: list[Message], *, temperature: float | None) -> Iterator[str]: ...
+
+
+def estimate_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
+
+
+class _HttpAdapter:
+    """OpenAI-compatible chat/completions over httpx."""
+
+    base: str
+    model: str
+    headers: dict[str, str]
+    timeout: float = 120.0
+    supports_json_mode = True
+
+    def _payload(self, messages: list[Message], json_mode: bool, temperature: float | None, stream: bool) -> dict[str, Any]:
+        p: dict[str, Any] = {"messages": messages}
+        if self.model:
+            p["model"] = self.model
+        if not _is_reasoning_model(self.model):
+            p["temperature"] = 0.2 if temperature is None else temperature
+        if json_mode and self.supports_json_mode:
+            p["response_format"] = {"type": "json_object"}
+        if stream:
+            p["stream"] = True
+            p["stream_options"] = {"include_usage": True}
+        return p
+
+    @staticmethod
+    def _raise(r: httpx.Response) -> None:
+        if r.status_code == 429 or r.status_code >= 500:
+            raise LLMTransient(f"provider returned {r.status_code}")
+        if r.status_code >= 400:
+            raise LLMError(f"provider returned {r.status_code}: {r.text[:300]}")
+
+    def chat(self, messages: list[Message], *, json_mode: bool, temperature: float | None) -> Completion:
+        try:
+            r = httpx.post(f"{self.base}/chat/completions", json=self._payload(messages, json_mode, temperature, False), headers=self.headers, timeout=self.timeout, follow_redirects=False)
+        except httpx.HTTPError as e:
+            raise LLMTransient(f"could not reach the AI endpoint: {e.__class__.__name__}") from e
+        self._raise(r)
+        body = r.json()
+        u = body.get("usage") or {}
+        text = (body.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        return Completion(text, int(u.get("prompt_tokens", 0)), int(u.get("completion_tokens", 0)), body.get("model") or self.model)
+
+    def stream(self, messages: list[Message], *, temperature: float | None) -> Iterator[str]:
+        try:
+            with httpx.stream("POST", f"{self.base}/chat/completions", json=self._payload(messages, False, temperature, True), headers=self.headers, timeout=self.timeout, follow_redirects=False) as r:
+                if r.status_code >= 400:
+                    r.read()
+                    self._raise(r)
+                for line in r.iter_lines():
+                    if not line.startswith("data:") or line.strip() == "data: [DONE]":
+                        continue
+                    try:
+                        delta = json.loads(line[5:])["choices"][0]["delta"].get("content")
+                    except (ValueError, KeyError, IndexError):
+                        continue
+                    if delta:
+                        yield delta
+        except httpx.HTTPError as e:
+            raise LLMTransient(f"could not reach the AI endpoint: {e.__class__.__name__}") from e
+
+
+class OpenAIAdapter(_HttpAdapter):
+    def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
+        key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        if not key:
+            raise LLMError("No OpenAI key. Set OPENAI_API_KEY in backend/.env.")
+        self.base = OPENAI_BASE  # fixed: a custom URL could redirect the server key elsewhere
+        self.model = model or os.environ.get("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
+        self.headers = {"Authorization": f"Bearer {key}"}
+
+
+class LMStudioAdapter(_HttpAdapter):
+    supports_json_mode = False  # LM Studio rejects response_format json_object for many models; the prompt asks for JSON
+
+    def __init__(self, model: str | None = None, base_url: str | None = None) -> None:
+        try:
+            self.base = _loopback_base(base_url or os.environ.get("LMSTUDIO_URL", "http://localhost:1234/v1"))
+        except HTTPException as e:  # localhost-only rule shared with routes/ai.py
+            raise LLMError(str(e.detail)) from e
+        self.model = model or os.environ.get("LMSTUDIO_MODEL") or ""
+        self.headers = {}
+
+
+class FakeAdapter:
+    """Scripted adapter for tests: no network, no key. `replies` are returned in order (last one repeats)."""
+
+    def __init__(self, replies: list[str | Exception] | Callable[[list[Message]], str] | None = None, model: str = "fake") -> None:
+        self.model = model
+        self.replies = replies if replies is not None else ["ok"]
+        self.calls: list[list[Message]] = []
+
+    def _next(self, messages: list[Message]) -> str:
+        self.calls.append(messages)
+        if callable(self.replies):
+            return self.replies(messages)
+        r = self.replies[min(len(self.calls) - 1, len(self.replies) - 1)]
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    def chat(self, messages: list[Message], *, json_mode: bool, temperature: float | None) -> Completion:
+        text = self._next(messages)
+        return Completion(text, sum(estimate_tokens(m["content"]) for m in messages), estimate_tokens(text), self.model)
+
+    def stream(self, messages: list[Message], *, temperature: float | None) -> Iterator[str]:
+        text = self._next(messages)
+        for i in range(0, len(text), 4):
+            yield text[i : i + 4]
+
+
+def _loads(text: str) -> Any:
+    t = text.strip()
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", t, re.S)
+    if fence:
+        t = fence.group(1)
+    try:
+        return json.loads(t)
+    except ValueError:
+        start, end = t.find("{"), t.rfind("}")
+        if start >= 0 and end > start:
+            return json.loads(t[start : end + 1])
+        raise
+
+
+class LLMClient:
+    def __init__(
+        self,
+        adapter: Adapter,
+        *,
+        concurrency: int | None = None,
+        retries: int = 2,
+        backoff: float = 1.0,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self.adapter = adapter
+        self.retries = retries
+        self.backoff = backoff
+        self._sleep = sleep
+        self._slots = threading.BoundedSemaphore(concurrency or int(os.environ.get("LLM_CONCURRENCY", "4")))
+
+    def _call(self, fn: Callable[[], Completion]) -> Completion:
+        for attempt in range(self.retries + 1):
+            try:
+                with self._slots:
+                    return fn()
+            except LLMTransient:
+                if attempt == self.retries:
+                    raise
+                self._sleep(self.backoff * 2**attempt)
+        raise AssertionError("unreachable")
+
+    def complete(
+        self,
+        messages: list[Message],
+        *,
+        user_id: int,
+        module: str,
+        temperature: float | None = None,
+    ) -> str:
+        usage.check_quota(user_id)
+        c = self._call(lambda: self.adapter.chat(messages, json_mode=False, temperature=temperature))
+        usage.record(user_id, module, c.model or self.adapter.model, "complete", c.tokens_in, c.tokens_out)
+        return c.text
+
+    def complete_json(
+        self,
+        messages: list[Message],
+        schema: type[M],
+        *,
+        user_id: int,
+        module: str,
+        temperature: float | None = None,
+    ) -> M:
+        """JSON mode: parse, validate against a pydantic model, and ask once for a repair if it does not fit."""
+        usage.check_quota(user_id)
+        convo = list(messages)
+        last_err = ""
+        for _ in range(2):
+            c = self._call(lambda: self.adapter.chat(convo, json_mode=True, temperature=temperature))
+            usage.record(user_id, module, c.model or self.adapter.model, "json", c.tokens_in, c.tokens_out)
+            try:
+                return schema.model_validate(_loads(c.text))
+            except (ValueError, ValidationError) as e:
+                last_err = str(e)[:300]
+                convo = [
+                    *messages,
+                    {"role": "assistant", "content": c.text},
+                    {"role": "user", "content": f"That was not valid for the required JSON shape ({last_err}). Reply with only the corrected JSON."},
+                ]
+        raise LLMError(f"model did not return valid JSON: {last_err}")
+
+    def stream(self, messages: list[Message], *, user_id: int, module: str, temperature: float | None = None) -> Iterator[str]:
+        usage.check_quota(user_id)
+        out: list[str] = []
+        with self._slots:
+            try:
+                for piece in self.adapter.stream(messages, temperature=temperature):
+                    out.append(piece)
+                    yield piece
+            finally:
+                # providers rarely report usage mid-stream, so estimate; recorded even if the consumer stops early
+                usage.record(
+                    user_id, module, self.adapter.model, "stream",
+                    sum(estimate_tokens(m["content"]) for m in messages), estimate_tokens("".join(out)),
+                )
+
+
+_factory: Callable[[], Adapter] | None = None
+_client: LLMClient | None = None
+
+
+def set_adapter_factory(factory: Callable[[], Adapter] | None) -> None:
+    """Tests (and later per-user settings) swap the provider here."""
+    global _factory, _client
+    _factory, _client = factory, None
+
+
+def default_adapter() -> Adapter:
+    provider = os.environ.get("LLM_PROVIDER") or ("openai" if os.environ.get("OPENAI_API_KEY") else "lmstudio")
+    if provider == "openai":
+        return OpenAIAdapter()
+    if provider == "lmstudio":
+        return LMStudioAdapter()
+    raise LLMError(f"unknown LLM_PROVIDER {provider!r}")
+
+
+def get_client() -> LLMClient:
+    global _client
+    if _client is None:
+        _client = LLMClient((_factory or default_adapter)())
+    return _client

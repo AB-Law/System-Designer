@@ -34,6 +34,9 @@ def migration_dirs() -> dict[str, Path]:
 def register(app: FastAPI) -> list[str]:
     """Mount every enabled module that imports cleanly. Returns the names mounted."""
     _loaded.clear()
+    from dc_platform import jobs
+
+    app.include_router(jobs.router)
     mounted: list[str] = []
     for name in enabled_modules():
         if name in BUILTIN:
@@ -48,3 +51,10 @@ def register(app: FastAPI) -> list[str]:
         except Exception:
             log.exception("module %r failed to load and was skipped", name)
     return mounted
+
+
+def on_startup() -> None:
+    """Called from the app lifespan: resume background jobs that a restart interrupted."""
+    from dc_platform import jobs
+
+    jobs.recover()

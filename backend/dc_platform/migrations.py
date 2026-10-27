@@ -59,7 +59,8 @@ def migrate_loaded_modules(conn: sqlite3.Connection) -> None:
     import modules  # lazy: modules imports nothing from db at import time
 
     db_file = str(conn.execute("PRAGMA database_list").fetchone()[2])
-    for name, directory in modules.migration_dirs().items():
+    dirs = {"platform": Path(__file__).parent / "migrations", **modules.migration_dirs()}
+    for name, directory in dirs.items():
         key = (db_file, name)
         if key in _DONE:
             continue
