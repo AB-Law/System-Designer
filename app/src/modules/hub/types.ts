@@ -73,7 +73,17 @@ export interface Streak {
   week: { date: string; active: boolean }[];
 }
 
+export interface SetupStep {
+  key: string;
+  title: string;
+  hint: string;
+  href: string;
+  done: boolean;
+  module: string;
+}
+
 export interface Summary {
+  setup: SetupStep[];
   target: ActiveTarget | null;
   targets: Target[];
   readiness: TopicCard[];

@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { goModule } from "./route";
 import { useActiveModule, useModules } from "./useActiveModule";
 
@@ -5,6 +6,7 @@ import { useActiveModule, useModules } from "./useActiveModule";
 export function ModuleSwitcher() {
   const modules = useModules();
   const active = useActiveModule();
+  const setLandingSeen = useStore((s) => s.setLandingSeen);
   if (modules.length < 2) return null;
   const activeId = active?.module.id ?? "design";
   return (
@@ -15,7 +17,10 @@ export function ModuleSwitcher() {
           type="button"
           className={m.id === activeId ? "on" : ""}
           aria-current={m.id === activeId ? "page" : undefined}
-          onClick={() => goModule(m, modules)}
+          onClick={() => {
+            if (!m.hashPrefix) setLandingSeen(true); // choosing Design skips the landing page
+            goModule(m, modules);
+          }}
         >
           {m.title}
         </button>

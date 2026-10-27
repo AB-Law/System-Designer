@@ -1,0 +1,65 @@
+/* Landing page for visitors who have not signed in. Loaded with the Landing component only. */
+.landing {
+  overflow: auto;
+  flex: 1;
+}
+.landing-in {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+  display: grid;
+  gap: 40px;
+}
+.landing h1 {
+  margin: 8px 0 12px;
+  max-width: 18ch;
+  font-family: var(--display);
+  font-size: clamp(36px, 6vw, 58px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+.landing h2 {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 400;
+}
+.landing-sub {
+  max-width: 60ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.landing-how,
+.landing-modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-how li,
+.landing-modules li {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.landing-how li > span:last-child,
+.landing-modules li > span {
+  color: var(--muted);
+}
+.landing-n {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 50%;
+  color: var(--gold-hi);
+  font: 12px var(--mono);
+}

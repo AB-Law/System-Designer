@@ -6,8 +6,10 @@ import { go } from "../route";
 import type { Summary } from "../types";
 import { RecentActivity, StreakCard } from "./ActivityCards";
 import { FitCard } from "./FitCard";
+import { ModuleCards } from "./ModuleCards";
 import { NextActions } from "./NextActions";
 import { ReadinessGrid } from "./ReadinessGrid";
+import { SetupCard } from "./SetupCard";
 import { TargetSwitcher } from "./TargetSwitcher";
 
 export function Dashboard() {
@@ -55,6 +57,9 @@ export function Dashboard() {
           Add a role and the Hub shows how ready you are for it, and what to do next.
         </EmptyState>
       )}
+
+      <SetupCard steps={summary.setup} onChange={() => void load()} />
+      <ModuleCards />
 
       <div className="hub-cols">
         <NextActions actions={summary.actions} />

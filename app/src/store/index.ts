@@ -11,6 +11,7 @@ import { ADVISOR_SCHEMA, buildAdvisorMessages, parseAdvisor } from "../ai/adviso
 import { analyze } from "../sim/analyze";
 import { capIdsOf, primaryCapability } from "../sim/caps";
 import { isStepDone, validateRoadmap } from "../roadmap";
+import { goHub } from "../shell/hub";
 import { learnHash, parseLearnHash } from "../lessons/route";
 import type { AdvisorResult, Change, ChatMessage, Dimension, Problem, RunResult, Scenario, Submission } from "../types";
 import { edgeProps, errText, freeSpot, layered, nextId, toDesign } from "./canvas";
@@ -170,6 +171,7 @@ export const useStore = create<State>((set, get) => {
           const me = await call<{ user: User }>("/auth/me");
           setToken("1"); // session flag only; clears any legacy bearer from localStorage
           set({ user: me.user });
+          if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
           await syncSubmissionsDown();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) setToken(null);
@@ -657,6 +659,8 @@ export const useStore = create<State>((set, get) => {
     },
 
     setAuthOpen: (b) => set({ authOpen: b }),
+    landingSeen: false,
+    setLandingSeen: (b) => set({ landingSeen: b }),
     setShareOpen: (b) => set({ shareOpen: b }),
     setCompareOpen: (b, a) => set({ compareOpen: b, compareA: b ? a : undefined }),
 
@@ -677,6 +681,7 @@ export const useStore = create<State>((set, get) => {
         lsSet("dc:owner", r.user.username);
         setToken("1"); // HttpOnly cookie carries the secret; flag only marks signed-in for the UI
         set({ user: r.user, authOpen: false });
+        goHub();
         await syncUp(get().problems);
         await syncSubmissionsDown();
         await get().setProblem(get().problemId);

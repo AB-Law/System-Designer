@@ -3,16 +3,13 @@ import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
-import { FileDrop } from "../../../ui/FileDrop";
 import { cvApi } from "../api";
 import { qualityTone, when } from "../format";
 import { downloadJson } from "../../../shared/download";
 import { attempt, useAction } from "../hooks";
 import { go } from "../route";
 import { useCv } from "../store";
-
-const ACCEPT = [".pdf", ".docx", ".txt"];
-const MAX_BYTES = 5 * 1024 * 1024;
+import { CvUpload } from "./CvUpload";
 
 export function Library() {
   const cvs = useCv((s) => s.cvs);
@@ -24,9 +21,7 @@ export function Library() {
     void load();
   }, [load]);
 
-  const onFile = async (f: File) => {
-    const cv = await run(() => cvApi.upload(f), "CV uploaded. Check that it was read correctly.");
-    if (!cv) return;
+  const onUploaded = async (cv: { id: number }) => {
     await load();
     go({ name: "review", cvId: cv.id });
   };
@@ -43,18 +38,7 @@ export function Library() {
 
   return (
     <div className="cv-stack">
-      <Card title="Upload a CV">
-        <FileDrop
-          onFile={(f) => void onFile(f)}
-          accept={ACCEPT}
-          maxBytes={MAX_BYTES}
-          label={busy ? "Reading your CV…" : "Drop a PDF, DOCX or TXT here"}
-        />
-        <p className="cv-hint">
-          Use a text-based file. Scanned images cannot be read. Your CV is private to your account and is sent to the AI provider you choose
-          in Settings.
-        </p>
-      </Card>
+      <CvUpload onUploaded={(cv) => void onUploaded(cv)} />
 
       {error && <p className="ui-error">{error}</p>}
       {cvs && cvs.length === 0 && (

@@ -236,3 +236,22 @@ def test_summary_lists_actions_for_the_active_target(clients: tuple[TestClient, 
     target(alice, jdText=CACHE_JD)
     keys = [a["key"] for a in alice.get("/api/hub/summary").json()["actions"]]
     assert "set-target" not in keys and "start-caching" in keys
+
+
+# ---------------------------------------------------------------- setup checklist
+
+
+def test_setup_steps_follow_the_enabled_modules_and_complete_from_real_data(app_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENABLED_MODULES", "design,hub,study")
+    from main import create_app
+
+    alice, bobby = two_users(lambda: TestClient(create_app()))
+
+    def steps(client: TestClient) -> dict[str, bool]:
+        return {s["key"]: s["done"] for s in client.get("/api/hub/summary").json()["setup"]}
+
+    assert steps(alice) == {"target": False, "deck": False}  # no CV or interview steps while those modules are off
+    target(alice)
+    alice.post("/api/study/decks", json={"name": "Caching"})
+    assert steps(alice) == {"target": True, "deck": True}
+    assert steps(bobby) == {"target": False, "deck": False}
