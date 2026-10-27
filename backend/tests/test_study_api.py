@@ -147,7 +147,7 @@ def test_generate_topic_review_confirm(clients: tuple[TestClient, TestClient]) -
     r = alice.post("/api/study/decks/generate", json={"sourceKind": "topic", "sourceRef": "Caching", "name": "Caching"})
     assert r.status_code == 200, r.text
     deck = r.json()
-    assert deck["status"] == "generating" and deck["jobId"]
+    assert deck["status"] in ("generating", "review") and deck["jobId"]  # the job may already be done
     assert wait_job(alice, deck["jobId"])["status"] == "done"
     deck = alice.get(f"/api/study/decks/{deck['id']}").json()
     assert deck["status"] == "review"
@@ -197,7 +197,7 @@ def test_mind_map_lesson_and_node_deck(clients: tuple[TestClient, TestClient]) -
     r = alice.post("/api/study/maps", json={"sourceKind": "lesson", "sourceRef": "module-0"})
     assert r.status_code == 200, r.text
     m = r.json()
-    assert m["status"] == "generating" and m["jobId"]
+    assert m["status"] in ("generating", "ready") and m["jobId"]  # the job may already be done
     assert wait_job(alice, m["jobId"])["status"] == "done"
     detail = alice.get(f"/api/study/maps/{m['id']}").json()
     assert detail["status"] == "ready" and len(detail["nodes"]) >= 2

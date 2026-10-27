@@ -155,9 +155,9 @@ def start(user_id: int, *, name: str, source_kind: str, source_ref: str, parent_
         sources.document_corpus(user_id, int(ref))  # validate early
 
     label = name.strip() or _default_name(source_kind, ref)
-    deck = decks.create(user_id, label, parent_id=parent_id, source_kind=source_kind, source_ref=ref)
+    deck = decks.create(user_id, label, parent_id=parent_id, source_kind=source_kind, source_ref=ref, status="generating")
     job_id = jobs.enqueue(user_id, "study.generate", {"deck_id": deck["id"]})
-    decks.set_status(user_id, deck["id"], "generating", job_id=job_id)
+    decks.set_job(user_id, deck["id"], job_id)
     return {**decks.get_deck(user_id, deck["id"]), "jobId": job_id}
 
 

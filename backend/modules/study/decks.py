@@ -64,13 +64,15 @@ def get_deck(user_id: int, deck_id: int) -> dict[str, Any]:
     return views.deck(row, due_count=int(due), card_count=int(n))
 
 
-def create(user_id: int, name: str, *, parent_id: int | None = None, source_kind: str = "manual", source_ref: str = "") -> dict[str, Any]:
+def create(
+    user_id: int, name: str, *, parent_id: int | None = None, source_kind: str = "manual", source_ref: str = "", status: str = READY,
+) -> dict[str, Any]:
     if parent_id is not None:
         get_row(user_id, parent_id)
     with open_db() as db, db:
         cur = db.execute(
             "INSERT INTO study_decks(user_id, parent_id, name, source_kind, source_ref, status, created) VALUES (?,?,?,?,?,?,?)",
-            (user_id, parent_id, name.strip()[:120], source_kind, source_ref, READY, now()),
+            (user_id, parent_id, name.strip()[:120], source_kind, source_ref, status, now()),
         )
         deck_id = int(cur.lastrowid or 0)
     return get_deck(user_id, deck_id)
@@ -130,6 +132,12 @@ def _delete_tree(db: Any, user_id: int, deck_id: int) -> list[int]:
     db.execute("DELETE FROM study_cards WHERE deck_id=? AND user_id=?", (deck_id, user_id))
     db.execute("DELETE FROM study_decks WHERE id=? AND user_id=?", (deck_id, user_id))
     return card_ids
+
+
+def set_job(user_id: int, deck_id: int, job_id: str) -> None:
+    """Remember which job is generating the deck. Never touches the status, which the job itself moves on."""
+    with open_db() as db, db:
+        db.execute("UPDATE study_decks SET job_id=? WHERE id=? AND user_id=?", (job_id, deck_id, user_id))
 
 
 def set_status(user_id: int, deck_id: int, status: str, *, job_id: str | None = None) -> None:

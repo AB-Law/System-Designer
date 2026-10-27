@@ -90,6 +90,12 @@ def create(user_id: int, *, source_kind: str, source_ref: str, version: int = 1)
     return get_row(user_id, map_id)
 
 
+def set_job(user_id: int, map_id: int, job_id: str) -> None:
+    """Remember which job is drawing the map. Never touches the status, which the job itself moves on."""
+    with open_db() as db, db:
+        db.execute("UPDATE study_mindmaps SET job_id=? WHERE id=? AND user_id=?", (job_id, map_id, user_id))
+
+
 def set_status(user_id: int, map_id: int, status: str, *, job_id: str | None = None, bump_version: bool = False) -> None:
     get_row(user_id, map_id)
     with open_db() as db, db:
