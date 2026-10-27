@@ -150,7 +150,7 @@ def test_feedback_writes_readiness_events_once(clients: tuple[TestClient, TestCl
 
     with open_db() as db:
         rows = db.execute("SELECT module, topic, signal, strength, ref FROM readiness_events").fetchall()
-    assert [(r["module"], r["topic"], r["signal"], r["ref"]) for r in rows] == [("interview", "Leadership", "strength", f"interview_session:{sid}")]
+    assert [(r["module"], r["topic"], r["signal"], r["ref"]) for r in rows] == [("interview", "behavioral", "strength", f"interview_session:{sid}")]
     assert rows[0]["strength"] == pytest.approx(0.8)
 
 

@@ -95,6 +95,11 @@ def list_roles(user: CurrentUser) -> list[dict[str, Any]]:
     return roles.list_roles(user["id"])
 
 
+@router.get("/roles/{role_id:int}")
+def get_role(role_id: int, user: CurrentUser) -> dict[str, Any]:
+    return roles.public(roles.get_row(user["id"], role_id), full=True)
+
+
 @router.patch("/roles/{role_id:int}")
 def patch_role(role_id: int, body: RolePatch, user: CurrentUser) -> dict[str, Any]:
     return roles.update(user["id"], role_id, body.model_dump(exclude_unset=True))
