@@ -138,7 +138,7 @@ def test_review_writes_readiness(clients: tuple[TestClient, TestClient]) -> None
             "SELECT module, topic, signal, strength, ref FROM readiness_events WHERE module='study'"
         ).fetchall()
     assert len(rows) == 1
-    assert rows[0]["topic"] == "Databases" and rows[0]["signal"] == "strength"
+    assert rows[0]["topic"] == "databases" and rows[0]["signal"] == "strength"
     assert rows[0]["ref"] == f"study_card:{card['id']}"
 
 

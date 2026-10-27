@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from db import open_db
+from dc_platform import topics
 from dc_platform.rows import now
 
 STRONG_FROM = 0.7
@@ -23,7 +24,7 @@ def signal_for(strength: float) -> str:
 def replace(user_id: int, module: str, ref: str, events: list[Event]) -> None:
     """Store the events for one source (`ref`), replacing any written for it before, so a retried job does not double count."""
     at = now()
-    rows = [(user_id, module, e.topic[:80], signal_for(e.strength), round(e.strength, 3), ref, at) for e in events]
+    rows = [(user_id, module, topics.resolve(e.topic), signal_for(e.strength), round(e.strength, 3), ref, at) for e in events]
     with open_db() as db, db:
         db.execute("DELETE FROM readiness_events WHERE user_id=? AND module=? AND ref=?", (user_id, module, ref))
         db.executemany("INSERT INTO readiness_events(user_id, module, topic, signal, strength, ref, at) VALUES (?,?,?,?,?,?,?)", rows)

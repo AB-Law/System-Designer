@@ -19,6 +19,7 @@ import type {
 
 export const interviewApi = {
   roles: () => call<RoleSummary[]>("/interview/roles"),
+  role: (id: number) => call<RoleSummary & { jdText: string | null }>(`/interview/roles/${id}`),
   createRole: (body: RoleInput) => call<RoleSummary>("/interview/roles", "POST", body),
   removeRole: (id: number) => call<{ ok: boolean }>(`/interview/roles/${id}`, "DELETE"),
   sessions: () => call<SessionSummary[]>("/interview/sessions"),
