@@ -274,3 +274,67 @@ def test_file_size_cap_and_user_quota(api: TestClient, monkeypatch: pytest.Monke
 def test_empty_file_rejected(api: TestClient) -> None:
     with pytest.raises(HTTPException):
         files.save_file(uid(), "e", "text/plain", b"")
+
+
+# ---------- provider choice ----------
+def test_providers_list_follows_server_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dc_platform import llm_providers
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    by = {p["id"]: p for p in llm_providers.providers()}
+    assert by["openai"]["available"] and not by["anthropic"]["available"] and by["lmstudio"]["available"] and by["ollama"]["available"]
+
+
+def test_anthropic_adapter_shapes_the_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dc_platform import llm_providers
+
+    with pytest.raises(LLMError):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        llm_providers.AnthropicAdapter()
+    a = llm_providers.AnthropicAdapter(api_key="k")
+    p = a._payload([{"role": "system", "content": "Be brief."}, {"role": "user", "content": "hi"}], True, 0.0, False)
+    assert p["system"].startswith("Be brief.") and "JSON" in p["system"] and p["messages"] == [{"role": "user", "content": "hi"}]
+    assert a.base.startswith("https://api.anthropic.com")
+
+
+def test_ollama_is_local_only() -> None:
+    from dc_platform import llm_providers
+
+    with pytest.raises(LLMError):
+        llm_providers.OllamaAdapter(base_url="http://example.com/v1")
+    assert llm_providers.OllamaAdapter(base_url="http://localhost:11434/v1").base == "http://localhost:11434/v1"
+
+
+def test_user_picks_a_provider_and_can_test_it(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    s = api.get("/api/llm/settings").json()
+    assert s["current"] is None and {p["id"] for p in s["providers"]} == {"openai", "anthropic", "lmstudio", "ollama"}
+    assert api.put("/api/llm/settings", json={"provider": "nope"}).status_code == 400
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert api.put("/api/llm/settings", json={"provider": "anthropic"}).status_code == 400  # no server key, so it cannot be chosen
+    assert api.put("/api/llm/settings", json={"provider": "ollama", "model": "llama3"}).json()["current"] == {"provider": "ollama", "model": "llama3"}
+    llm.set_adapter_factory(lambda: FakeAdapter(["ok"]))
+    try:
+        assert api.post("/api/llm/test").json() == {"ok": True, "reply": "ok"}
+    finally:
+        llm.set_adapter_factory(None)
+    assert api.delete("/api/llm/settings").json()["current"] is None
+
+
+def test_provider_choice_is_per_user_and_private(api: TestClient) -> None:
+    from tests.helpers import register
+
+    api.put("/api/llm/settings", json={"provider": "lmstudio", "model": "m1"})
+    other = TestClient(api.app)
+    register(other, "bobby")
+    assert other.get("/api/llm/settings").json()["current"] is None
+    assert TestClient(api.app).get("/api/llm/settings").status_code == 401
+
+
+def test_chosen_provider_is_used_for_calls(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dc_platform import llm_providers
+
+    api.put("/api/llm/settings", json={"provider": "lmstudio", "model": "m1"})
+    c = llm.client_for(uid())
+    assert isinstance(c.adapter, llm_providers.LMStudioAdapter) and c.adapter.model == "m1"

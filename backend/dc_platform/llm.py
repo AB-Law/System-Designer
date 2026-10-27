@@ -281,3 +281,17 @@ def get_client() -> LLMClient:
     if _client is None:
         _client = LLMClient((_factory or default_adapter)())
     return _client
+
+
+def client_for(user_id: int) -> LLMClient:
+    """The client for this user: the provider and model they chose, else the server default.
+
+    A test that installed a fake adapter factory always gets the fake, whatever the user picked.
+    """
+    if _factory is None:
+        from dc_platform import llm_providers
+
+        chosen = llm_providers.chosen_client(user_id)
+        if chosen:
+            return chosen
+    return get_client()
