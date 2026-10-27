@@ -38,7 +38,7 @@ def main() -> int:
         text = specs.cv_text(cand)
         r = scoring.score(rules_parser.parse_rules(text), text, specs.jd_text(job), 0, mode=mode)
         got = {e["text"] for e in r["evidence"] if e["status"] == "missing" and e["kind"] == "must"}
-        ok = lo <= r["total"] <= hi and got == set(missing)
+        ok = lo <= r["total"] <= hi and specs.same_gaps(got, missing)
         bad += not ok
         note = "" if ok else f"   expected {lo}-{hi}, gaps {sorted(missing)}; got gaps {sorted(got)}"
         print(f"{'ok ' if ok else 'BAD'} {case_id:18} {r['total']:3}  {r['band']:6} ({r['mode']}){note}")

@@ -47,7 +47,7 @@ def test_score_lands_in_expected_range(results: dict[str, dict], case: specs.Cas
 def test_missing_must_haves_are_exactly_the_expected_ones(results: dict[str, dict], case: specs.Case) -> None:
     case_id, _, _, _, missing = case
     got = {e["text"] for e in results[case_id]["evidence"] if e["status"] == "missing" and e["kind"] == "must"}
-    assert got == set(missing), f"{case_id}: expected must-have gaps {sorted(missing)}, got {sorted(got)}"
+    assert specs.same_gaps(got, missing), f"{case_id}: expected must-have gaps {sorted(missing)}, got {sorted(got)}"
 
 
 def test_better_matches_outscore_worse_ones(results: dict[str, dict]) -> None:

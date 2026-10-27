@@ -136,6 +136,11 @@ CASES: list[Case] = [
     ("empty_vs_junior", "empty", "junior_be", (0, 25), ["Python", "SQL", "Git"]),
 ]
 
+def same_gaps(got: set[str], expected: list[str]) -> bool:
+    """A real model may word a requirement longer than the case does ("Kafka message broker"), so match by containment."""
+    return len(got) == len(expected) and all(sum(e.casefold() in g.casefold() for g in got) == 1 for e in expected)
+
+
 # pairs where a better-matched candidate must score above a worse one for the same job
 ORDER: list[tuple[str, str]] = [
     ("be_vs_be", "data_vs_be"), ("be_vs_be", "fe_vs_be"), ("be_vs_be", "junior_vs_be"), ("be_vs_be", "empty_vs_be"),
