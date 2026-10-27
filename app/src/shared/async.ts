@@ -10,6 +10,8 @@ export interface Job {
   progress: number;
   message: string;
   error: string | null;
+  /** What the job returned, once it is done. Each caller knows its own shape. */
+  result?: unknown;
 }
 
 export const errText = (e: unknown): string => (e instanceof ApiError || e instanceof Error ? e.message : "Something went wrong.");

@@ -1,6 +1,9 @@
 import { ApiError, call, postBinary } from "../../api";
 import { parseSse } from "./sse";
 import type {
+  Bank,
+  Category,
+  ResearchStart,
   Usage,
   DocChunk,
   DocScope,
@@ -44,6 +47,12 @@ export const interviewApi = {
   usage: async () => (await call<{ usage: Usage }>("/llm/settings")).usage,
   docChunks: (id: number) => call<DocChunk[]>(`/interview/docs/${id}/chunks`),
   removeDoc: (id: number) => call<{ ok: boolean }>(`/interview/docs/${id}`, "DELETE"),
+  /** Question research. All of these need the `interview.research` flag on the server. */
+  banks: (roleId: number) => call<Bank[]>(`/interview/banks?role_id=${roleId}`),
+  startResearch: (roleId: number) => call<ResearchStart>("/interview/research", "POST", { roleId }),
+  patchBank: (id: number, body: { remove?: string[]; add?: { question: string; category: Category }[] }) =>
+    call<Bank>(`/interview/banks/${id}`, "PATCH", body),
+  flagQuestion: (storeId: number) => call<{ ok: boolean }>(`/interview/research/items/${storeId}/flag`, "POST"),
   /** Finished CV scores a role can start from. Empty when the CV module is off. */
   scoreRuns: async (): Promise<ScoreRunOption[]> => {
     try {

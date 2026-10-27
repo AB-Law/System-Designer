@@ -7,9 +7,13 @@ import { DEFAULT_STYLE, MAX_QUESTIONS, totalQuestions } from "../format";
 import { go } from "../route";
 import type { RoleSummary, ScoreRunOption } from "../types";
 import { draftProblem, emptyDraft, type RoleDraft } from "../draft";
+import { featureOn } from "../../../shell/registry";
 import { Budget } from "./Budget";
+import { Research } from "./Research";
 import { RoleFields } from "./RoleFields";
 import { StyleFields } from "./StyleFields";
+
+const RESEARCH = "interview.research";
 
 function roleInput(d: RoleDraft) {
   return {
@@ -27,6 +31,7 @@ export function Setup({ roleId }: { roleId: number | null }) {
   const [draft, setDraft] = useState<RoleDraft>(emptyDraft(roleId ?? "new"));
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const { busy, run } = useAction();
+  const researchOn = featureOn(RESEARCH);
 
   useEffect(() => {
     void (async () => {
@@ -48,22 +53,25 @@ export function Setup({ roleId }: { roleId: number | null }) {
 
   if (!roles) return <p className="iv-hint">Loading…</p>;
   return (
-    <Card title="New practice interview">
-      <div className="iv-stack">
-        <RoleFields draft={draft} roles={roles} runs={runs} onChange={setDraft} />
-        <StyleFields
-          style={style}
-          hasCompany={draft.roleId === "new" ? !!draft.company.trim() || draft.scoreRunId !== null : !!chosen?.company}
-          onChange={setStyle}
-        />
-        <Budget />
-        {problem && <p className="iv-warn">{problem}</p>}
-        <div className="iv-row">
-          <Button variant="primary" disabled={busy || !!problem} onClick={() => void start()}>
-            {busy ? "Preparing…" : "Start interview"}
-          </Button>
+    <div className="iv-stack">
+      <Card title="New practice interview">
+        <div className="iv-stack">
+          <RoleFields draft={draft} roles={roles} runs={runs} onChange={setDraft} />
+          <StyleFields
+            style={style}
+            hasCompany={draft.roleId === "new" ? !!draft.company.trim() || draft.scoreRunId !== null : !!chosen?.company}
+            onChange={setStyle}
+          />
+          <Budget />
+          {problem && <p className="iv-warn">{problem}</p>}
+          <div className="iv-row">
+            <Button variant="primary" disabled={busy || !!problem} onClick={() => void start()}>
+              {busy ? "Preparing…" : "Start interview"}
+            </Button>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+      {researchOn && draft.roleId !== "new" && <Research roleId={draft.roleId} />}
+    </div>
   );
 }

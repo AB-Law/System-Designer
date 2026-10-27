@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STYLE, clock, groupByRole, scoreTone, styleSummary } from "./format";
+import { DEFAULT_STYLE, ageLabel, clock, groupByRole, scoreTone, styleSummary } from "./format";
 import type { SessionSummary } from "./types";
 
 const session = (id: number, roleId: number, title: string): SessionSummary => ({
@@ -16,6 +16,16 @@ const session = (id: number, roleId: number, title: string): SessionSummary => (
 });
 
 describe("interview format", () => {
+  it("says how long ago a question was found", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = 100 * day;
+    expect(ageLabel(now - 1000, now)).toBe("today");
+    expect(ageLabel(now - day, now)).toBe("yesterday");
+    expect(ageLabel(now - 9 * day, now)).toBe("9 days ago");
+    expect(ageLabel(now - 90 * day, now)).toBe("3 months ago");
+    expect(ageLabel(now + day, now)).toBe("today");
+  });
+
   it("formats a clock", () => {
     expect(clock(0)).toBe("0:00");
     expect(clock(65_000)).toBe("1:05");

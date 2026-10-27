@@ -76,9 +76,14 @@ def _enforce(plan: Plan, counts: dict[Category, int]) -> Plan:
     return Plan(items=items)
 
 
-def build_plan(role: Any, reading: dict[str, Any] | None, cv: str, style: Style, user_id: int) -> Plan:
+def build_plan(
+    role: Any, reading: dict[str, Any] | None, cv: str, style: Style, user_id: int, *, researched: list[str] | None = None,
+) -> Plan:
+    """`researched` is the role's question bank, one line each. It is offered to the model as data, never as instructions."""
     counts = question_counts(style, role["level"], role["company"])
     context = f"<job>\n{job_brief(role, reading)}\n</job>\n<candidate>\n{candidate_text(cv)}\n</candidate>"
+    if researched:
+        context += "\n<researched_questions>\n" + "\n".join(researched).replace("</researched_questions", "") + "\n</researched_questions>"
     got = llm.client_for(user_id).complete_json(
         [{"role": "system", "content": prompts.render("plan", counts=_counts_text(counts))}, {"role": "user", "content": context}],
         Plan, user_id=user_id, module="interview", temperature=0.6,

@@ -4,8 +4,13 @@ from __future__ import annotations
 from typing import Any
 
 from dc_platform import embeddings, jobs
+from modules import feature_on
 
 from . import docs, feedback, planner, roles, sessions, sources
+from .research import banks as research_banks
+from .research import config as research_config
+from .research import routes as research_routes
+from .research import run as research_run
 
 SOURCE_KIND = docs.SOURCE_KIND
 
@@ -18,7 +23,8 @@ def plan_job(ctx: jobs.JobContext) -> dict[str, Any]:
         ctx.progress(0.2, "Reading the job description")
         reading = roles.jd_reading(uid, role)
         ctx.progress(0.5, "Planning the questions")
-        plan = planner.build_plan(role, reading, sources.candidate_brief(uid), sessions.style_of(row), uid)
+        researched = research_banks.prompt_lines(uid, role["id"]) if feature_on(research_config.FLAG) else []
+        plan = planner.build_plan(role, reading, sources.candidate_brief(uid), sessions.style_of(row), uid, researched=researched)
         sessions.set_plan(uid, sid, plan)
         return {"sessionId": sid, "questions": len(plan.items)}
     except jobs.JobCancelled:
@@ -74,3 +80,4 @@ def register() -> None:
     jobs.register_handler("interview.feedback", feedback_job)
     jobs.register_handler("interview.embed", embed_job)
     jobs.register_handler("interview.reembed", reembed_job)
+    jobs.register_handler(research_routes.JOB_KIND, research_run.job)

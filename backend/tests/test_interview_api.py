@@ -354,7 +354,12 @@ def test_transcribe_requires_voice_flag(clients: tuple[TestClient, TestClient]) 
 def test_transcribe_rejects_inactive_and_foreign_sessions(voice_clients: tuple[TestClient, TestClient]) -> None:
     alice, bobby = voice_clients
     role = make_role(alice)
-    planning = alice.post("/api/interview/sessions", json={"roleId": role["id"], "style": STYLE}).json()["id"]
+    from modules.interview import sessions as store
+    from modules.interview.schemas import Style
+
+    with open_db() as db:
+        uid = db.execute("SELECT id FROM users WHERE username='alice'").fetchone()["id"]
+    planning = store.create(uid, role["id"], Style())  # still "planning": no job is queued that could finish first
     assert alice.post(f"/api/interview/sessions/{planning}/transcribe", content=b"x", headers={"Content-Type": "audio/webm"}).status_code == 409
     sid = start(alice, role["id"])
     say(alice, sid)
@@ -398,7 +403,7 @@ def test_export_holds_everything_and_only_the_owners(clients: tuple[TestClient, 
     assert [r["id"] for r in out["roles"]] == [role["id"]] and out["roles"][0]["jdText"]
     assert [s["id"] for s in out["sessions"]] == [sid] and out["sessions"][0]["feedback"]["perAnswer"]
     assert out["docs"] == []
-    assert bobby.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": []}
+    assert bobby.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": [], "questionBanks": []}
 
 
 def test_delete_all_removes_the_users_data_and_nobody_elses(clients: tuple[TestClient, TestClient]) -> None:
@@ -406,7 +411,7 @@ def test_delete_all_removes_the_users_data_and_nobody_elses(clients: tuple[TestC
     _finished_session(alice)
     bob_role, _ = _finished_session(bobby)
     assert alice.delete("/api/interview/data").json() == {"ok": True}
-    assert alice.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": []}
+    assert alice.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": [], "questionBanks": []}
     with open_db() as db:
         mine = db.execute("SELECT id FROM users WHERE username='alice'").fetchone()["id"]
         assert db.execute("SELECT COUNT(*) FROM readiness_events WHERE user_id=?", (mine,)).fetchone()[0] == 0

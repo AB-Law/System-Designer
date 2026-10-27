@@ -16,9 +16,11 @@ from modules import feature_on
 from rate_limit import meter
 
 from . import conversation, docs, lifecycle, portability, roles, sessions, sources, views
+from .research.routes import router as research_router
 from .schemas import Style
 
 router = APIRouter(tags=["interview"])
+router.include_router(research_router)  # every route in it needs the interview.research flag
 
 MIN_JD = 40
 MAX_JD = 60_000

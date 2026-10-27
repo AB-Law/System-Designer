@@ -144,6 +144,43 @@ export interface DocChunk {
   text: string;
 }
 
+export type BankStatus = "running" | "ready" | "failed";
+
+/** One researched question. `storeId` is null for a question the user added; those have no source. */
+export interface BankItem {
+  ref: string;
+  storeId: number | null;
+  question: string;
+  category: Category;
+  kind: "question" | "culture" | "engineering";
+  sourceUrl: string;
+  sourceName: string;
+  fetched: number;
+}
+
+export interface Bank {
+  id: number;
+  roleId: number;
+  status: BankStatus;
+  error: string | null;
+  jobId: string | null;
+  items: BankItem[];
+  updated: number;
+}
+
+export interface ResearchStart {
+  bankId: number;
+  jobId: string;
+  /** False when the server has no search key, so only saved questions are shown. */
+  searchConfigured: boolean;
+}
+
+export interface ResearchResult {
+  skipped: "no_search" | "no_results" | null;
+  added: number;
+  items: number;
+}
+
 export interface Usage {
   monthTokens: number;
   quota: number;

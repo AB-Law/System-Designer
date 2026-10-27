@@ -103,4 +103,5 @@ def delete(user_id: int, role_id: int) -> None:
         for table, column in (("interview_feedback", "session_id"), ("interview_turns", "session_id")):
             db.executemany(f"DELETE FROM {table} WHERE {column}=? AND user_id=?", [(i, user_id) for i in ids])
         db.execute("DELETE FROM interview_sessions WHERE role_id=? AND user_id=?", (role_id, user_id))
+        db.execute("DELETE FROM question_banks WHERE role_id=? AND user_id=?", (role_id, user_id))
         db.execute("DELETE FROM interview_roles WHERE id=? AND user_id=?", (role_id, user_id))
