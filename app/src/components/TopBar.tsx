@@ -3,6 +3,10 @@ import { backend } from "../api";
 import { money } from "../blocks";
 import { useRun } from "../hooks";
 import { useStore } from "../store";
+import { ModuleSwitcher } from "../shell/ModuleSwitcher";
+import { goModule } from "../shell/route";
+import { DESIGN } from "../shell/registry";
+import { useModules } from "../shell/useActiveModule";
 
 export function TopBar() {
   const problems = useStore((s) => s.problems);
@@ -18,6 +22,7 @@ export function TopBar() {
   const user = useStore((s) => s.user);
   const setAuthOpen = useStore((s) => s.setAuthOpen);
   const signOut = useStore((s) => s.signOut);
+  const modules = useModules();
   const [menu, setMenu] = useState(false);
   const workbench = view === "canvas" || view === "roadmap";
   const run = useRun();
@@ -27,9 +32,18 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button type="button" className="brand" onClick={() => setView("home")} title="Home">
+      <button
+        type="button"
+        className="brand"
+        onClick={() => {
+          goModule(DESIGN, modules);
+          setView("home");
+        }}
+        title="Home"
+      >
         Design Canvas
       </button>
+      <ModuleSwitcher />
       {workbench ? (
         <div className="problem-pick">
           <select value={problemId} onChange={(e) => void setProblem(e.target.value)} aria-label="Problem">
