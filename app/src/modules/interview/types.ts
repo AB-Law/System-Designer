@@ -143,3 +143,8 @@ export interface DocChunk {
   page: number;
   text: string;
 }
+
+export interface Usage {
+  monthTokens: number;
+  quota: number;
+}

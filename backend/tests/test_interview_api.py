@@ -369,3 +369,46 @@ def test_transcribe_empty_audio_is_422(voice_clients: tuple[TestClient, TestClie
     say(alice, sid)
     r = alice.post(f"/api/interview/sessions/{sid}/transcribe", content=b"", headers={"Content-Type": "audio/webm"})
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------- JD upload, export, delete-all
+
+def test_jd_upload_returns_text_and_stores_nothing(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    r = alice.post("/api/interview/jd/upload", params={"name": "jd.txt"}, content=JD_TEXT.encode(), headers={"content-type": "text/plain"})
+    assert r.status_code == 200 and r.json()["text"].startswith("Senior Backend Engineer")
+    assert alice.post("/api/interview/jd/upload", params={"name": "jd.txt"}, content=b"too short", headers={"content-type": "text/plain"}).status_code == 422
+    with open_db() as db:
+        assert db.execute("SELECT COUNT(*) FROM files").fetchone()[0] == 0
+
+
+def _finished_session(c: TestClient) -> tuple[dict[str, Any], int]:
+    role = make_role(c, jdText=JD_TEXT)
+    sid = start(c, role["id"])
+    say(c, sid)
+    say(c, sid, DETAILED)
+    assert wait_job(c, c.post(f"/api/interview/sessions/{sid}/end").json()["jobId"])["status"] == "done"
+    return role, sid
+
+
+def test_export_holds_everything_and_only_the_owners(clients: tuple[TestClient, TestClient]) -> None:
+    alice, bobby = clients
+    role, sid = _finished_session(alice)
+    out = alice.get("/api/interview/export").json()
+    assert [r["id"] for r in out["roles"]] == [role["id"]] and out["roles"][0]["jdText"]
+    assert [s["id"] for s in out["sessions"]] == [sid] and out["sessions"][0]["feedback"]["perAnswer"]
+    assert out["docs"] == []
+    assert bobby.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": []}
+
+
+def test_delete_all_removes_the_users_data_and_nobody_elses(clients: tuple[TestClient, TestClient]) -> None:
+    alice, bobby = clients
+    _finished_session(alice)
+    bob_role, _ = _finished_session(bobby)
+    assert alice.delete("/api/interview/data").json() == {"ok": True}
+    assert alice.get("/api/interview/export").json() == {"roles": [], "sessions": [], "docs": []}
+    with open_db() as db:
+        mine = db.execute("SELECT id FROM users WHERE username='alice'").fetchone()["id"]
+        assert db.execute("SELECT COUNT(*) FROM readiness_events WHERE user_id=?", (mine,)).fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM readiness_events WHERE user_id<>?", (mine,)).fetchone()[0] > 0
+    assert [r["id"] for r in bobby.get("/api/interview/roles").json()] == [bob_role["id"]]

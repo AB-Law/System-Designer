@@ -15,7 +15,7 @@ from deps import CurrentUser
 from modules import feature_on
 from rate_limit import meter
 
-from . import conversation, docs, lifecycle, roles, sessions, views
+from . import conversation, docs, lifecycle, portability, roles, sessions, sources, views
 from .schemas import Style
 
 router = APIRouter(tags=["interview"])
@@ -53,6 +53,32 @@ class RolePatch(BaseModel):
         if any(f in self.model_fields_set and getattr(self, f) is None for f in ("title", "level")):
             raise ValueError("A role needs a title and a level (it can be empty text).")
         return self
+
+
+@router.post("/jd/upload")
+async def upload_jd(request: Request, user: CurrentUser, name: str = Query(max_length=200)) -> dict[str, str]:
+    """Turn a job description file into text for the role form. Nothing is stored."""
+    data = await files.read_upload(request)
+
+    def work() -> dict[str, str]:
+        meter(f"interview_doc|{user['id']}", limit=30)
+        text = sources.read_text(data, name).replace("\f", "\n").strip()
+        if len(text) < MIN_JD:
+            raise HTTPException(422, "No readable text was found. If this is a scanned file, upload a text-based PDF or a DOCX.")
+        return {"text": text[:MAX_JD]}
+
+    return await run_in_threadpool(work)
+
+
+@router.get("/export")
+def export_data(user: CurrentUser) -> dict[str, Any]:
+    return portability.export_all(user["id"])
+
+
+@router.delete("/data")
+def delete_data(user: CurrentUser) -> dict[str, bool]:
+    portability.delete_all(user["id"])
+    return {"ok": True}
 
 
 @router.post("/roles")
@@ -193,12 +219,9 @@ async def upload_doc(
     mime = request.headers.get("content-type", "application/octet-stream")
 
     def work() -> dict[str, Any]:
-        from modules.cv import parsing
-
         uid = user["id"]
         meter(f"interview_doc|{uid}", limit=30)
-        parsed = parsing.parse_bytes(data, name)
-        return docs.create(uid, name=name, mime=mime, data=data, text=parsed.text, scope=scope, role_id=roleId)
+        return docs.create(uid, name=name, mime=mime, data=data, text=sources.read_text(data, name), scope=scope, role_id=roleId)
 
     return await run_in_threadpool(work)
 

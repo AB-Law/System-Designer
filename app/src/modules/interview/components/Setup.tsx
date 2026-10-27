@@ -7,6 +7,7 @@ import { DEFAULT_STYLE, MAX_QUESTIONS, totalQuestions } from "../format";
 import { go } from "../route";
 import type { RoleSummary, ScoreRunOption } from "../types";
 import { draftProblem, emptyDraft, type RoleDraft } from "../draft";
+import { Budget } from "./Budget";
 import { RoleFields } from "./RoleFields";
 import { StyleFields } from "./StyleFields";
 
@@ -55,6 +56,7 @@ export function Setup({ roleId }: { roleId: number | null }) {
           hasCompany={draft.roleId === "new" ? !!draft.company.trim() || draft.scoreRunId !== null : !!chosen?.company}
           onChange={setStyle}
         />
+        <Budget />
         {problem && <p className="iv-warn">{problem}</p>}
         <div className="iv-row">
           <Button variant="primary" disabled={busy || !!problem} onClick={() => void start()}>

@@ -27,3 +27,9 @@ def replace(user_id: int, module: str, ref: str, events: list[Event]) -> None:
     with open_db() as db, db:
         db.execute("DELETE FROM readiness_events WHERE user_id=? AND module=? AND ref=?", (user_id, module, ref))
         db.executemany("INSERT INTO readiness_events(user_id, module, topic, signal, strength, ref, at) VALUES (?,?,?,?,?,?,?)", rows)
+
+
+def delete_module(user_id: int, module: str) -> None:
+    """Remove every event a module wrote for this user (used when they delete that module's data)."""
+    with open_db() as db, db:
+        db.execute("DELETE FROM readiness_events WHERE user_id=? AND module=?", (user_id, module))

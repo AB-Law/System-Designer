@@ -7,6 +7,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { interviewApi } from "../api";
 import { dateLabel, groupByRole, scoreTone, styleSummary, type RoleGroup } from "../format";
 import { go } from "../route";
+import { YourData } from "./YourData";
 import type { SessionSummary } from "../types";
 
 const STATUS_LABEL: Record<SessionSummary["status"], string> = {
@@ -88,16 +89,19 @@ export function Sessions() {
   if (!sessions) return <p className="iv-hint">Loading…</p>;
   if (!sessions.length) {
     return (
-      <EmptyState
-        title="No practice interviews yet"
-        action={
-          <Button variant="primary" onClick={() => go({ name: "new", roleId: null })}>
-            Start your first interview
-          </Button>
-        }
-      >
-        Pick a role, and an interviewer will ask you questions one at a time, then mark your answers.
-      </EmptyState>
+      <div className="iv-stack">
+        <EmptyState
+          title="No practice interviews yet"
+          action={
+            <Button variant="primary" onClick={() => go({ name: "new", roleId: null })}>
+              Start your first interview
+            </Button>
+          }
+        >
+          Pick a role, and an interviewer will ask you questions one at a time, then mark your answers.
+        </EmptyState>
+        <YourData onDeleted={() => void load()} />
+      </div>
     );
   }
   return (
@@ -105,6 +109,7 @@ export function Sessions() {
       {groupByRole(sessions).map((g) => (
         <RoleCard key={g.roleId} group={g} onDelete={(id) => void removeSession(id)} onDeleteRole={(role) => void removeRole(role)} />
       ))}
+      <YourData onDeleted={() => void load()} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { FileDrop } from "../../../ui/FileDrop";
 import { cvApi } from "../api";
 import { qualityTone, when } from "../format";
+import { downloadJson } from "../../../shared/download";
 import { attempt, useAction } from "../hooks";
 import { go } from "../route";
 import { useCv } from "../store";
@@ -37,12 +38,7 @@ export function Library() {
   const exportAll = async () => {
     const data = await attempt(() => cvApi.exportAll());
     if (data === undefined) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "my-cv-data.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJson("my-cv-data.json", data);
   };
 
   return (

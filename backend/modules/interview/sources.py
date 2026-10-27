@@ -33,6 +33,13 @@ def candidate_brief(user_id: int) -> str:
     return render_text(CVStructure.model_validate(cv["latest"]["structure"]))[:MAX_CV_CHARS]
 
 
+def read_text(data: bytes, name: str) -> str:
+    """Readable text of an uploaded PDF, DOCX, TXT or MD file, pages separated by form feeds."""
+    from modules.cv import parsing
+
+    return parsing.parse_bytes(data, name).text
+
+
 def analyse_jd(text: str, user_id: int) -> dict[str, Any]:
     """The Phase 1 reading of a job description (requirements, level, talking points), as plain data."""
     from modules.cv import scoring

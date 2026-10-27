@@ -8,6 +8,7 @@ import { useChat } from "../useChat";
 import { VoiceControls } from "../voice/VoiceControls";
 import { VoiceSettings } from "../voice/VoiceSettings";
 import { useVoice } from "../voice/useVoice";
+import { Budget } from "./Budget";
 import { Timer } from "./Timer";
 
 const VOICE = "interview.voice";
@@ -161,6 +162,7 @@ export function Chat({ detail, onEnd, onFinished }: Props) {
           Send
         </Button>
       </form>
+      <Budget />
     </Card>
   );
 }

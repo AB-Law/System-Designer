@@ -125,6 +125,15 @@
   color: var(--muted);
 }
 
+.iv-budget {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+}
+.iv-budget small {
+  font-size: 12px;
+}
+
 /* session list */
 .iv-sessions {
   list-style: none;

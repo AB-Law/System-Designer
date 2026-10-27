@@ -1,6 +1,7 @@
 import { ApiError, call, postBinary } from "../../api";
 import { parseSse } from "./sse";
 import type {
+  Usage,
   DocChunk,
   DocScope,
   DocSummary,
@@ -36,6 +37,11 @@ export const interviewApi = {
       },
       file,
     ),
+  uploadJd: (file: File) => postBinary<{ text: string }>("/interview/jd/upload", { name: file.name }, file),
+  exportAll: () => call<unknown>("/interview/export"),
+  deleteAll: () => call<{ ok: boolean }>("/interview/data", "DELETE"),
+  /** This month's AI use against the monthly allowance (shared by every module). */
+  usage: async () => (await call<{ usage: Usage }>("/llm/settings")).usage,
   docChunks: (id: number) => call<DocChunk[]>(`/interview/docs/${id}/chunks`),
   removeDoc: (id: number) => call<{ ok: boolean }>(`/interview/docs/${id}`, "DELETE"),
   /** Finished CV scores a role can start from. Empty when the CV module is off. */

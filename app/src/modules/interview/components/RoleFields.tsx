@@ -1,3 +1,6 @@
+import { attempt } from "../../../shared/async";
+import { FileDrop } from "../../../ui/FileDrop";
+import { interviewApi } from "../api";
 import { LEVELS } from "../format";
 import type { RoleDraft } from "../draft";
 import type { RoleSummary, ScoreRunOption } from "../types";
@@ -72,6 +75,14 @@ export function RoleFields({ draft, roles, runs, onChange }: Props) {
               />
               <small>Without one, questions come from the title, level and your CV.</small>
             </label>
+          )}
+          {draft.scoreRunId === null && (
+            <FileDrop
+              onFile={(f) => void attempt(() => interviewApi.uploadJd(f)).then((r) => r && set({ jdText: r.text }))}
+              accept={[".pdf", ".docx", ".txt", ".md"]}
+              maxBytes={5 * 1024 * 1024}
+              label="…or drop a job description file"
+            />
           )}
         </>
       )}
