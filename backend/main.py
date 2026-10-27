@@ -19,6 +19,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+import modules
 from auth.invite import announce_invite_code
 from auth.security import SESSION_COOKIE
 from config import DIST_DIR, load_env
@@ -38,6 +39,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     application = FastAPI(title="Design Canvas API", lifespan=lifespan)
     application.include_router(api_router)
+    modules.register(application)
 
     @application.middleware("http")
     async def session_cookie_as_bearer(request: Request, call_next):  # type: ignore[no-untyped-def]
