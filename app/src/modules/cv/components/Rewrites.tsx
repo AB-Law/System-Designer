@@ -3,9 +3,9 @@ import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
-import { toast } from "../../../ui/Toast";
 import { cvApi } from "../api";
 import { go } from "../route";
+import { attempt, useAction } from "../hooks";
 import { errText } from "../store";
 import type { Rewrite } from "../types";
 
@@ -15,11 +15,8 @@ function Suggestion({ r, onChange }: { r: Rewrite; onChange: (r: Rewrite) => voi
   const locked = r.status === "applied";
 
   const set = async (body: { status?: Rewrite["status"]; proposed?: string }) => {
-    try {
-      onChange(await cvApi.patchRewrite(r.id, body));
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+    const next = await attempt(() => cvApi.patchRewrite(r.id, body));
+    if (next) onChange(next);
   };
 
   return (
@@ -90,7 +87,7 @@ function Suggestion({ r, onChange }: { r: Rewrite; onChange: (r: Rewrite) => voi
 
 export function Rewrites({ runId }: { runId: number }) {
   const [items, setItems] = useState<Rewrite[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useAction();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,26 +102,13 @@ export function Rewrites({ runId }: { runId: number }) {
   }, [runId]);
 
   const generate = async () => {
-    setBusy(true);
-    try {
-      setItems(await cvApi.makeRewrites(runId));
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
-    }
+    const next = await run(() => cvApi.makeRewrites(runId));
+    if (next) setItems(next);
   };
 
   const rescore = async () => {
-    setBusy(true);
-    try {
-      const r = await cvApi.rescore(runId);
-      toast("A new CV version was made. Your original is kept.", "good");
-      go({ name: "result", runId: r.id });
-    } catch (e) {
-      toast(errText(e), "bad");
-      setBusy(false);
-    }
+    const r = await run(() => cvApi.rescore(runId), "A new CV version was made. Your original is kept.");
+    if (r) go({ name: "result", runId: r.id });
   };
 
   if (error) return <EmptyState title="Could not open these suggestions">{error}</EmptyState>;

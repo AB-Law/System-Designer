@@ -11,7 +11,8 @@ from fastapi import HTTPException
 from db import open_db
 from dc_platform import files
 
-from .structure import CVStructure, total_years
+from .experience import total_years
+from .structure import CVStructure, render_text
 
 
 def now() -> int:
@@ -29,7 +30,7 @@ def _version(row: Any, *, full: bool = True) -> dict[str, Any]:
         "edited": bool(row["edited"]), "created": row["created"],
     }
     if full:
-        structure = CVStructure.model_validate(json.loads(row["structured_json"] or "{}"))
+        structure = structure_of(row)
         v["rawText"] = row["raw_text"]
         v["structure"] = structure.model_dump()
         v["totalYears"] = total_years(structure)
@@ -49,29 +50,35 @@ def list_cvs(user_id: int) -> list[dict[str, Any]]:
     return out
 
 
-def get_cv_row(user_id: int, cv_id: int) -> Any:
+def _owned(sql: str, params: tuple[Any, ...], what: str) -> Any:
+    """The one row a query finds, or a 404. The query must filter by user_id, so 'missing' and 'not yours' look the same."""
     with open_db() as db:
-        row = db.execute("SELECT * FROM cv_cvs WHERE id=? AND user_id=?", (cv_id, user_id)).fetchone()
+        row = db.execute(sql, params).fetchone()
     if not row:
-        raise HTTPException(404, "CV not found.")
+        raise HTTPException(404, f"{what} not found.")
     return row
+
+
+def structure_of(version: Any) -> CVStructure:
+    return CVStructure.model_validate_json(version["structured_json"] or "{}")
+
+
+def corpus_of(version: Any) -> str:
+    """The text citations point into: the original text, or a re-render once the structure has been edited."""
+    return render_text(structure_of(version)) if version["edited"] else version["raw_text"]
+
+
+def get_cv_row(user_id: int, cv_id: int) -> Any:
+    return _owned("SELECT * FROM cv_cvs WHERE id=? AND user_id=?", (cv_id, user_id), "CV")
 
 
 def latest_version_row(user_id: int, cv_id: int) -> Any:
     get_cv_row(user_id, cv_id)
-    with open_db() as db:
-        row = db.execute("SELECT * FROM cv_versions WHERE cv_id=? AND user_id=? ORDER BY id DESC LIMIT 1", (cv_id, user_id)).fetchone()
-    if not row:
-        raise HTTPException(404, "CV not found.")
-    return row
+    return _owned("SELECT * FROM cv_versions WHERE cv_id=? AND user_id=? ORDER BY id DESC LIMIT 1", (cv_id, user_id), "CV")
 
 
 def version_row(user_id: int, version_id: int) -> Any:
-    with open_db() as db:
-        row = db.execute("SELECT * FROM cv_versions WHERE id=? AND user_id=?", (version_id, user_id)).fetchone()
-    if not row:
-        raise HTTPException(404, "CV version not found.")
-    return row
+    return _owned("SELECT * FROM cv_versions WHERE id=? AND user_id=?", (version_id, user_id), "CV version")
 
 
 def get_cv(user_id: int, cv_id: int) -> dict[str, Any]:
@@ -204,11 +211,7 @@ def save_run_result(user_id: int, run_id: int, result: dict[str, Any], model: st
 
 
 def get_run_row(user_id: int, run_id: int) -> Any:
-    with open_db() as db:
-        row = db.execute("SELECT * FROM cv_score_runs WHERE id=? AND user_id=?", (run_id, user_id)).fetchone()
-    if not row:
-        raise HTTPException(404, "Score not found.")
-    return row
+    return _owned("SELECT * FROM cv_score_runs WHERE id=? AND user_id=?", (run_id, user_id), "Score")
 
 
 def _run(row: Any, *, full: bool) -> dict[str, Any]:
@@ -288,11 +291,7 @@ def list_rewrites(user_id: int, run_id: int) -> list[dict[str, Any]]:
 
 
 def get_rewrite(user_id: int, rewrite_id: int) -> dict[str, Any]:
-    with open_db() as db:
-        row = db.execute("SELECT * FROM cv_rewrite_proposals WHERE id=? AND user_id=?", (rewrite_id, user_id)).fetchone()
-    if not row:
-        raise HTTPException(404, "Suggestion not found.")
-    return _rewrite(row)
+    return _rewrite(_owned("SELECT * FROM cv_rewrite_proposals WHERE id=? AND user_id=?", (rewrite_id, user_id), "Suggestion"))
 
 
 def replace_rewrites(user_id: int, run_id: int, items: list[dict[str, str]]) -> list[dict[str, Any]]:

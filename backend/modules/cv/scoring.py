@@ -17,8 +17,9 @@ from pydantic import BaseModel, Field
 from dc_platform import llm
 
 from . import rubric, skills
+from .experience import cv_level, level_from_text, total_years, years_per_skill
 from .parsing import numbered_lines, page_of_line
-from .structure import CVStructure, cv_level, level_from_text, total_years, years_per_skill
+from .structure import CVStructure
 
 Status = Literal["met", "partial", "missing"]
 _ORDER = {"missing": 0, "partial": 1, "met": 2}
@@ -142,35 +143,38 @@ def _evidence(corpus: str, line_no: int, text: str) -> Evidence:
     return Evidence(quote=re.sub(r"^\s*(?:[-*•▪●◦‣·]|\d+[.)])\s+", "", text)[:240], line=line_no, page=page_of_line(corpus, line_no))
 
 
+def _match_skills(m: Match, wanted: set[str], lines: list[tuple[int, str]], corpus: str) -> Match:
+    """A requirement that names known skills: every skill must appear (any one of them for 'X or Y')."""
+    found: dict[str, tuple[int, str]] = {}
+    for no, ln in lines:
+        for s in skills.mentions(ln, implied=True) & wanted:
+            # prefer a prose line (a bullet that uses the skill) over a bare skills list
+            if s not in found or (len(ln.split()) > len(found[s][1].split()) and len(found[s][1].split()) < 8):
+                found[s] = (no, ln)
+    if found:
+        any_of = len(wanted) > 1 and bool(re.search(r"\bor\b|/", m.text, re.I))
+        m.method = "alias"
+        m.evidence = [_evidence(corpus, no, ln) for no, ln in list(found.values())[:2]]
+        m.status = "met" if any_of or len(found) == len(wanted) else "partial"
+    return m
+
+
+def _match_words(m: Match, lines: list[tuple[int, str]], corpus: str) -> Match:
+    """Free-text requirement: the line sharing the most content words with it."""
+    need = skills.tokens(m.text)
+    scored = [(len(need & skills.tokens(ln)) / len(need), no, ln) for no, ln in lines] if need else []
+    best = max(scored, default=(0.0, 0, ""), key=lambda t: t[0])
+    if best[0] >= 0.4:
+        m.method = "lexical"
+        m.evidence = [_evidence(corpus, best[1], best[2])]
+        m.status = "met" if best[0] >= 0.75 else "partial"
+    return m
+
+
 def match_requirement(req: Requirement, lines: list[tuple[int, str]], corpus: str) -> Match:
     m = Match(id=req.id, text=req.text, kind=req.kind)
     wanted = skills.mentions(req.text)
-    if wanted:
-        any_of = bool(re.search(r"\bor\b|/", req.text, re.I)) and len(wanted) > 1
-        found: dict[str, tuple[int, str]] = {}
-        for no, ln in lines:
-            for s in skills.mentions(ln, implied=True) & wanted:
-                # prefer a prose line (a bullet that uses the skill) over a bare skills list
-                if s not in found or (len(ln.split()) > len(found[s][1].split()) and len(found[s][1].split()) < 8):
-                    found[s] = (no, ln)
-        if found:
-            m.method = "alias"
-            m.evidence = [_evidence(corpus, no, ln) for no, ln in list(found.values())[:2]]
-            m.status = "met" if any_of or len(found) == len(wanted) else "partial"
-        return m
-    need = skills.tokens(req.text)
-    if not need:
-        return m
-    best_ratio, best = 0.0, None
-    for no, ln in lines:
-        r = len(need & skills.tokens(ln)) / len(need)
-        if r > best_ratio:
-            best_ratio, best = r, (no, ln)
-    if best and best_ratio >= 0.4:
-        m.method = "lexical"
-        m.evidence = [_evidence(corpus, *best)]
-        m.status = "met" if best_ratio >= 0.75 else "partial"
-    return m
+    return _match_skills(m, wanted, lines, corpus) if wanted else _match_words(m, lines, corpus)
 
 
 _METRIC = re.compile(r"(?<![A-Za-z0-9])\d[\d,.]*[%kKmMxX]?(?![A-Za-z])")
@@ -261,39 +265,46 @@ def _median_status(*statuses: Status) -> Status:
     return inv[int(statistics.median(_ORDER[s] for s in statuses))]  # type: ignore[return-value]
 
 
+Verified = tuple[Status, int, Evidence | None, str]  # status, strength, the quote's location, the model's reason
+
+
+def _verify(it: JudgedItem, corpus: str) -> Verified:
+    """A model verdict counts only as far as its quote can be found in the CV."""
+    if it.status == "missing":
+        return "missing", 0, None, it.reason
+    ev = _quote_line(corpus, it.quote)
+    if ev is None:
+        return ("partial" if it.status == "met" else it.status), min(it.strength, 1), None, it.reason
+    return it.status, it.strength, ev, it.reason
+
+
+def _merge(m: Match, verified: list[Verified]) -> None:
+    """Fold one or two verified model verdicts into the rule match. With two passes the rules cast the third vote."""
+    votes, strengths = [v[0] for v in verified], [v[1] for v in verified]
+    if len(verified) > 1:
+        votes.append(m.status)
+        strengths.append(m.strength)
+    status = _median_status(*votes)
+    if m.method == "alias" and _ORDER[m.status] > _ORDER[status]:
+        status = m.status  # the rules never lose a deterministic match the model overlooked
+    upgraded = _ORDER[status] > _ORDER[m.status]
+    ev = next((v[2] for v in verified if v[2]), None)
+    if upgraded:
+        m.method = "model"
+    if (upgraded or not m.evidence) and ev:
+        m.evidence = [ev]
+    m.status = status
+    m.strength = 0 if status == "missing" else max(1, int(statistics.median(strengths)))
+    m.reason = next((v[3] for v in verified if v[3]), "")
+
+
 def apply_judgement(matches: list[Match], corpus: str, judged: list[Judgement]) -> int:
     """Merge one or two model passes into the rule matches. Returns the domain score (median of passes)."""
     for m in matches:
         picks = [it for j in judged for it in j.items if it.id == m.id]
-        if not picks:
-            continue
-        verified: list[tuple[Status, int, Evidence | None, str]] = []
-        for it in picks:
-            ev = _quote_line(corpus, it.quote) if it.status != "missing" else None
-            status, strength = it.status, it.strength
-            if status != "missing" and ev is None:
-                status, strength = ("partial" if status == "met" else status), min(strength, 1)
-            if status == "missing":
-                strength = 0
-            verified.append((status, strength, ev, it.reason))
-        rules = (m.status, m.strength)
-        status = _median_status(*[v[0] for v in verified], rules[0]) if len(verified) > 1 else verified[0][0]
-        # the rules never lose a deterministic match the model overlooked
-        if m.method == "alias" and _ORDER[m.status] > _ORDER[status]:
-            status = m.status
-        strength = int(statistics.median([v[1] for v in verified] + ([rules[1]] if len(verified) > 1 else [])))
-        if status == "missing":
-            strength = 0
-        elif strength == 0:
-            strength = 1
-        ev = next((v[2] for v in verified if v[2]), None)
-        if _ORDER[status] > _ORDER[m.status] or not m.evidence:
-            m.method = "model" if _ORDER[status] > _ORDER[m.status] else m.method
-            if ev:
-                m.evidence = [ev]
-        m.status, m.strength, m.reason = status, strength, next((v[3] for v in verified if v[3]), "")
-    domains = [j.domain.score for j in judged]
-    return int(statistics.median(domains)) if domains else 50
+        if picks:
+            _merge(m, [_verify(it, corpus) for it in picks])
+    return int(statistics.median(j.domain.score for j in judged)) if judged else 50
 
 
 # ---------------------------------------------------------------- breakdown

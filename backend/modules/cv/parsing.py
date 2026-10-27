@@ -40,47 +40,46 @@ def detect_kind(data: bytes, name: str) -> str:
     return "txt"
 
 
-def _order_blocks(blocks: list[tuple[float, float, float, float, str]], width: float) -> str:
-    """Reading order for one page. Finds a vertical gutter that no narrow block crosses and reads left column, then right."""
+Block = tuple[float, float, float, float, str]  # x0, y0, x1, y1, text
+
+
+def _gutter(narrow: list[Block], width: float) -> float | None:
+    """The x of a vertical gutter that no narrow block crosses, with at least two blocks on each side."""
+    if len(narrow) < 4:
+        return None
+    free = [
+        x
+        for x in range(int(0.2 * width), int(0.8 * width), 4)
+        if not any(b[0] < x < b[2] for b in narrow)
+        and sum(b[2] <= x for b in narrow) >= 2
+        and sum(b[0] >= x for b in narrow) >= 2
+    ]
+    if not free:
+        return None
+    # the middle of the longest unbroken run of free x positions
+    runs: list[list[int]] = [[free[0]]]
+    for x in free[1:]:
+        runs[-1].append(x) if x - runs[-1][-1] <= 4 else runs.append([x])
+    longest = max(runs, key=len)
+    return (longest[0] + longest[-1]) / 2
+
+
+def _order_blocks(blocks: list[Block], width: float) -> str:
+    """Reading order for one page: full-width blocks in place, and between them the left column, then the right."""
     blocks = [b for b in blocks if b[4].strip()]
-    if not blocks:
-        return ""
-    wide = [b for b in blocks if (b[2] - b[0]) > 0.62 * width]
+    wide = sorted((b for b in blocks if (b[2] - b[0]) > 0.62 * width), key=lambda b: b[1])
     narrow = [b for b in blocks if b not in wide]
-    split: float | None = None
-    if len(narrow) >= 4:
-        free = [
-            x
-            for x in range(int(0.2 * width), int(0.8 * width), 4)
-            if not any(b[0] < x < b[2] for b in narrow)
-            and sum(1 for b in narrow if b[2] <= x) >= 2
-            and sum(1 for b in narrow if b[0] >= x) >= 2
-        ]
-        if free:
-            # the middle of the longest unbroken run of free x positions is the gutter
-            runs, run = [], [free[0]]
-            for x in free[1:]:
-                if x - run[-1] <= 4:
-                    run.append(x)
-                else:
-                    runs.append(run)
-                    run = [x]
-            runs.append(run)
-            longest = max(runs, key=len)
-            split = (longest[0] + longest[-1]) / 2
+    split = _gutter(narrow, width)
     if split is None:
         return "\n".join(b[4].strip() for b in sorted(blocks, key=lambda b: (round(b[1]), b[0])))
+    bounds = [-1.0, *(b[1] for b in wide), 1e9]
     parts: list[str] = []
-    ordered_wide = sorted(wide, key=lambda b: b[1])
-    cuts = [b[1] for b in ordered_wide]
-    bounds = [-1.0, *cuts, 1e9]
-    for i in range(len(bounds) - 1):
-        lo, hi = bounds[i], bounds[i + 1]
-        seg = [b for b in narrow if lo <= b[1] < hi]
-        for col in ([b for b in seg if b[2] <= split], [b for b in seg if b[2] > split]):
-            parts += [b[4].strip() for b in sorted(col, key=lambda b: b[1])]
-        if i < len(ordered_wide):
-            parts.append(ordered_wide[i][4].strip())
+    for i, (lo, hi) in enumerate(zip(bounds, bounds[1:])):
+        band = [b for b in narrow if lo <= b[1] < hi]
+        for column in ([b for b in band if b[2] <= split], [b for b in band if b[2] > split]):
+            parts += [b[4].strip() for b in sorted(column, key=lambda b: b[1])]
+        if i < len(wide):
+            parts.append(wide[i][4].strip())
     return "\n".join(parts)
 
 
@@ -156,75 +155,64 @@ def clean(text: str) -> str:
 
 def score_text(text: str, pages: int) -> tuple[int, list[str]]:
     """0-100 parse quality, plus plain-language warnings."""
-    warnings: list[str] = []
     body = text.replace(PAGE_BREAK, "\n")
     chars = len(body.strip())
     if chars < 40 * max(pages, 1):
-        warnings.append("Almost no text was found. This looks like a scanned or image-only file; upload a text-based PDF or DOCX.")
-        return min(10, chars // 5), warnings
+        return min(10, chars // 5), ["Almost no text was found. This looks like a scanned or image-only file; upload a text-based PDF or DOCX."]
     words = re.findall(r"[A-Za-z][A-Za-z'-]*", body)
     letters = sum(c.isalpha() for c in body)
-    odd = sum(1 for c in body if c == "�" or (ord(c) < 32 and c not in "\n\t"))
-    score = 100.0
-    if chars < 600:
-        score -= 25
-        warnings.append("Very little text was extracted; check that nothing is missing.")
-    if letters / max(chars, 1) < 0.55:
-        score -= 25
-        warnings.append("Much of the text is symbols or digits, which can mean the layout was garbled.")
-    if odd / max(chars, 1) > 0.01:
-        score -= 25
-        warnings.append("Unreadable characters were found.")
-    if words:
-        avg = sum(map(len, words)) / len(words)
-        single = sum(1 for w in words if len(w) == 1 and w.lower() not in "ai") / len(words)
-        if avg < 3.0 or single > 0.25:
-            score -= 30
-            warnings.append("Words look split into single letters, so columns or fonts may have been read badly.")
-    lines = [ln for ln in body.split("\n") if ln.strip()]
-    if len(lines) < 8 and chars > 1500:
-        score -= 15
-        warnings.append("Line breaks were lost; the structure may be hard to recover.")
-    return max(0, min(100, round(score))), warnings
+    odd = sum(c == "�" or (ord(c) < 32 and c not in "\n\t") for c in body)
+    split_words = bool(words) and (
+        sum(map(len, words)) / len(words) < 3.0 or sum(len(w) == 1 and w.lower() not in "ai" for w in words) / len(words) > 0.25
+    )
+    lines = sum(bool(ln.strip()) for ln in body.split("\n"))
+    problems = [  # (what is wrong, points off, what to tell the user)
+        (chars < 600, 25, "Very little text was extracted; check that nothing is missing."),
+        (letters / chars < 0.55, 25, "Much of the text is symbols or digits, which can mean the layout was garbled."),
+        (odd / chars > 0.01, 25, "Unreadable characters were found."),
+        (split_words, 30, "Words look split into single letters, so columns or fonts may have been read badly."),
+        (lines < 8 and chars > 1500, 15, "Line breaks were lost; the structure may be hard to recover."),
+    ]
+    found = [(points, message) for wrong, points, message in problems if wrong]
+    return max(0, 100 - sum(p for p, _ in found)), [m for _, m in found]
+
+
+def _read_pdf(data: bytes) -> tuple[str, int, int, list[str]]:
+    """(text, pages, quality, warnings) from PyMuPDF, or from pdfplumber when PyMuPDF fails or reads it badly."""
+    best: tuple[str, int, int, list[str]] | None = None
+    for extract in (_pdf_pymupdf, _pdf_pdfplumber):
+        try:
+            text, pages = extract(data)
+        except HTTPException:
+            raise
+        except Exception:  # a missing library or a file this parser cannot open: try the next one
+            continue
+        text = clean(text)
+        quality, warnings = score_text(text, pages)
+        if best is None or quality > best[2]:
+            best = (text, pages, quality, warnings)
+        if quality >= 40:
+            break
+    if best is None:
+        raise HTTPException(400, "That PDF could not be read.")
+    return best
+
+
+def _decode(data: bytes) -> str:
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data.decode("latin-1")
 
 
 def parse_bytes(data: bytes, name: str) -> Parsed:
     kind = detect_kind(data, name)
-    pages = 1
-    warnings: list[str] = []
     if kind == "pdf":
-        text, pages, parser = "", 1, "pymupdf"
-        try:
-            text, pages = _pdf_pymupdf(data)
-        except HTTPException:
-            raise
-        except ImportError:
-            parser = "none"
-        except Exception:
-            parser = "none"
-        text = clean(text)
-        q, warnings = score_text(text, pages)
-        if q < 40 or parser == "none":
-            try:
-                alt, alt_pages = _pdf_pdfplumber(data)
-                alt = clean(alt)
-                aq, aw = score_text(alt, alt_pages)
-                if aq > q or parser == "none":
-                    text, pages, q, warnings = alt, alt_pages, aq, aw
-            except Exception:
-                if parser == "none":
-                    raise HTTPException(400, "That PDF could not be read.") from None
-        return Parsed(text, q, warnings, pages, kind)
-    if kind == "docx":
-        text = clean(_docx(data))
-    else:
-        try:
-            text = data.decode("utf-8-sig")
-        except UnicodeDecodeError:
-            text = data.decode("latin-1")
-        text = clean(text)
-    q, warnings = score_text(text, pages)
-    return Parsed(text, q, warnings, pages, kind)
+        text, pages, quality, warnings = _read_pdf(data)
+        return Parsed(text, quality, warnings, pages, kind)
+    text = clean(_docx(data) if kind == "docx" else _decode(data))
+    quality, warnings = score_text(text, 1)
+    return Parsed(text, quality, warnings, 1, kind)
 
 
 def page_of_line(text: str, line_no: int) -> int | None:

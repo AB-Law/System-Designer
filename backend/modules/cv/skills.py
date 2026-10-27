@@ -78,12 +78,6 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
-def canonical(term: str) -> str:
-    """The canonical skill name for `term`, or the cleaned term itself when it is not in the table."""
-    t = re.sub(r"\s+", " ", term.strip().lower())
-    return _TO_CANON.get(t, term.strip())
-
-
 # Knowing the specific tool shows the general skill. Applied to CV text only, never to what a JD asks for.
 IMPLIES: dict[str, list[str]] = {
     "PostgreSQL": ["SQL"], "MySQL": ["SQL"],

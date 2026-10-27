@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from dc_platform import llm
-from modules.cv import rubric, scoring, structure
+from modules.cv import rubric, rules_parser, scoring
 from tests.cv_eval import specs
 from tests.cv_fixtures import fake_llm
 
@@ -26,7 +26,7 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> Generator[dict[str, dic
         for case_id, cand, job, _, _ in specs.CASES:
             llm.set_adapter_factory(lambda job=job: fake_llm(jd=specs.jd_reply(job)))
             text = specs.cv_text(cand)
-            out[case_id] = scoring.score(structure.parse_rules(text), text, specs.jd_text(job), 0, mode="fast")
+            out[case_id] = scoring.score(rules_parser.parse_rules(text), text, specs.jd_text(job), 0, mode="fast")
     llm.set_adapter_factory(None)
     mp.undo()
     yield out
@@ -60,7 +60,7 @@ def test_scores_are_stable_between_runs(results: dict[str, dict]) -> None:
     llm.set_adapter_factory(lambda: fake_llm(jd=specs.jd_reply(job)))
     try:
         text = specs.cv_text(cand)
-        again = scoring.score(structure.parse_rules(text), text, specs.jd_text(job), 0, mode="fast")
+        again = scoring.score(rules_parser.parse_rules(text), text, specs.jd_text(job), 0, mode="fast")
     finally:
         llm.set_adapter_factory(None)
     assert again["total"] == results["be_vs_be"]["total"] and again["breakdown"] == results["be_vs_be"]["breakdown"]

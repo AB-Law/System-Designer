@@ -24,7 +24,7 @@ load_env()
 
 from db import connect  # noqa: E402
 from dc_platform import llm  # noqa: E402
-from modules.cv import rubric, scoring, structure  # noqa: E402
+from modules.cv import rubric, rules_parser, scoring  # noqa: E402
 from tests.cv_eval import specs  # noqa: E402
 
 
@@ -36,7 +36,7 @@ def main() -> int:
     bad = 0
     for case_id, cand, job, (lo, hi), missing in specs.CASES:
         text = specs.cv_text(cand)
-        r = scoring.score(structure.parse_rules(text), text, specs.jd_text(job), 0, mode=mode)
+        r = scoring.score(rules_parser.parse_rules(text), text, specs.jd_text(job), 0, mode=mode)
         got = {e["text"] for e in r["evidence"] if e["status"] == "missing" and e["kind"] == "must"}
         ok = lo <= r["total"] <= hi and got == set(missing)
         bad += not ok

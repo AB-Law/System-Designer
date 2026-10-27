@@ -6,12 +6,12 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { ProgressBar } from "../../../ui/ProgressBar";
 import { ScoreRing } from "../../../ui/ScoreRing";
 import { Table } from "../../../ui/Table";
-import { toast } from "../../../ui/Toast";
 import { cvApi, watchJob } from "../api";
 import { STRENGTH, bandLabel, bandTone, cite, statusTone } from "../format";
 import { go } from "../route";
+import { useAction } from "../hooks";
 import { errText, useCv } from "../store";
-import type { Component, Job, Match, Run } from "../types";
+import type { Component, Job, Match, Mode, Run } from "../types";
 import { RunComparison } from "./Compare";
 
 const FINAL = new Set(["done", "failed", "cancelled"]);
@@ -86,7 +86,7 @@ export function ScoreResult({ runId }: { runId: number }) {
   const [prev, setPrev] = useState<Run | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { busy, run: act } = useAction();
   const cvs = useCv((s) => s.cvs);
   const loadCvs = useCv((s) => s.loadCvs);
 
@@ -140,6 +140,11 @@ export function ScoreResult({ runId }: { runId: number }) {
     );
   if (!run) return <EmptyState title="Loading" />;
 
+  const scoreAgain = async (mode: Mode) => {
+    const r = await act(() => cvApi.score([{ text: run.jdText, title: run.jdTitle }], mode, run.cvId));
+    if (r) go({ name: "result", runId: r.runs[0].id });
+  };
+
   if (run.status === "queued" || run.status === "running")
     return (
       <Card title={run.jdTitle || "Scoring"}>
@@ -155,15 +160,7 @@ export function ScoreResult({ runId }: { runId: number }) {
       <EmptyState
         title="This score did not finish"
         action={
-          <Button
-            variant="primary"
-            onClick={() => {
-              void cvApi
-                .score([{ text: run.jdText, title: run.jdTitle }], run.mode, run.cvId)
-                .then((r) => go({ name: "result", runId: r.runs[0].id }))
-                .catch((e) => toast(errText(e), "bad"));
-            }}
-          >
+          <Button variant="primary" onClick={() => void scoreAgain(run.mode)}>
             Try again
           </Button>
         }
@@ -179,26 +176,8 @@ export function ScoreResult({ runId }: { runId: number }) {
   const a = run.analysis;
 
   const rescore = async () => {
-    setBusy(true);
-    try {
-      const r = await cvApi.rescore(run.id);
-      go({ name: "result", runId: r.id });
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const deeper = async () => {
-    setBusy(true);
-    try {
-      const { runs } = await cvApi.score([{ text: run.jdText, title: run.jdTitle }], "deep", run.cvId);
-      go({ name: "result", runId: runs[0].id });
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
-    }
+    const r = await act(() => cvApi.rescore(run.id));
+    if (r) go({ name: "result", runId: r.id });
   };
 
   return (
@@ -236,7 +215,7 @@ export function ScoreResult({ runId }: { runId: number }) {
                 </Button>
               )}
               {run.mode === "fast" && (
-                <Button size="small" onClick={() => void deeper()} disabled={busy}>
+                <Button size="small" onClick={() => void scoreAgain("deep")} disabled={busy}>
                   Run a deep score
                 </Button>
               )}

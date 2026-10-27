@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
 import { FileDrop } from "../../../ui/FileDrop";
-import { toast } from "../../../ui/Toast";
 import { cvApi } from "../api";
 import { qualityTone, when } from "../format";
+import { attempt, useAction } from "../hooks";
 import { go } from "../route";
-import { errText, useCv } from "../store";
+import { useCv } from "../store";
 
 const ACCEPT = [".pdf", ".docx", ".txt"];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -17,48 +17,32 @@ export function Library() {
   const cvs = useCv((s) => s.cvs);
   const error = useCv((s) => s.error);
   const load = useCv((s) => s.loadCvs);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useAction();
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const onFile = async (f: File) => {
-    setBusy(true);
-    try {
-      const cv = await cvApi.upload(f);
-      await load();
-      toast("CV uploaded. Check that it was read correctly.", "good");
-      go({ name: "review", cvId: cv.id });
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
-    }
+    const cv = await run(() => cvApi.upload(f), "CV uploaded. Check that it was read correctly.");
+    if (!cv) return;
+    await load();
+    go({ name: "review", cvId: cv.id });
   };
 
-  const act = async (fn: () => Promise<unknown>, done?: string) => {
-    try {
-      await fn();
-      await load();
-      if (done) toast(done, "good");
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+  const act = async (fn: () => Promise<unknown>, done: string) => {
+    if ((await attempt(fn, done)) !== undefined) await load();
   };
 
   const exportAll = async () => {
-    try {
-      const data = await cvApi.exportAll();
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "my-cv-data.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+    const data = await attempt(() => cvApi.exportAll());
+    if (data === undefined) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "my-cv-data.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

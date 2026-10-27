@@ -4,11 +4,11 @@ import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
 import { Table } from "../../../ui/Table";
-import { toast } from "../../../ui/Toast";
 import { cvApi } from "../api";
 import { bandLabel, bandTone, when } from "../format";
 import { go } from "../route";
-import { errText, useCv } from "../store";
+import { attempt } from "../hooks";
+import { useCv } from "../store";
 import type { RunSummary } from "../types";
 
 export function History() {
@@ -20,11 +20,8 @@ export function History() {
   const loadCvs = useCv((s) => s.loadCvs);
 
   const load = useCallback(async () => {
-    try {
-      setRuns(await cvApi.history({ band: band || undefined, cvId: cvId ? Number(cvId) : undefined }));
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+    const rows = await attempt(() => cvApi.history({ band: band || undefined, cvId: cvId ? Number(cvId) : undefined }));
+    if (rows) setRuns(rows);
   }, [band, cvId]);
 
   useEffect(() => {
@@ -45,13 +42,9 @@ export function History() {
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p.slice(-1), id]));
   const remove = async (id: number) => {
     if (!window.confirm("Delete this score and its suggestions?")) return;
-    try {
-      await cvApi.removeRun(id);
-      setPicked((p) => p.filter((x) => x !== id));
-      await load();
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+    if ((await attempt(() => cvApi.removeRun(id))) === undefined) return;
+    setPicked((p) => p.filter((x) => x !== id));
+    await load();
   };
 
   // compare earlier to later regardless of the order they were ticked

@@ -12,8 +12,8 @@ from deps import CurrentUser
 from rate_limit import meter
 
 from . import parsing, rewrites, rubric, service
-from .structure import CVStructure, clamp, parse_rules
-from .tasks import corpus_of
+from .rules_parser import parse_rules
+from .structure import CVStructure, clamp
 
 router = APIRouter(tags=["cv"])
 
@@ -151,7 +151,7 @@ def make_rewrites(run_id: int, user: CurrentUser) -> list[dict[str, Any]]:
     if run["status"] != "done":
         raise HTTPException(409, "Wait for the score to finish first.")
     version = service.version_row(uid, run["cv_version_id"])
-    cv = CVStructure.model_validate_json(version["structured_json"] or "{}")
+    cv = service.structure_of(version)
     gaps = service.get_run(uid, run_id)["analysis"].get("gaps", [])
     try:
         items = rewrites.generate(cv, gaps, uid)
@@ -187,11 +187,11 @@ def rescore(run_id: int, user: CurrentUser, body: RescoreIn | None = None) -> di
     approved = [r for r in service.list_rewrites(uid, run_id) if r["status"] == "approved"]
     version_id = latest["id"]
     if approved:
-        cv, applied, skipped = rewrites.apply(CVStructure.model_validate_json(latest["structured_json"] or "{}"), approved)
+        cv, applied = rewrites.apply(service.structure_of(latest), approved)
         if not applied:
             raise HTTPException(409, "Those suggestions no longer match your CV text.")
         version_id = service.add_version(
-            uid, base["cv_id"], file_id=latest["file_id"], raw_text=corpus_of(latest, CVStructure.model_validate_json(latest["structured_json"] or "{}")),
+            uid, base["cv_id"], file_id=latest["file_id"], raw_text=service.corpus_of(latest),
             quality=latest["parse_quality"], warnings=[], structure=cv, source="rewrite", edited=True,
         )
         service.mark_applied(uid, applied)

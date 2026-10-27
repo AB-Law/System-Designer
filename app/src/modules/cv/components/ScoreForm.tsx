@@ -7,7 +7,8 @@ import { FileDrop } from "../../../ui/FileDrop";
 import { toast } from "../../../ui/Toast";
 import { cvApi } from "../api";
 import { go } from "../route";
-import { errText, useCv } from "../store";
+import { attempt, useAction } from "../hooks";
+import { useCv } from "../store";
 import type { Mode } from "../types";
 
 interface Draft {
@@ -24,7 +25,7 @@ export function ScoreForm() {
   const [cvId, setCvId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("fast");
   const [jds, setJds] = useState<Draft[]>([{ title: "", text: "" }]);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useAction();
 
   useEffect(() => {
     void load();
@@ -51,33 +52,26 @@ export function ScoreForm() {
   const ready = chosen !== null && jds.every((d) => d.text.trim().length >= MIN_CHARS);
 
   const fromFile = async (i: number, f: File) => {
-    try {
-      const r = await cvApi.uploadJd(f);
-      patch(i, { text: r.text, title: jds[i].title || f.name.replace(/\.[^.]+$/, "") });
-      r.warnings.forEach((w) => toast(w, "neutral"));
-    } catch (e) {
-      toast(errText(e), "bad");
-    }
+    const r = await attempt(() => cvApi.uploadJd(f));
+    if (!r) return;
+    patch(i, { text: r.text, title: jds[i].title || f.name.replace(/\.[^.]+$/, "") });
+    r.warnings.forEach((w) => toast(w, "neutral"));
   };
 
   const submit = async () => {
     if (!ready || chosen === null) return;
-    setBusy(true);
-    try {
-      const { runs } = await cvApi.score(
+    const res = await run(() =>
+      cvApi.score(
         jds.map((d) => ({ text: d.text.trim(), title: d.title.trim() })),
         mode,
         chosen,
-      );
-      if (runs.length === 1) go({ name: "result", runId: runs[0].id });
-      else {
-        toast(`${runs.length} scores started. They appear in History as they finish.`, "good");
-        go({ name: "history" });
-      }
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
+      ),
+    );
+    if (!res) return;
+    if (res.runs.length === 1) go({ name: "result", runId: res.runs[0].id });
+    else {
+      toast(`${res.runs.length} scores started. They appear in History as they finish.`, "good");
+      go({ name: "history" });
     }
   };
 

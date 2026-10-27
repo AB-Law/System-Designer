@@ -9,7 +9,6 @@ interface CvState {
   cvs: CvSummary[] | null;
   error: string | null;
   loadCvs: () => Promise<CvSummary[]>;
-  reset: () => void;
 }
 
 /** The CV library, shared by the library, score and history screens. Everything else is loaded per screen. */
@@ -26,5 +25,4 @@ export const useCv = create<CvState>((set) => ({
       return [];
     }
   },
-  reset: () => set({ cvs: null, error: null }),
 }));

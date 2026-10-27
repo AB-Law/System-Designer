@@ -7,6 +7,7 @@ import { toast } from "../../../ui/Toast";
 import { cvApi, watchJob } from "../api";
 import { qualityTone, splitLines, splitSkills } from "../format";
 import { go } from "../route";
+import { attempt, useAction } from "../hooks";
 import { errText, useCv } from "../store";
 import type { CvDetail, CvStructure, Education, Project, Role } from "../types";
 
@@ -179,7 +180,7 @@ export function ParseReview({ cvId }: { cvId: number }) {
   const [draft, setDraft] = useState<CvStructure | null>(null);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const saving = useAction();
   const [reading, setReading] = useState(false);
   const loadCvs = useCv((s) => s.loadCvs);
   const tries = useRef(0);
@@ -223,35 +224,26 @@ export function ParseReview({ cvId }: { cvId: number }) {
 
   const save = async () => {
     if (!draft) return;
-    setSaving(true);
-    try {
-      const d = await cvApi.saveStructure(cvId, draft);
-      setCv(d);
-      setDirty(false);
-      void loadCvs();
-      toast("Saved as a new version. Earlier scores keep the version they used.", "good");
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setSaving(false);
-    }
+    const d = await saving.run(
+      () => cvApi.saveStructure(cvId, draft),
+      "Saved as a new version. Earlier scores keep the version they used.",
+    );
+    if (!d) return;
+    setCv(d);
+    setDirty(false);
+    void loadCvs();
   };
 
   const readAgain = async () => {
     setReading(true);
-    try {
-      const { jobId } = await cvApi.reExtract(cvId);
-      watchJob(jobId, (j) => {
-        if (j.status === "done" || j.status === "failed") {
-          setReading(false);
-          void load();
-          if (j.status === "failed") toast("The AI could not read the CV again.", "bad");
-        }
-      });
-    } catch (e) {
+    const started = await attempt(() => cvApi.reExtract(cvId));
+    if (!started) return setReading(false);
+    watchJob(started.jobId, (j) => {
+      if (j.status !== "done" && j.status !== "failed") return;
       setReading(false);
-      toast(errText(e), "bad");
-    }
+      void load();
+      if (j.status === "failed") toast("The AI could not read the CV again.", "bad");
+    });
   };
 
   if (error && !cv) return <EmptyState title="Could not open this CV">{error}</EmptyState>;
@@ -281,8 +273,8 @@ export function ParseReview({ cvId }: { cvId: number }) {
         {waiting && !gaveUp && <p className="cv-hint">The AI is reading your CV. This page updates when it finishes.</p>}
         {waiting && gaveUp && <p className="cv-hint">The AI did not improve on the simple reading, so please check every field by hand.</p>}
         <div className="cv-row">
-          <Button variant="primary" onClick={() => void save()} disabled={!dirty || saving}>
-            {saving ? "Saving…" : "Save corrections"}
+          <Button variant="primary" onClick={() => void save()} disabled={!dirty || saving.busy}>
+            {saving.busy ? "Saving…" : "Save corrections"}
           </Button>
           {!v.edited && (
             <Button onClick={() => void readAgain()} disabled={reading || dirty}>

@@ -3,8 +3,8 @@ import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
-import { toast } from "../../../ui/Toast";
 import { cvApi } from "../api";
+import { useAction } from "../hooks";
 import { errText } from "../store";
 import type { LlmSettings } from "../types";
 
@@ -14,7 +14,7 @@ export function AiSettings() {
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { busy, run: act } = useAction();
   const [error, setError] = useState<string | null>(null);
 
   const apply = (v: LlmSettings) => {
@@ -39,30 +39,16 @@ export function AiSettings() {
   if (!s) return <EmptyState title="Loading" />;
   const info = s.providers.find((p) => p.id === provider);
 
-  const run = async (fn: () => Promise<LlmSettings>, done: string) => {
-    setBusy(true);
+  const change = async (fn: () => Promise<LlmSettings>, done: string) => {
     setResult(null);
-    try {
-      apply(await fn());
-      toast(done, "good");
-    } catch (e) {
-      toast(errText(e), "bad");
-    } finally {
-      setBusy(false);
-    }
+    const next = await act(fn, done);
+    if (next) apply(next);
   };
 
   const test = async () => {
-    setBusy(true);
     setResult(null);
-    try {
-      const r = await cvApi.testLlm();
-      setResult(r.ok ? { ok: true, text: "Connected. The model answered." } : { ok: false, text: r.error || "No answer." });
-    } catch (e) {
-      setResult({ ok: false, text: errText(e) });
-    } finally {
-      setBusy(false);
-    }
+    const r = await act(() => cvApi.testLlm());
+    if (r) setResult(r.ok ? { ok: true, text: "Connected. The model answered." } : { ok: false, text: r.error || "No answer." });
   };
 
   const used = s.usage.quota ? Math.min(100, Math.round((100 * s.usage.monthTokens) / s.usage.quota)) : null;
@@ -97,7 +83,7 @@ export function AiSettings() {
           <Button
             variant="primary"
             disabled={busy || !info?.available}
-            onClick={() => void run(() => cvApi.saveLlm(provider, model.trim()), "AI settings saved.")}
+            onClick={() => void change(() => cvApi.saveLlm(provider, model.trim()), "AI settings saved.")}
           >
             Save
           </Button>
@@ -105,7 +91,7 @@ export function AiSettings() {
             Test connection
           </Button>
           {s.current && (
-            <Button variant="ghost" disabled={busy} onClick={() => void run(() => cvApi.resetLlm(), "Back to the server default.")}>
+            <Button variant="ghost" disabled={busy} onClick={() => void change(() => cvApi.resetLlm(), "Back to the server default.")}>
               Use the server default
             </Button>
           )}

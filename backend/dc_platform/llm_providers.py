@@ -32,10 +32,8 @@ ANTHROPIC_BASE = "https://api.anthropic.com/v1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5"
 
 
-class AnthropicAdapter:
+class AnthropicAdapter(_HttpAdapter):
     """Anthropic Messages API. System messages go in `system`; JSON mode is a prompt instruction."""
-
-    timeout = 120.0
 
     def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
         key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
@@ -60,13 +58,6 @@ class AnthropicAdapter:
         if stream:
             p["stream"] = True
         return p
-
-    @staticmethod
-    def _raise(r: httpx.Response) -> None:
-        if r.status_code in (429, 529) or r.status_code >= 500:
-            raise LLMTransient(f"provider returned {r.status_code}")
-        if r.status_code >= 400:
-            raise LLMError(f"provider returned {r.status_code}: {r.text[:300]}")
 
     def chat(self, messages: list[Message], *, json_mode: bool, temperature: float | None) -> Completion:
         try:

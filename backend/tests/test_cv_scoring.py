@@ -7,10 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from dc_platform import llm
-from modules.cv import rubric, scoring, structure
+from modules.cv import rubric, rules_parser, scoring, structure
 from tests.cv_fixtures import CV_TEXT, JD_ANALYSIS, JD_TEXT, fake_llm, judge_reply
 
-CV = structure.parse_rules(CV_TEXT)
+CV = rules_parser.parse_rules(CV_TEXT)
 
 
 @pytest.fixture()
@@ -89,7 +89,7 @@ def test_gaps_are_ordered_by_impact(api: TestClient) -> None:
 
 def test_missing_requirement_lowers_score(api: TestClient) -> None:
     use(fake_llm())
-    with_kafka = scoring.score(structure.parse_rules(CV_TEXT + "\n- Ran Kafka clusters for event streaming at scale\n"), CV_TEXT + "\n- Ran Kafka clusters for event streaming at scale\n", JD_TEXT, uid(), mode="fast")
+    with_kafka = scoring.score(rules_parser.parse_rules(CV_TEXT + "\n- Ran Kafka clusters for event streaming at scale\n"), CV_TEXT + "\n- Ran Kafka clusters for event streaming at scale\n", JD_TEXT, uid(), mode="fast")
     without = run("fast")
     assert with_kafka["total"] > without["total"]
 

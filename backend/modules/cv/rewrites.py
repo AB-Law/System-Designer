@@ -89,17 +89,13 @@ def generate(cv: CVStructure, gaps: list[dict[str, Any]], user_id: int) -> list[
     return out
 
 
-def apply(cv: CVStructure, approved: list[dict[str, Any]]) -> tuple[CVStructure, list[int], list[int]]:
-    """Apply approved proposals to a copy of the CV. Returns (new cv, applied ids, skipped ids).
+def apply(cv: CVStructure, approved: list[dict[str, Any]]) -> tuple[CVStructure, list[int]]:
+    """Apply approved proposals to a copy of the CV. Returns (new cv, applied ids).
 
     A proposal is skipped when its bullet is no longer the text it was written against.
     """
     new = cv.model_copy(deep=True)
-    applied: list[int] = []
-    skipped: list[int] = []
-    for p in approved:
-        if get_bullet(new, p["bulletRef"]) == p["original"] and set_bullet(new, p["bulletRef"], p["proposed"]):
-            applied.append(p["id"])
-        else:
-            skipped.append(p["id"])
-    return new, applied, skipped
+    applied = [
+        p["id"] for p in approved if get_bullet(new, p["bulletRef"]) == p["original"] and set_bullet(new, p["bulletRef"], p["proposed"])
+    ]
+    return new, applied
