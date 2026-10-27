@@ -1,7 +1,8 @@
+import { DESIGN } from "../modules/design/def";
 import type { Access, Availability, ModuleDef } from "./types";
 
 /** Design Canvas: always present, always first, owns every hash the other modules do not. */
-export const DESIGN: ModuleDef = { id: "design", title: "Design", hashPrefix: "", requires: [], flag: "design" };
+export { DESIGN };
 
 /** Parse a comma list such as "design,cv" (the build flag). Design is always on. */
 export function enabledFlags(raw: string | undefined): Set<string> {
@@ -31,7 +32,7 @@ export function availability(def: ModuleDef, access: Access): Availability {
 }
 
 // Definitions are small objects; each Screen is a lazy import, so module code stays out of the initial bundle.
-const found = import.meta.glob<{ default: ModuleDef }>("../modules/*/index.ts", { eager: true });
+const found = import.meta.glob<{ default: ModuleDef }>(["../modules/*/index.ts", "!../modules/design/index.ts"], { eager: true });
 
 export function allDefinitions(): ModuleDef[] {
   return Object.values(found).map((m) => m.default);

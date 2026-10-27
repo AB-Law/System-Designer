@@ -97,3 +97,14 @@ describe("ui kit", () => {
     expect(checkFile({ name: "cv.pdf", size: 0 }, opts)).toMatch(/empty/);
   });
 });
+
+describe("design module wrapper", () => {
+  it("re-exports the existing Design Canvas pieces and the shell's Design definition", async () => {
+    const design = await import("../modules/design");
+    expect(design.default).toBe(DESIGN);
+    for (const name of ["DesignApp", "DesignTopBar", "HomeScreen", "LearnScreen", "RoadmapScreen", "SharedView"] as const) {
+      expect(typeof design[name]).toBe("function");
+    }
+    expect(typeof design.useDesignStore.getState).toBe("function");
+  });
+});
