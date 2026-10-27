@@ -6,7 +6,7 @@ from typing import Any
 
 from modules import enabled_modules
 
-from . import actions, readiness_view, targets
+from . import actions, readiness_view, setup, targets
 
 FIT_GAPS = 3
 
@@ -55,6 +55,7 @@ def build(user_id: int) -> dict[str, Any]:
         enabled=enabled, has_interview=_has_interview(seen["topics"]),
     )
     return {
+        "setup": setup.build(user_id, {"target": target, "fit": fit}),
         "target": target and {**target, "daysLeft": _days_left(target["date"])},
         "targets": targets.list_targets(user_id),
         "readiness": seen["topics"], "fit": fit, "actions": actions.next_actions(context),

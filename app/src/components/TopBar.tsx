@@ -4,6 +4,7 @@ import { money } from "../blocks";
 import { useRun } from "../hooks";
 import { useStore } from "../store";
 import { ModuleSwitcher } from "../shell/ModuleSwitcher";
+import { goHub, hubOn } from "../shell/hub";
 import { goModule } from "../shell/route";
 import { DESIGN } from "../shell/registry";
 import { useModules } from "../shell/useActiveModule";
@@ -22,6 +23,7 @@ export function TopBar() {
   const user = useStore((s) => s.user);
   const setAuthOpen = useStore((s) => s.setAuthOpen);
   const signOut = useStore((s) => s.signOut);
+  const setLandingSeen = useStore((s) => s.setLandingSeen);
   const modules = useModules();
   const [menu, setMenu] = useState(false);
   const workbench = view === "canvas" || view === "roadmap";
@@ -36,6 +38,8 @@ export function TopBar() {
         type="button"
         className="brand"
         onClick={() => {
+          if (hubOn() && user) return goHub();
+          if (hubOn()) setLandingSeen(false);
           goModule(DESIGN, modules);
           setView("home");
         }}

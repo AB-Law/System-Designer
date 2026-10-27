@@ -39,7 +39,7 @@ def start(user_id: int, *, source_kind: MapSource, source_ref: str) -> dict[str,
     row = maps.create(user_id, source_kind=source_kind, source_ref=ref)
     map_id = int(row["id"])
     job_id = jobs.enqueue(user_id, "study.map", {"map_id": map_id})
-    maps.set_status(user_id, map_id, "generating", job_id=job_id)
+    maps.set_job(user_id, map_id, job_id)
     return maps.get_map(user_id, map_id)
 
 
@@ -48,7 +48,7 @@ def regenerate(user_id: int, map_id: int) -> dict[str, Any]:
     old = maps.get_row(user_id, map_id)
     new = maps.create(user_id, source_kind=old["source_kind"], source_ref=old["source_ref"], version=int(old["version"]) + 1)
     job_id = jobs.enqueue(user_id, "study.map", {"map_id": new["id"]})
-    maps.set_status(user_id, new["id"], "generating", job_id=job_id)
+    maps.set_job(user_id, new["id"], job_id)
     return maps.get_map(user_id, new["id"])
 
 

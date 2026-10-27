@@ -132,6 +132,9 @@ export interface State {
   startRoadmapStep: (problemId: string) => Promise<void>;
 
   setAuthOpen: (b: boolean) => void;
+  /** True once a visitor chose to skip the landing page for this visit. */
+  landingSeen: boolean;
+  setLandingSeen: (b: boolean) => void;
   signIn: (mode: "login" | "register", username: string, password: string, inviteCode?: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   setShareOpen: (b: boolean) => void;

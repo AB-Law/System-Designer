@@ -5,7 +5,7 @@ import type { TopicCard } from "../types";
 function Tile({ t }: { t: TopicCard }) {
   const color = TIER_COLOR[t.tier];
   return (
-    <li className={"hub-tile" + (t.tier === "none" ? " empty" : "")}>
+    <li className={"hub-tile" + (t.tier === "none" ? " hub-tile-empty" : "")}>
       <div className="hub-tile-head">
         <strong>{t.label}</strong>
         <span style={{ color }}>{TIER_WORD[t.tier]}</span>
