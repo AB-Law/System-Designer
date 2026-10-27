@@ -1,5 +1,14 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import { lookupTerm } from "../../roadmap";
+
+/** Pins the tooltip to the viewport so a scrolling or clipped panel cannot cut it off. */
+function placeTip(e: SyntheticEvent<HTMLElement>) {
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  const w = Math.min(260, window.innerWidth * 0.7, window.innerWidth - 16);
+  el.style.setProperty("--tip-left", `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`);
+  el.style.setProperty("--tip-bottom", `${window.innerHeight - r.top + 6}px`);
+}
 
 /**
  * Renders plain text with optional [[term]] or [[term|label]] markers as
@@ -13,7 +22,7 @@ export function GlossText({ text }: { text: string }) {
         p.kind === "text" ? (
           <span key={i}>{p.value}</span>
         ) : (
-          <abbr key={i} className="gloss-term" data-tip={p.plain} aria-label={`${p.label}: ${p.plain}`} tabIndex={0}>
+          <abbr key={i} className="gloss-term" data-tip={p.plain} aria-label={`${p.label}: ${p.plain}`} tabIndex={0} onMouseEnter={placeTip} onFocus={placeTip}>
             {p.label}
           </abbr>
         ),
@@ -62,7 +71,7 @@ export function glosser() {
       const plain = lookupTerm(x.key)?.plain ?? "";
       if (x.start > last) out.push(text.slice(last, x.start));
       out.push(
-        <abbr key={i} className="gloss-term" data-tip={plain} aria-label={`${text.slice(x.start, x.end)}: ${plain}`} tabIndex={0}>
+        <abbr key={i} className="gloss-term" data-tip={plain} aria-label={`${text.slice(x.start, x.end)}: ${plain}`} tabIndex={0} onMouseEnter={placeTip} onFocus={placeTip}>
           {text.slice(x.start, x.end)}
         </abbr>,
       );
