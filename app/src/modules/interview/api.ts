@@ -1,0 +1,69 @@
+import { ApiError, call } from "../../api";
+import { parseSse } from "./sse";
+import type { RoleInput, RoleSummary, ScoreRunOption, SessionDetail, SessionSummary, StreamEvent, Style } from "./types";
+
+export const interviewApi = {
+  roles: () => call<RoleSummary[]>("/interview/roles"),
+  createRole: (body: RoleInput) => call<RoleSummary>("/interview/roles", "POST", body),
+  removeRole: (id: number) => call<{ ok: boolean }>(`/interview/roles/${id}`, "DELETE"),
+  sessions: () => call<SessionSummary[]>("/interview/sessions"),
+  session: (id: number) => call<SessionDetail>(`/interview/sessions/${id}`),
+  startSession: (roleId: number, style: Style) => call<{ id: number; jobId: string }>("/interview/sessions", "POST", { roleId, style }),
+  end: (id: number) => call<{ jobId: string }>(`/interview/sessions/${id}/end`, "POST"),
+  removeSession: (id: number) => call<{ ok: boolean }>(`/interview/sessions/${id}`, "DELETE"),
+  /** Finished CV scores a role can start from. Empty when the CV module is off. */
+  scoreRuns: async (): Promise<ScoreRunOption[]> => {
+    try {
+      const runs = await call<(ScoreRunOption & { status: string })[]>("/cv/score/history");
+      return runs.filter((r) => r.status === "done");
+    } catch {
+      return [];
+    }
+  },
+};
+
+async function failure(r: Response): Promise<ApiError> {
+  let message = r.statusText || "Something went wrong";
+  try {
+    const j = (await r.json()) as { detail?: unknown };
+    if (typeof j.detail === "string") message = j.detail;
+  } catch {
+    /* not JSON */
+  }
+  return new ApiError(r.status, message);
+}
+
+/**
+ * Send an answer (or, with `text` null, ask for the reply the interviewer still owes) and hand each streamed event to `onEvent`.
+ * Resolves when the stream ends; rejects with an ApiError if the request itself is refused.
+ */
+export async function streamTurn(
+  sessionId: number,
+  text: string | null,
+  onEvent: (e: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let r: Response;
+  try {
+    r = await fetch(`/api/interview/sessions/${sessionId}/turn`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(text === null ? {} : { text }),
+      signal,
+    });
+  } catch {
+    throw new ApiError(0, "Could not reach the server.");
+  }
+  if (!r.ok || !r.body) throw await failure(r);
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return;
+    const parsed = parseSse(buffer + decoder.decode(value, { stream: true }));
+    buffer = parsed.rest;
+    parsed.events.forEach(onEvent);
+  }
+}

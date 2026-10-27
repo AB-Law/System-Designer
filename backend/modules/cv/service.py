@@ -3,20 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import time
 from typing import Any
-
-from fastapi import HTTPException
 
 from db import open_db
 from dc_platform import files
+from dc_platform.rows import now
+from dc_platform.rows import owned as _owned
 
 from .experience import total_years
 from .structure import CVStructure, render_text
-
-
-def now() -> int:
-    return int(time.time() * 1000)
 
 
 def sha(*parts: str) -> str:
@@ -48,15 +43,6 @@ def list_cvs(user_id: int) -> list[dict[str, Any]]:
             latest = db.execute("SELECT * FROM cv_versions WHERE cv_id=? AND user_id=? ORDER BY id DESC LIMIT 1", (c["id"], user_id)).fetchone()
             out.append({"id": c["id"], "name": c["name"], "active": bool(c["active"]), "created": c["created"], "versionCount": n, "latest": _version(latest, full=False) if latest else None})
     return out
-
-
-def _owned(sql: str, params: tuple[Any, ...], what: str) -> Any:
-    """The one row a query finds, or a 404. The query must filter by user_id, so 'missing' and 'not yours' look the same."""
-    with open_db() as db:
-        row = db.execute(sql, params).fetchone()
-    if not row:
-        raise HTTPException(404, f"{what} not found.")
-    return row
 
 
 def structure_of(version: Any) -> CVStructure:

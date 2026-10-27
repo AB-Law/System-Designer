@@ -1,0 +1,122 @@
+export type Category = "behavioral" | "technical" | "system_design" | "company";
+export type Tone = "friendly" | "tough";
+export type SessionStatus = "planning" | "active" | "ended" | "failed";
+export type TurnTag = "question" | "answer" | "follow-up" | "transition" | "closing";
+
+export const CATEGORIES: Category[] = ["behavioral", "technical", "system_design", "company"];
+export const CATEGORY_LABELS: Record<Category, string> = {
+  behavioral: "Behavioral",
+  technical: "Technical",
+  system_design: "System design",
+  company: "Company",
+};
+
+export interface Style {
+  tone: Tone;
+  durationMin: number;
+  categories: Category[];
+  counts: Partial<Record<Category, number>>;
+  showPlan: boolean;
+}
+
+export interface RoleSummary {
+  id: number;
+  title: string;
+  level: string;
+  company: string | null;
+  hasJd: boolean;
+  sourceScoreRunId: number | null;
+  created: number;
+}
+
+export interface RoleInput {
+  title?: string;
+  level?: string;
+  company?: string | null;
+  jdText?: string | null;
+  scoreRunId?: number | null;
+}
+
+export interface SessionSummary {
+  id: number;
+  roleId: number;
+  roleTitle: string;
+  company: string | null;
+  status: SessionStatus;
+  score: number | null;
+  style: Style;
+  turnCount: number;
+  created: number;
+  ended: number | null;
+}
+
+export interface Turn {
+  idx: number;
+  role: "interviewer" | "candidate";
+  tag: TurnTag;
+  text: string;
+  created: number;
+}
+
+export interface PlanItem {
+  category: Category;
+  question: string;
+  focus: string;
+}
+
+export interface AnswerFeedback {
+  ref: number;
+  category: Category;
+  focus: string;
+  question: string;
+  answer: string;
+  score: number;
+  strengths: string[];
+  gaps: string[];
+  better: string;
+  rubric: string[];
+}
+
+export interface Feedback {
+  perAnswer: AnswerFeedback[];
+  summary: {
+    strengths: string[];
+    gaps: string[];
+    practiceNext: string[];
+    byCategory: Partial<Record<Category, number>>;
+    score: number | null;
+  };
+  promptVersion: string;
+}
+
+export interface SessionDetail {
+  id: number;
+  roleId: number;
+  role: RoleSummary;
+  style: Style;
+  status: SessionStatus;
+  error: string | null;
+  planJobId: string | null;
+  feedbackJobId: string | null;
+  plan: PlanItem[] | null;
+  turns: Turn[];
+  startedAt: number | null;
+  serverNow: number;
+  score: number | null;
+  created: number;
+  ended: number | null;
+  feedback: Feedback | null;
+}
+
+/** One event of the interviewer's reply stream. */
+export type StreamEvent =
+  | { type: "start"; tag: TurnTag }
+  | { type: "delta"; text: string }
+  | { type: "done"; turn: Turn; finished: boolean; feedbackJobId: string | null }
+  | { type: "error"; message: string };
+
+export interface ScoreRunOption {
+  id: number;
+  jdTitle: string;
+  cvName?: string;
+}
