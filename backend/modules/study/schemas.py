@@ -51,7 +51,7 @@ class GenerateIn(BaseModel):
 
 
 class MapCreate(BaseModel):
-    sourceKind: Literal["lesson", "jd", "document"]
+    sourceKind: Literal["lesson", "jd", "score_run", "document"]
     sourceRef: str = Field(default="", max_length=60_000)
 
 

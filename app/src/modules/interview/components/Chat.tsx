@@ -29,7 +29,10 @@ function Plan({ plan }: { plan: NonNullable<SessionDetail["plan"]> }) {
       <summary>Planned questions ({plan.length})</summary>
       <ol>
         {plan.map((p) => (
-          <li key={p.question}>{p.question}</li>
+          <li key={p.question}>
+            {p.question}
+            {p.jd_link && <em className="iv-jd-tag">From the job: {p.jd_link}</em>}
+          </li>
         ))}
       </ol>
     </details>

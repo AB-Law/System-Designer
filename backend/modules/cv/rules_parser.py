@@ -10,18 +10,26 @@ from .structure import CVStructure, Education, Project, Role, clamp
 _DATE = rf"(?:(?:{MONTH_PATTERN})[a-z]*\.?\s+|(?:0?[1-9]|1[0-2])/)?(?:19|20)\d{{2}}(?:-(?:0[1-9]|1[0-2])(?!\d))?"
 _RANGE_RE = re.compile(rf"({_DATE})\s*(?:-|–|—|to)\s*({_DATE}|present|current|now|today)", re.I)
 _BULLET_RE = re.compile(r"^\s*([-*•▪●◦‣·]|\d+[.)])\s+")
-_TITLE_SPLIT = re.compile(r"\s+[|@·]\s+|\s+(?:at|,)\s+|\s+[-–—]\s+")
+_TITLE_SPLIT = re.compile(r"\s+[|@·]\s+|\s+at\s+|,\s+|\s+[-–—]\s+")
 _DEGREE_RE = re.compile(r"\b(b\.?sc|m\.?sc|b\.?a|m\.?a|phd|bachelor|master|degree|diploma|b\.?tech|m\.?tech|mba)\b", re.I)
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 _LINK_RE = re.compile(r"(?:https?://|www\.|linkedin\.com/|github\.com/)\S+", re.I)
 _SECTIONS = {
-    "summary": "summary", "profile": "summary", "objective": "summary",
+    "summary": "summary", "profile": "summary", "objective": "summary", "professional summary": "summary", "career summary": "summary",
+    "about me": "summary", "about": "summary", "personal statement": "summary",
     "experience": "experience", "work experience": "experience", "professional experience": "experience", "employment": "experience",
-    "education": "education",
-    "skills": "skills", "technical skills": "skills",
-    "projects": "projects",
+    "work history": "experience", "employment history": "experience", "career history": "experience", "relevant experience": "experience",
+    "technical experience": "experience",
+    "education": "education", "education and training": "education", "academic background": "education", "qualifications": "education",
+    "skills": "skills", "technical skills": "skills", "key skills": "skills", "core skills": "skills", "core competencies": "skills",
+    "skills and tools": "skills", "technologies": "skills", "tech stack": "skills",
+    "projects": "projects", "personal projects": "projects", "selected projects": "projects", "academic projects": "projects",
+    "side projects": "projects", "open source": "projects",
 }  # any other known heading (certifications, languages, ...) is read as "other" and ignored
-_OTHER_HEADINGS = {"certifications", "publications", "awards", "languages", "interests", "references"}
+_OTHER_HEADINGS = {
+    "certifications", "certificates", "publications", "awards", "honors", "honours", "languages", "interests", "hobbies", "references",
+    "volunteering", "volunteer experience", "courses", "achievements", "activities", "additional information",
+}
 
 
 class _Reader:
@@ -92,7 +100,11 @@ class _Reader:
     def _education(self, ln: str) -> None:
         edu, rng = self.cv.education, _RANGE_RE.search(ln)
         if rng:
-            edu.append(Education(school=ln[: rng.start()].strip(" |,-–—"), start=norm_date(rng.group(1)), end=norm_date(rng.group(2))))
+            rest = f"{ln[: rng.start()]} {ln[rng.end() :]}".strip(" |,-–—()")
+            parts = [p.strip() for p in re.split(r"\s+[|·]\s+|\s+[-–—]\s+|,\s+", rest) if p.strip()]
+            degree = " ".join(p for p in parts if _DEGREE_RE.search(p))
+            school = " ".join(p for p in parts if not _DEGREE_RE.search(p))
+            edu.append(Education(school=school, degree=degree, start=norm_date(rng.group(1)), end=norm_date(rng.group(2))))
         elif not _DEGREE_RE.search(ln):
             edu.append(Education(school=ln))
         elif edu and not edu[-1].degree:
@@ -107,7 +119,7 @@ class _Reader:
             if not cv.email and (m := _EMAIL_RE.search(ln)):
                 cv.email = m.group(0)
             cv.links += [u.rstrip(".,)") for u in _LINK_RE.findall(ln)]
-        plain = [ln for ln in self.header if "@" not in ln and not re.search(r"https?://|www\.|\d{5,}", ln)]
+        plain = [ln for ln in self.header if "@" not in ln and not re.search(r"https?://|www\.|linkedin|github|\+?\d[\d\s().-]{6,}\d", ln)]
         cv.name, cv.headline = (plain[0][:120] if plain else ""), (plain[1][:200] if len(plain) > 1 else "")
         return clamp(cv)
 
@@ -118,7 +130,7 @@ def parse_rules(text: str) -> CVStructure:
         ln = raw.strip()
         if not ln:
             continue
-        heading = ln.lower().rstrip(":")
+        heading = re.sub(r"\s+", " ", re.sub(r"[^a-z ]", " ", ln.lower().replace("&", " and "))).strip() if len(ln) <= 40 else ""
         if heading in _SECTIONS or heading in _OTHER_HEADINGS:
             section = _SECTIONS.get(heading, "other")
             reader.new_section()

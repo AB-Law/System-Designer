@@ -62,6 +62,7 @@ export interface PlanItem {
   category: Category;
   question: string;
   focus: string;
+  jd_link?: string;
 }
 
 export interface AnswerFeedback {
@@ -74,6 +75,8 @@ export interface AnswerFeedback {
   strengths: string[];
   gaps: string[];
   better: string;
+  jdLink?: string;
+  jdFit?: string;
   rubric: string[];
 }
 

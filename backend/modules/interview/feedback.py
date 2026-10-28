@@ -32,6 +32,7 @@ class Exchange:
     category: Category
     focus: str
     question: str
+    jd_link: str = ""
     answers: list[str] = field(default_factory=list)
 
     @property
@@ -47,7 +48,7 @@ def build_exchanges(turns: list[Turn], plan: Plan) -> list[Exchange]:
         if turn.tag == CLOSING:
             break
         if turn.tag in ASKS_PLAN_ITEM and (item := next(items, None)):
-            found.append(Exchange(turn.idx, item.category, item.focus, item.question))
+            found.append(Exchange(turn.idx, item.category, item.focus, item.question, item.jd_link))
         elif turn.tag == ANSWER and found:
             found[-1].answers.append(turn.text)
     return [e for e in found if e.answers]
@@ -61,29 +62,34 @@ class AnswerCritique(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     gaps: list[str] = Field(default_factory=list)
     better: str = ""
+    jd_fit: str = ""  # one sentence on how the answer meets what the job asks for
 
 
 class Critiques(BaseModel):
     answers: list[AnswerCritique] = Field(default_factory=list)
 
 
-def _critique_input(exchanges: list[Exchange]) -> str:
-    return "<answers>\n" + json.dumps([
-        {"ref": e.ref, "category": e.category, "rubric": rubrics.rubric_text(e.category), "question": e.question, "answer": e.answer[:MAX_ANSWER_CHARS]}
+def _critique_input(exchanges: list[Exchange], job: str = "") -> str:
+    answers = "<answers>\n" + json.dumps([
+        {
+            "ref": e.ref, "category": e.category, "rubric": rubrics.rubric_text(e.category), "question": e.question,
+            **({"job_requirement": e.jd_link} if e.jd_link else {}), "answer": e.answer[:MAX_ANSWER_CHARS],
+        }
         for e in exchanges
     ]) + "\n</answers>"
+    return f"<job>\n{job}\n</job>\n{answers}" if job else answers
 
 
 def _marked(e: Exchange, c: AnswerCritique) -> dict[str, Any]:
     return {
         "ref": e.ref, "category": e.category, "focus": e.focus, "question": e.question, "answer": e.answer, "score": c.score,
-        "strengths": c.strengths[:3], "gaps": c.gaps[:3], "better": c.better[:1_000], "rubric": list(rubrics.RUBRICS[e.category]),
+        "jdLink": e.jd_link, "jdFit": c.jd_fit[:400] if e.jd_link else "", "strengths": c.strengths[:3], "gaps": c.gaps[:3], "better": c.better[:1_000], "rubric": list(rubrics.RUBRICS[e.category]),
     }
 
 
-def critique(exchanges: list[Exchange], user_id: int) -> list[dict[str, Any]]:
+def critique(exchanges: list[Exchange], user_id: int, job: str = "") -> list[dict[str, Any]]:
     got = llm.client_for(user_id).complete_json(
-        [{"role": "system", "content": prompts.render("critique")}, {"role": "user", "content": _critique_input(exchanges)}],
+        [{"role": "system", "content": prompts.render("critique")}, {"role": "user", "content": _critique_input(exchanges, job)}],
         Critiques, user_id=user_id, module="interview", temperature=0.2,
     )
     first: dict[int, AnswerCritique] = {}
@@ -134,11 +140,11 @@ def readiness_events(marked: list[dict[str, Any]]) -> list[readiness.Event]:
     return [readiness.Event(topic, mean(scores) / MAX_SCORE) for topic, scores in grouped.items()]
 
 
-def write(user_id: int, session_id: int, role_title: str) -> dict[str, Any]:
+def write(user_id: int, session_id: int, role_title: str, job: str = "") -> dict[str, Any]:
     """Mark the session's answers, store the feedback and score, and record readiness events. Returns the score."""
     row = sessions.get_row(user_id, session_id)
     exchanges = build_exchanges(sessions.turns_of(user_id, session_id), sessions.plan_of(row))
-    marked = critique(exchanges, user_id) if exchanges else []
+    marked = critique(exchanges, user_id, job) if exchanges else []
     summary = {**summarise(role_title, marked, user_id), "byCategory": by_category(marked)} if marked else EMPTY_SUMMARY
     score = percent([m["score"] for m in marked])
     summary = {**summary, "score": score}

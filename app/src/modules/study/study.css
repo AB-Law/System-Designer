@@ -165,17 +165,20 @@
 }
 .st-map-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
   gap: 12px;
-  min-height: 480px;
+  min-height: 560px;
 }
 @media (max-width: 840px) {
   .st-map-layout {
     grid-template-columns: 1fr;
   }
 }
+.st-module:has(.st-map-layout) {
+  max-width: none; /* a mind map needs the whole width */
+}
 .st-map-canvas {
-  height: 480px;
+  height: max(560px, calc(100vh - 260px));
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;

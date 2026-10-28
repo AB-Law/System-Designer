@@ -91,3 +91,50 @@ def test_numeric_date_formats() -> None:
     assert dates.norm_date("03/2018") == "2018-03" and dates.norm_date("2018-03") == "2018-03"
     cv = rules_parser.parse_rules("Experience\nEngineer | Acme | 03/2018 - 2020-06\n- Built things\nDeveloper, Beta, 2015-2017\n- Wrote code\n")
     assert [(r.start, r.end) for r in cv.experience] == [("2018-03", "2020-06"), ("2015", "2017")]
+
+
+MESSY_CV = """Jane Doe
+Senior Backend Engineer
+London, UK | +44 7700 900123
+jane@example.com
+
+PROFESSIONAL SUMMARY
+Backend engineer who builds payment systems.
+
+WORK HISTORY
+Staff Engineer | Acme Pay | 2019 - Present
+- Led a migration to microservices
+
+TECHNICAL EXPERIENCE
+Engineer, Beta Data, 2016 - 2019
+- Built ingestion pipelines
+
+PERSONAL PROJECTS
+Ledger tool
+- Open source double-entry ledger
+
+EDUCATION & TRAINING
+BSc Computer Science - State University, 2012 - 2016
+
+CORE COMPETENCIES
+Python, Go, PostgreSQL
+
+CERTIFICATIONS
+AWS Solutions Architect
+"""
+
+
+def test_rules_parser_reads_common_heading_variants() -> None:
+    cv = rules_parser.parse_rules(MESSY_CV)
+    assert cv.headline == "Senior Backend Engineer"  # not the phone line or the location
+    assert cv.summary.startswith("Backend engineer")
+    assert [r.employer for r in cv.experience] == ["Acme Pay", "Beta Data"]
+    assert cv.projects and cv.projects[0].name == "Ledger tool"
+    assert cv.skills == ["Python", "Go", "PostgreSQL"]
+    assert not any("AWS" in s for s in cv.skills + [p.name for p in cv.projects])  # certifications are ignored
+
+
+def test_rules_parser_splits_degree_from_school() -> None:
+    edu = rules_parser.parse_rules(MESSY_CV).education
+    assert len(edu) == 1 and edu[0].degree == "BSc Computer Science" and edu[0].school == "State University"
+    assert edu[0].start == "2012" and edu[0].end == "2016"

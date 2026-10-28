@@ -417,3 +417,14 @@ def test_delete_all_removes_the_users_data_and_nobody_elses(clients: tuple[TestC
         assert db.execute("SELECT COUNT(*) FROM readiness_events WHERE user_id=?", (mine,)).fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM readiness_events WHERE user_id<>?", (mine,)).fetchone()[0] > 0
     assert [r["id"] for r in bobby.get("/api/interview/roles").json()] == [bob_role["id"]]
+
+
+def test_critique_input_carries_the_job_and_the_requirement_each_question_probes() -> None:
+    from modules.interview import feedback
+
+    linked = feedback.Exchange(0, "technical", "Kafka", "How do you size partitions?", "Kafka at scale", ["I size by throughput."])
+    plain = feedback.Exchange(1, "behavioral", "Conflict", "Tell me about a conflict.", "", ["We talked."])
+    text = feedback._critique_input([linked, plain], "Title: Backend\nMust have: Kafka")
+    assert text.startswith("<job>\nTitle: Backend")
+    assert text.count("job_requirement") == 1 and "Kafka at scale" in text
+    assert "<job>" not in feedback._critique_input([plain])

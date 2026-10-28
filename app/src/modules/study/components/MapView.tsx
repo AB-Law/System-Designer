@@ -1,4 +1,15 @@
-import { Background, Controls, MiniMap, ReactFlow, type Edge, type Node, type NodeMouseHandler } from "@xyflow/react";
+import {
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeMouseHandler,
+} from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { attempt, useAction, type Job } from "../../../shared/async";
 import { JobProgress } from "../../../shared/JobProgress";
@@ -9,7 +20,26 @@ import { layoutMindMap } from "../layout";
 import { go } from "../route";
 import type { MapNode, MindMap } from "../types";
 
-export function MapView({ mapId }: { mapId: number }) {
+function FitButton() {
+  const { fitView } = useReactFlow();
+  return (
+    <Panel position="top-right">
+      <Button size="small" onClick={() => void fitView({ padding: 0.12, duration: 250 })} title="Zoom so the whole map is visible">
+        Fit to view
+      </Button>
+    </Panel>
+  );
+}
+
+export function MapView(props: { mapId: number }) {
+  return (
+    <ReactFlowProvider>
+      <MapScreen {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function MapScreen({ mapId }: { mapId: number }) {
   const [map, setMap] = useState<MindMap | null>(null);
   const [selected, setSelected] = useState<MapNode | null>(null);
   const [chat, setChat] = useState("");
@@ -40,9 +70,9 @@ export function MapView({ mapId }: { mapId: number }) {
         background: "var(--panel)",
         color: "var(--text)",
         borderRadius: 8,
-        fontSize: 13,
-        padding: "8px 12px",
-        minWidth: 120,
+        fontSize: 16,
+        padding: "10px 16px",
+        minWidth: 150,
       },
     }));
     const rawEdges: Edge[] = map.edges.map((e) => ({
@@ -124,12 +154,15 @@ export function MapView({ mapId }: { mapId: number }) {
               nodes={nodes}
               edges={edges}
               fitView
+              fitViewOptions={{ padding: 0.12 }}
+              minZoom={0.1}
               onNodeClick={onNodeClick}
               nodesDraggable={false}
               proOptions={{ hideAttribution: true }}
             >
               <Background gap={18} color="var(--line-soft)" />
-              <Controls />
+              <Controls showInteractive={false} />
+              <FitButton />
               <MiniMap pannable zoomable />
             </ReactFlow>
           </div>
