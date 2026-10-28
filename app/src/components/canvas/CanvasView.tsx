@@ -19,6 +19,7 @@ import { capIdsOf } from "../../sim/caps";
 import { isPlaceable, regionId, regionShort } from "../../sim/regions";
 import { placeBlock, useNotice } from "../../store/place";
 import { ChatDock } from "./ChatDock";
+import { FlowEdge, LiveLayer, useLive } from "./live";
 import type { EdgeKind } from "../../types";
 
 /** What the load badge means, in words. Far over capacity usually means each request costs the block much more than it should. */
@@ -56,11 +57,13 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
   const capNames = capIdsOf(data.blockId, data.capabilities, problem)
     .map((cid) => problem?.capabilities?.find((c) => c.id === cid)?.label)
     .filter((x): x is string => !!x);
+  const live = useLive();
+  const vis = live.on ? live.nodes[id] : undefined;
   const res = run?.scenarios.find((s) => s.scenarioId === simScenario)?.nodes[id];
   const u = res && res.incoming > 0 ? res.utilization : undefined;
   const status = res?.down ? "down" : u === undefined ? "" : u >= 1 ? "hot" : u >= 0.8 ? "warm" : "ok";
   return (
-    <div className={`bnode cat-${def.category} ${selected ? "sel" : ""} ${status}`}>
+    <div className={`bnode cat-${def.category} ${selected ? "sel" : ""} ${vis ? "live live-" + vis.state : status}`}>
       {([Position.Top, Position.Right, Position.Bottom, Position.Left] as const).map((p) => (
         <Handle key={p} id={p} type="source" position={p} />
       ))}
@@ -77,7 +80,14 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
         </div>
       )}
       {capNames.length === 0 && data.responsibilities[0] && <div className="bn-resp">{data.responsibilities[0]}</div>}
-      {res?.down ? (
+      {vis ? (
+        vis.label && (
+          <div className="bn-util bn-live" title={vis.label}>
+            <span aria-hidden="true">{vis.icon}</span> {vis.label}
+            {vis.queue ? ` · ${Math.round(vis.queue).toLocaleString()} queued` : ""}
+          </div>
+        )
+      ) : res?.down ? (
         <div className="bn-util">down</div>
       ) : u !== undefined && data.blockId !== "user" ? (
         <div className="bn-util" title={loadTitle(u, data.blockId === "database" && !!problem?.dataModel)}>
@@ -89,6 +99,7 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
 }
 
 const nodeTypes = { block: BlockNode };
+const edgeTypes = { default: FlowEdge };
 
 const EDGE_BUTTONS: { kind: EdgeKind; label: string; title: string }[] = [
   { kind: "sync", label: "→", title: "Synchronous call" },
@@ -136,38 +147,41 @@ function Inner() {
   return (
     <div className="canvas" data-tour="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
       <PlaceNoticeBar />
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={connect}
-        onNodeDragStart={beginDrag}
-        onNodeClick={() => useStore.setState({ selectedEdgeId: undefined })}
-        onEdgeClick={(_, e) => select(undefined, e.id)}
-        multiSelectionKeyCode={["Control", "Meta"]}
-        selectionKeyCode="Shift"
-        onPaneClick={() => select()}
-        connectionMode={ConnectionMode.Loose}
-        deleteKeyCode={["Backspace", "Delete"]}
-        snapToGrid
-        snapGrid={[10, 10]}
-        fitView
-        fitViewOptions={{ minZoom: 0.6, maxZoom: 1, padding: 0.25 }}
-        minZoom={0.3}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
-        <MiniMap
-          pannable
-          zoomable
-          className="minimap"
-          style={{ width: 150, height: 96 }}
-          nodeColor={(n) => BLOCK_MAP[(n.data as { blockId: string }).blockId]?.color ?? "#888"}
-        />
-      </ReactFlow>
+      <LiveLayer>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={connect}
+          onNodeDragStart={beginDrag}
+          onNodeClick={() => useStore.setState({ selectedEdgeId: undefined })}
+          onEdgeClick={(_, e) => select(undefined, e.id)}
+          multiSelectionKeyCode={["Control", "Meta"]}
+          selectionKeyCode="Shift"
+          onPaneClick={() => select()}
+          connectionMode={ConnectionMode.Loose}
+          deleteKeyCode={["Backspace", "Delete"]}
+          snapToGrid
+          snapGrid={[10, 10]}
+          fitView
+          fitViewOptions={{ minZoom: 0.6, maxZoom: 1, padding: 0.25 }}
+          minZoom={0.3}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
+          <MiniMap
+            pannable
+            zoomable
+            className="minimap"
+            style={{ width: 150, height: 96 }}
+            nodeColor={(n) => BLOCK_MAP[(n.data as { blockId: string }).blockId]?.color ?? "#888"}
+          />
+        </ReactFlow>
+      </LiveLayer>
       <div className="toolbar">
         <button title="Undo (Ctrl+Z)" onClick={undo}>
           ↶
