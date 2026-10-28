@@ -115,6 +115,23 @@ export class ApiError extends Error {
   }
 }
 
+async function readError(r: Response, fallback: string): Promise<string> {
+  let msg = r.statusText || fallback;
+  try {
+    const j = (await r.json()) as { detail?: unknown };
+    if (typeof j.detail === "string") msg = j.detail;
+    else if (Array.isArray(j.detail))
+      msg =
+        j.detail
+          .map((d: { msg?: string }) => d.msg)
+          .filter(Boolean)
+          .join("; ") || msg;
+  } catch {
+    /* not JSON */
+  }
+  return msg;
+}
+
 /** Call the backend as the signed-in user. Throws ApiError with the server's plain-language message. */
 export async function call<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const legacy = getToken();
@@ -133,22 +150,31 @@ export async function call<T>(path: string, method = "GET", body?: unknown): Pro
   } catch {
     throw new ApiError(0, "Could not reach the server.");
   }
-  if (!r.ok) {
-    let msg = r.statusText || "Something went wrong";
-    try {
-      const j = (await r.json()) as { detail?: unknown };
-      if (typeof j.detail === "string") msg = j.detail;
-      else if (Array.isArray(j.detail))
-        msg =
-          j.detail
-            .map((d: { msg?: string }) => d.msg)
-            .filter(Boolean)
-            .join("; ") || msg;
-    } catch {
-      /* not JSON */
-    }
-    throw new ApiError(r.status, msg);
+  if (!r.ok) throw new ApiError(r.status, await readError(r, "Something went wrong"));
+  return (await r.json()) as T;
+}
+
+/** POST raw bytes (no multipart). Query params carry the file name; Content-Type is the MIME. */
+export async function postBinary<T>(path: string, params: Record<string, string>, body: Blob | File, timeoutMs = 60000): Promise<T> {
+  const legacy = getToken();
+  const qs = new URLSearchParams(params).toString();
+  const mime = body.type || "application/octet-stream";
+  let r: Response;
+  try {
+    r = await fetch(`/api${path}${qs ? `?${qs}` : ""}`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": mime,
+        ...(legacy ? { Authorization: `Bearer ${legacy}` } : {}),
+      },
+      body,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new ApiError(0, "Could not reach the server.");
   }
+  if (!r.ok) throw new ApiError(r.status, await readError(r, "Upload failed"));
   return (await r.json()) as T;
 }
 

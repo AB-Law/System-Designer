@@ -11,6 +11,8 @@ import { ADVISOR_SCHEMA, buildAdvisorMessages, parseAdvisor } from "../ai/adviso
 import { analyze } from "../sim/analyze";
 import { capIdsOf, primaryCapability } from "../sim/caps";
 import { isStepDone, validateRoadmap } from "../roadmap";
+import { goHub, hubOn } from "../shell/hub";
+import { DESIGN_HASH } from "../shell/route";
 import { learnHash, parseLearnHash } from "../lessons/route";
 import type { AdvisorResult, Change, ChatMessage, Dimension, Problem, RunResult, Scenario, Submission } from "../types";
 import { edgeProps, errText, freeSpot, layered, nextId, toDesign } from "./canvas";
@@ -170,11 +172,14 @@ export const useStore = create<State>((set, get) => {
           const me = await call<{ user: User }>("/auth/me");
           setToken("1"); // session flag only; clears any legacy bearer from localStorage
           set({ user: me.user });
+          if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
           await syncSubmissionsDown();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) setToken(null);
         }
       }
+      // with no Hub there is nothing to choose between, so the empty address is Design (a guest on the landing page keeps it)
+      if (!location.hash && !hubOn()) history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
       const last = lsGet<string>("dc:last", "");
       const id = problems.find((p) => p.id === last)?.id ?? problems.find((p) => p.id === "ad_serving")?.id ?? problems[0]?.id ?? "";
       if (id) await get().setProblem(id);
@@ -184,7 +189,7 @@ export const useStore = create<State>((set, get) => {
 
     setView: (v) => {
       // leaving the lessons clears their address, so a reload or a copied link does not drag the learner back
-      if (v !== "learn" && parseLearnHash(location.hash)) history.pushState(null, "", location.pathname + location.search);
+      if (v !== "learn" && parseLearnHash(location.hash)) history.pushState(null, "", location.pathname + location.search + DESIGN_HASH);
       if (v === "learn") get().openLearn(get().learnLessonId ?? undefined, get().learnPageId ?? undefined);
       else set({ view: v, roadmapSelectedStepId: v === "canvas" ? null : get().roadmapSelectedStepId });
     },
@@ -657,6 +662,8 @@ export const useStore = create<State>((set, get) => {
     },
 
     setAuthOpen: (b) => set({ authOpen: b }),
+    landingSeen: false,
+    setLandingSeen: (b) => set({ landingSeen: b }),
     setShareOpen: (b) => set({ shareOpen: b }),
     setCompareOpen: (b, a) => set({ compareOpen: b, compareA: b ? a : undefined }),
 
@@ -677,6 +684,7 @@ export const useStore = create<State>((set, get) => {
         lsSet("dc:owner", r.user.username);
         setToken("1"); // HttpOnly cookie carries the secret; flag only marks signed-in for the UI
         set({ user: r.user, authOpen: false });
+        goHub();
         await syncUp(get().problems);
         await syncSubmissionsDown();
         await get().setProblem(get().problemId);
@@ -814,7 +822,7 @@ export const useStore = create<State>((set, get) => {
     },
 
     closeShared: () => {
-      history.replaceState(null, "", location.pathname + location.search);
+      history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
       set({ shared: null, sharedError: undefined, view: "home" });
     },
 
@@ -828,7 +836,7 @@ export const useStore = create<State>((set, get) => {
       await get().setProblem(s.problemId);
       if (get().nodes.length) await autoVersion("restore", "Before opening a shared design");
       get().loadDoc(s.doc);
-      history.replaceState(null, "", location.pathname + location.search);
+      history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
       set({ view: "canvas", shared: null, sharedError: undefined });
     },
 

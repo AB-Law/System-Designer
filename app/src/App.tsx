@@ -11,11 +11,16 @@ import { PrimerPanel } from "./components/roadmap/PrimerPanel";
 import { CelebrateCard } from "./components/roadmap/CelebrateCard";
 import { LearnScreen } from "./components/learn/LearnScreen";
 import { HomeScreen } from "./components/home/HomeScreen";
+import { Landing } from "./components/home/Landing";
 import { SharedView } from "./components/share/SharedView";
 import { AuthModal } from "./components/modals/AuthModal";
 import { ShareModal } from "./components/modals/ShareModal";
 import { CompareModal } from "./components/modals/CompareModal";
 import { TourLayer } from "./components/tour/TourLayer";
+import { backend } from "./api";
+import { hubOn } from "./shell/hub";
+import { ModuleHost } from "./shell/ModuleHost";
+import { useActiveModule } from "./shell/useActiveModule";
 
 export function App() {
   const init = useStore((s) => s.init);
@@ -33,6 +38,11 @@ export function App() {
   const paste = useStore((s) => s.paste);
   const duplicate = useStore((s) => s.duplicate);
   const selectAll = useStore((s) => s.selectAll);
+  const activeModule = useActiveModule();
+  const user = useStore((s) => s.user);
+  const landingSeen = useStore((s) => s.landingSeen);
+  useStore((s) => s.problems); // loading problems is what sets backend.online
+  const showLanding = hubOn() && backend.online && !user && !landingSeen && view === "home";
 
   useEffect(() => {
     void init();
@@ -66,11 +76,25 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, copySelection, paste, duplicate, selectAll]);
 
+  if (activeModule) {
+    return (
+      <div className="app">
+        <TopBar />
+        <ModuleHost module={activeModule.module} rest={activeModule.rest} />
+        {authOpen && <AuthModal />}
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <TopBar />
       {view === "home" ? (
-        <HomeScreen />
+        showLanding ? (
+          <Landing />
+        ) : (
+          <HomeScreen />
+        )
       ) : view === "shared" ? (
         <SharedView />
       ) : view === "learn" ? (

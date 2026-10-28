@@ -3,6 +3,11 @@ import { backend } from "../api";
 import { money } from "../blocks";
 import { useRun } from "../hooks";
 import { useStore } from "../store";
+import { ModuleSwitcher } from "../shell/ModuleSwitcher";
+import { goHub, hubOn } from "../shell/hub";
+import { goModule } from "../shell/route";
+import { DESIGN } from "../shell/registry";
+import { useActiveModule, useModules } from "../shell/useActiveModule";
 
 export function TopBar() {
   const problems = useStore((s) => s.problems);
@@ -18,8 +23,11 @@ export function TopBar() {
   const user = useStore((s) => s.user);
   const setAuthOpen = useStore((s) => s.setAuthOpen);
   const signOut = useStore((s) => s.signOut);
+  const setLandingSeen = useStore((s) => s.setLandingSeen);
+  const modules = useModules();
+  const inDesign = useActiveModule() === null; // the problem picker, cost chip and review buttons belong to Design only
   const [menu, setMenu] = useState(false);
-  const workbench = view === "canvas" || view === "roadmap";
+  const workbench = inDesign && (view === "canvas" || view === "roadmap");
   const run = useRun();
   const over = run?.budget !== undefined && run.cost > run.budget;
 
@@ -27,9 +35,20 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button type="button" className="brand" onClick={() => setView("home")} title="Home">
+      <button
+        type="button"
+        className="brand"
+        onClick={() => {
+          if (hubOn() && user) return goHub();
+          if (hubOn()) setLandingSeen(false);
+          goModule(DESIGN, modules);
+          setView("home");
+        }}
+        title="Home"
+      >
         Design Canvas
       </button>
+      <ModuleSwitcher />
       {workbench ? (
         <div className="problem-pick">
           <select value={problemId} onChange={(e) => void setProblem(e.target.value)} aria-label="Problem">
@@ -83,14 +102,16 @@ export function TopBar() {
               Sign in
             </button>
           ))}
-        <button
-          type="button"
-          className={"btn tall" + (view === "roadmap" ? " primary" : " ghost")}
-          onClick={() => setView(view === "roadmap" ? "canvas" : "roadmap")}
-          aria-pressed={view === "roadmap"}
-        >
-          {view === "roadmap" ? "Canvas" : "Roadmap"}
-        </button>
+        {inDesign && (
+          <button
+            type="button"
+            className={"btn tall" + (view === "roadmap" ? " primary" : " ghost")}
+            onClick={() => setView(view === "roadmap" ? "canvas" : "roadmap")}
+            aria-pressed={view === "roadmap"}
+          >
+            {view === "roadmap" ? "Canvas" : "Roadmap"}
+          </button>
+        )}
         {workbench && (
           <>
             <button
@@ -111,11 +132,15 @@ export function TopBar() {
               <button
                 className="btn tall primary"
                 onClick={() => setRunOpen(true)}
-                title="Score your design now. This is a preview and is not saved."
+                title="Score your design now. The score is not saved; a snapshot of your canvas is kept in Versions. Submit to save the score."
               >
                 Preview score
               </button>
-              <button className="btn tall success" onClick={() => void submit()} title="Save this attempt to your submissions and progress">
+              <button
+                className="btn tall success"
+                onClick={() => void submit()}
+                title="Save this attempt: its score and canvas go to Submissions and your progress"
+              >
                 Submit
               </button>
             </div>

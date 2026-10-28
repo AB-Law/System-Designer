@@ -736,7 +736,11 @@ export function evaluateRequirements(
     } else if (c.type === "scenarioPass") {
       const res = results.find((x) => x.scenarioId === c.scenario);
       met = !!res && res.pass;
-      detail = !res ? "Scenario not found." : met ? "Scenario passes." : (res.notes[0] ?? "Scenario fails.");
+      detail = !res
+        ? "Scenario not found."
+        : met
+          ? `Passes: ${Math.round(res.served * 100)}% of requests served.`
+          : (res.reasons[0] ?? res.notes[0] ?? "Scenario fails.");
     } else if (c.type === "budget") {
       const cost = totalCost(design, problem);
       met = problem.budget === undefined ? true : cost <= problem.budget;

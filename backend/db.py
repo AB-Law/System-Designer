@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from collections.abc import Generator
 from contextlib import closing
 
 from config import db_path
+from dc_platform.migrations import migrate_loaded_modules
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, pw_salt BLOB NOT NULL, pw_hash BLOB NOT NULL, created INTEGER NOT NULL);
@@ -24,6 +26,24 @@ CREATE INDEX IF NOT EXISTS ix_rate_limits ON rate_limits(key, at);
 """
 
 
+def _prepare(conn: sqlite3.Connection) -> None:
+    """Pragmas and schema. Safe to run again, and by several connections at once."""
+    # WAL is required for Litestream; busy_timeout avoids lock errors under concurrent reads (set first, so the WAL switch waits too).
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.executescript(SCHEMA)
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(submissions)")}
+    for col, typ in (("user_id", "INTEGER"), ("score", "INTEGER"), ("passed", "INTEGER"), ("total", "INTEGER")):
+        if col not in cols:
+            try:
+                conn.execute(f"ALTER TABLE submissions ADD COLUMN {col} {typ}")
+            except sqlite3.OperationalError as e:  # another connection added it between the check and now
+                if "duplicate column" not in str(e):
+                    raise
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_sub_user ON submissions(user_id, problem_id, at DESC)")
+
+
 def connect() -> sqlite3.Connection:
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -31,16 +51,17 @@ def connect() -> sqlite3.Connection:
     # Each connection serves one request at a time, so sharing it across those threads is safe.
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    # WAL is required for Litestream; busy_timeout avoids lock errors under concurrent reads.
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.executescript(SCHEMA)
-    cols = {r["name"] for r in conn.execute("PRAGMA table_info(submissions)")}
-    for col, typ in (("user_id", "INTEGER"), ("score", "INTEGER"), ("passed", "INTEGER"), ("total", "INTEGER")):
-        if col not in cols:
-            conn.execute(f"ALTER TABLE submissions ADD COLUMN {col} {typ}")
-    conn.execute("CREATE INDEX IF NOT EXISTS ix_sub_user ON submissions(user_id, problem_id, at DESC)")
+    # Several connections can open a brand new database at once (a request and a finishing background job). Each runs the same
+    # setup, and SQLite answers "locked" to the ones that arrive mid-way, so they retry until the first has finished.
+    for attempt in range(50):
+        try:
+            _prepare(conn)
+            break
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e) or attempt == 49:
+                raise
+            time.sleep(0.05)
+    migrate_loaded_modules(conn)
     return conn
 
 

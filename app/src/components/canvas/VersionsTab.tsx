@@ -39,8 +39,8 @@ export function VersionsTab() {
   return (
     <>
       <p className="muted">
-        A version is a snapshot of your canvas. One is saved for you each time you run, submit, take the coach's change or restore, so you
-        can always go back.{" "}
+        A version is a snapshot of your canvas only (blocks, settings and connections), not a score. One is kept for you each time you
+        preview a score, submit, take the coach's change or restore, so you can always go back. Scores live in Submissions.{" "}
         {cloudOn()
           ? `They are stored in ${user?.username ?? "your"}'s account.`
           : "They are stored in this browser. Sign in to keep them across devices."}

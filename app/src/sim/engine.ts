@@ -77,6 +77,23 @@ function pickFailureTarget(nodes: SimNode[], f: NonNullable<Scenario["failure"]>
   return undefined;
 }
 
+/** Take one copy of a block away. Returns true when a cache vanished entirely and reads fall through to the store. */
+function takeCopyDown(n: SimNode): boolean {
+  const m = n.model;
+  n.capLeft = Math.max(0, m.instances - 1) / Math.max(1, m.instances);
+  m.capacity = m.capacity * n.capLeft;
+  m.instances = Math.max(0, m.instances - 1);
+  n.down = m.capacity <= 0;
+  if (n.down && n.node.blockId === "cache") {
+    // cache-aside: with the cache gone every read falls through to whatever sits behind it
+    m.capacity = Infinity;
+    m.passThrough = 1;
+    m.latencyMs = 0;
+    return true;
+  }
+  return false;
+}
+
 export function simulate(design: Design, problem: Problem, scenario: Scenario): ScenarioResult {
   const notes: string[] = [];
   const advice: { change: string; why: string }[] = [];
@@ -145,6 +162,7 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
 
   // ----- failure injection -----
   let failureTarget: SimNode | undefined;
+  let peers: SimNode[] = [];
   let failedInstancesBefore = 0;
   const failedNodes: SimNode[] = [];
   let regionDown: RegionId | undefined;
@@ -204,23 +222,20 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
           : "No block in your design matches this failure, so it had no effect.",
       );
     } else if (scenario.failure.mode === "down") {
-      const m = failureTarget.model;
-      failedInstancesBefore = m.instances;
-      failureTarget.capLeft = Math.max(0, m.instances - 1) / Math.max(1, m.instances);
-      m.capacity = m.capacity * failureTarget.capLeft;
-      m.instances = Math.max(0, m.instances - 1);
-      failureTarget.down = m.capacity <= 0;
-      if (failureTarget.down && failureTarget.node.blockId === "cache") {
-        // cache-aside: with the cache gone every read falls through to whatever sits behind it
-        m.capacity = Infinity;
-        m.passThrough = 1;
-        m.latencyMs = 0;
+      failedInstancesBefore = failureTarget.model.instances;
+      const cacheGone = takeCopyDown(failureTarget);
+      if (cacheGone) {
         notes.push(`${label(failureTarget)} went down, so every read now goes straight to the store behind it.`);
       } else {
+        const target = failureTarget;
+        // a block with no spare copy of its own is not the same as a design with no spare: another block of the same kind may take over
+        peers = all.filter((n) => n !== target && n.role !== "source" && n.node.blockId === target.node.blockId && !n.down);
         notes.push(
-          failureTarget.down
-            ? `${label(failureTarget)} went down with no spare instance.`
-            : `${label(failureTarget)} lost one of its instances and kept running at reduced capacity.`,
+          !target.down
+            ? `${label(target)} lost one of its instances and kept running at reduced capacity.`
+            : peers.length
+              ? `${label(target)} went down. ${peers.map(label).join(" and ")} take${peers.length === 1 ? "s" : ""} over its traffic.`
+              : `${label(target)} went down and no other block can do its job.`,
         );
       }
     } else {
@@ -231,6 +246,21 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
       const others = failureTarget.caps.filter((c) => c.id !== scenario.failure!.target.capability && !isBackground(c));
       if (others.length) notes.push(`It also runs ${others.map((c) => `"${c.label}"`).join(", ")}, so those suffer too (shared fate).`);
     }
+    // more blocks going down at the same moment: each loses a copy, and peers that were killed too cannot take over
+    for (const f of scenario.alsoDown ?? []) {
+      const extra = pickFailureTarget(all, f);
+      if (!extra || extra === failureTarget || failedNodes.includes(extra)) continue;
+      const cacheGone = takeCopyDown(extra);
+      failedNodes.push(extra);
+      notes.push(
+        cacheGone
+          ? `${label(extra)} went down, so every read now goes straight to the store behind it.`
+          : extra.down
+            ? `${label(extra)} went down.`
+            : `${label(extra)} lost one of its instances and kept running at reduced capacity.`,
+      );
+    }
+    peers = peers.filter((n) => !n.down);
   }
 
   // ----- adjacency -----
@@ -561,7 +591,9 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
       memoS.set(mkey, 0);
       return 0;
     }
-    let childS = 1;
+    // a balancer whose every target is down has nowhere to send the traffic: that is a failure, not a pass
+    const hadKids = (syncOut.get(id) ?? []).some((k) => (pos.get(k) ?? -1) > (pos.get(id) ?? 0));
+    let childS = ks.length === 0 && hadKids ? 0 : 1;
     if (ks.length) {
       const cs = ks.map(([k, w]) => {
         const kid = sim.get(k)!;
@@ -607,7 +639,7 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
   lat = regionsOn ? Math.max(0, ...origins.filter((o) => (mix[o] ?? 0) >= 0.05).map((o) => latByOrigin[o] ?? 0)) : (latByOrigin["_"] ?? 0);
   if (regionsOn) for (const n of [...regionNotes].slice(0, 2)) notes.push(n);
   // a fallback is fine when the scenario broke that feature on purpose; if it is only overloaded, the feature is not really working
-  const failed = failureTarget ? [failureTarget] : failedNodes;
+  const failed = failureTarget ? [failureTarget, ...failedNodes] : failedNodes;
   const expectedBroken = new Set(failed.flatMap((f) => f.caps.map((c) => c.label)));
   // anything that depends on a failed block is expected to degrade too
   for (const sn of all)
@@ -713,6 +745,11 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
   // ----- scoring -----
   const target = problem.latencyTargetMs;
   const latScore = lat <= target ? 1 : Math.max(0, target / lat);
+  if (failureTarget?.down && peers.length && servedRatio < 0.97) {
+    notes.push(
+      `${peers.map(label).join(" and ")} could not carry the extra load, so only ${Math.round(servedRatio * 100)}% of requests were served.`,
+    );
+  }
   const servedScore = servedRatio >= 0.99 ? 1 : Math.max(0, servedRatio) ** 3;
   const eventScore = 1 - Math.min(1, queueDropFrac * 2 + (Object.keys(backlog).length ? 0.3 : 0));
   let score = offered > 0 ? Math.round(100 * (0.55 * servedScore + 0.3 * latScore + 0.15 * eventScore)) : 0;

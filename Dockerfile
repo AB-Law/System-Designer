@@ -10,6 +10,9 @@
 
 # --- frontend ---
 FROM node:22-alpine AS frontend
+# One switch for the optional modules (for example "design,cv"): the frontend build and the API both read it.
+ARG ENABLED_MODULES=design
+ENV VITE_ENABLED_MODULES=$ENABLED_MODULES
 WORKDIR /src/app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci
@@ -38,8 +41,8 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+COPY backend/requirements.txt backend/requirements-modules.txt /app/backend/
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt -r /app/backend/requirements-modules.txt
 
 COPY backend/ /app/backend/
 COPY --from=frontend /src/app/dist /app/app/dist
@@ -49,6 +52,8 @@ COPY deploy/litestream.yml /etc/litestream.yml
 COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+ARG ENABLED_MODULES=design
+ENV ENABLED_MODULES=$ENABLED_MODULES
 ENV DB_PATH=/data/data.sqlite3
 ENV LITESTREAM_ENABLED=0
 ENV LITESTREAM_AZURE_PATH=data.sqlite3

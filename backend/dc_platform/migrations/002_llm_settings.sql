@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS llm_settings(
+  user_id INTEGER PRIMARY KEY, provider TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL);

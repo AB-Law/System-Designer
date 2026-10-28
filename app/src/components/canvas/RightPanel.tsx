@@ -14,6 +14,7 @@ import { beginTour } from "../tour/TourLayer";
 import { tourFor } from "../../tour/tour";
 import { QueryPlans } from "./DataModelEditor";
 import { REGIONS, regionId, regionLabel, type RegionId } from "../../sim/regions";
+import { FlowSteps } from "./FlowSteps";
 import { VersionsTab } from "./VersionsTab";
 import { TOTAL_STEPS, findStep, firstNotDone, stepProgress } from "../../roadmap";
 import { glosser } from "../roadmap/GlossText";
@@ -23,6 +24,7 @@ export function RightPanel() {
   const setTab = useStore((s) => s.setRightTab);
   return (
     <aside className="right">
+      <FlowSteps />
       <nav className="tabs">
         {(["problem", "simulate", "submissions", "versions"] as const).map((t) => (
           <button key={t} data-tour={`tab-${t}`} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>

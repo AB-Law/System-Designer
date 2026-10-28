@@ -1,0 +1,300 @@
+/* Component kit (app/src/ui). Built from the existing tokens; classes are prefixed ui- so Design Canvas styles are untouched. */
+.ui-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.ui-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ui-card-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 400;
+}
+.ui-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ui-badge.good {
+  color: var(--good);
+  border-color: var(--green);
+}
+.ui-badge.warn {
+  color: var(--warn);
+  border-color: var(--bronze);
+}
+.ui-badge.bad {
+  color: var(--bad);
+  border-color: #4a2623;
+}
+.ui-badge.gold {
+  color: var(--gold-hi);
+  border-color: var(--gold-lo);
+  background: var(--gold-wash);
+}
+.ui-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+.ui-empty h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 400;
+}
+.ui-empty p {
+  margin: 0;
+  max-width: 46ch;
+}
+.ui-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.ui-progress > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
+  transition: width 0.25s;
+}
+.ui-job-progress {
+  display: grid;
+  gap: 8px;
+}
+.ui-job-cancel {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ui-job-cancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line);
+}
+.ui-job-cancel:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+@property --ur-n {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+.ui-ring {
+  --ur-n: var(--to, 0);
+  position: relative;
+  display: grid;
+  place-items: center;
+  counter-reset: ur var(--ur-n);
+  animation: ur-count 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.ui-ring b::after {
+  content: counter(ur);
+}
+@keyframes ur-count {
+  from {
+    --ur-n: 0;
+  }
+}
+@keyframes ur-sweep {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+.ui-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.ui-ring circle {
+  fill: none;
+  stroke-width: 3.2;
+}
+.ui-ring-track {
+  stroke: var(--line);
+}
+.ui-ring-fill {
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s;
+  animation: ur-sweep 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.ui-ring.good .ui-ring-fill {
+  stroke: var(--good);
+  filter: drop-shadow(0 0 1.6px var(--good));
+}
+.ui-ring.warn .ui-ring-fill {
+  stroke: var(--warn);
+  filter: drop-shadow(0 0 1.6px var(--warn));
+}
+.ui-ring.bad .ui-ring-fill {
+  stroke: var(--bad);
+  filter: drop-shadow(0 0 1.6px var(--bad));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ring,
+  .ui-ring-fill {
+    animation: none;
+  }
+}
+.ui-ring b {
+  font-family: var(--mono);
+  font-size: 1.1em;
+}
+.ui-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.ui-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 8px 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.ui-tabs button:hover {
+  color: var(--text);
+}
+.ui-tabs button.on {
+  color: var(--gold-hi);
+  border-bottom-color: var(--gold);
+}
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ui-table th,
+.ui-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ui-table th {
+  color: var(--faint);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ui-table-empty {
+  color: var(--muted);
+  padding: 16px 0;
+}
+.ui-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.ui-drop.over {
+  border-color: var(--gold);
+  background: var(--gold-wash);
+}
+.ui-error {
+  margin: 6px 0 0;
+  color: var(--bad);
+  font-size: 12.5px;
+}
+.ui-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
+  display: grid;
+  gap: 8px;
+}
+.ui-toast {
+  max-width: 340px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--raise);
+  text-align: left;
+}
+.ui-toast.good {
+  border-color: var(--green);
+}
+.ui-toast.bad {
+  border-color: var(--bad);
+}
+
+/* module shell */
+.module-host {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+.module-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: 12px;
+}
+.module-nav button {
+  border: 0;
+  background: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.module-nav button:hover {
+  color: var(--text);
+  background: var(--raise);
+}
+.module-nav button.on {
+  color: var(--gold-hi);
+}
+.ui-progress.busy > div {
+  background:
+    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.28) 50%, transparent 100%) 0 0 / 60px 100% repeat-x,
+    linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
+  animation: ui-progress-shimmer 1.1s linear infinite;
+}
+@keyframes ui-progress-shimmer {
+  from {
+    background-position: -60px 0, 0 0;
+  }
+  to {
+    background-position: 60px 0, 0 0;
+  }
+}
+.ui-job-time,
+.ui-job-wait {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ui-job-wait {
+  margin: 4px 0 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-progress.busy > div {
+    animation: none;
+  }
+}

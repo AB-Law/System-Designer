@@ -12,7 +12,7 @@ interface ModeStore {
 }
 
 export const useMode = create<ModeStore>((set) => ({
-  mode: lsGet<PlaceMode>(KEY, "configure") === "build" ? "build" : "configure",
+  mode: lsGet<PlaceMode>(KEY, "build") === "configure" ? "configure" : "build",
   setMode: (mode) => {
     lsSet(KEY, mode);
     set({ mode });

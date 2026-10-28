@@ -21,3 +21,12 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestCli
     app = create_app()
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture()
+def app_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolated DB and invite for tests that build their own clients on one app."""
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.sqlite3"))
+    monkeypatch.setenv("INVITE_CODE", "test-invite")
+    monkeypatch.setenv("PROBLEMS_DIR", str(ROOT / "app" / "src" / "problems"))
+    return tmp_path
