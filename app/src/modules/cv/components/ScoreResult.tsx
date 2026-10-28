@@ -12,6 +12,7 @@ import { go } from "../route";
 import { featureOn } from "../../../shell/registry";
 import { useAction } from "../hooks";
 import { errText, useCv } from "../store";
+import "../cv-woah.css";
 import type { Component, Job, Match, Mode, Run } from "../types";
 import { RunComparison } from "./Compare";
 

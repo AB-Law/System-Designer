@@ -63,3 +63,210 @@
   color: var(--gold-hi);
   font: 12px var(--mono);
 }
+
+/* hero: copy beside a playable diagram */
+.landing {
+  background: radial-gradient(900px 420px at 78% -60px, rgba(212, 180, 90, 0.13), transparent 70%);
+}
+.landing-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  align-items: center;
+}
+.landing h1 em {
+  font-style: italic;
+  color: var(--gold-hi);
+}
+.ld {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  box-shadow: 0 0 0 1px rgba(212, 180, 90, 0.05), 0 30px 80px -30px rgba(212, 180, 90, 0.25);
+  transition: border-color 0.3s;
+}
+.ld-out {
+  border-color: var(--bad);
+}
+.ld svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ld-edge {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.ld-flow {
+  stroke: var(--gold);
+  stroke-dasharray: 3 11;
+  stroke-linecap: round;
+  animation: ld-run 0.9s linear infinite;
+}
+.ld-slow {
+  animation-duration: 1.4s;
+}
+.ld-dead {
+  stroke: var(--bad);
+  stroke-dasharray: 2 8;
+  opacity: 0.6;
+}
+@keyframes ld-run {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+.ld-node rect,
+.ld-node circle {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1.5;
+  transition: fill 0.25s, stroke 0.25s;
+}
+.ld-node text {
+  fill: var(--text);
+  font: 600 12px var(--body);
+  pointer-events: none;
+}
+.ld-lb rect {
+  fill: var(--navy-deep);
+  stroke: var(--navy-hi);
+}
+.ld-srv {
+  cursor: pointer;
+  outline: none;
+}
+.ld-srv rect {
+  fill: var(--green-deep);
+  stroke: var(--green-hi);
+}
+.ld-srv:hover rect,
+.ld-srv:focus-visible rect {
+  stroke: var(--gold-hi);
+  stroke-width: 2.5;
+}
+.ld-node.ld-bad rect {
+  fill: #3a1512;
+  stroke: var(--bad);
+}
+.ld-node.ld-bad text {
+  fill: var(--bad);
+}
+.ld-cap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+.ld-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.ld-meter i {
+  display: block;
+  height: 100%;
+  background: var(--good);
+  transition: width 0.4s ease, background 0.3s;
+}
+.ld-out .ld-meter i {
+  background: var(--bad);
+}
+.ld-num {
+  font: 500 13px var(--mono);
+}
+.ld-status {
+  color: var(--text);
+  font-size: 13px;
+}
+.ld-hint {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-flow {
+    animation: none;
+  }
+}
+
+/* module cards with a static peek of the product */
+.lm {
+  overflow: hidden;
+}
+.lm-peek {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--bg-2);
+  font-size: 12px;
+  color: var(--muted);
+}
+.lm-design .pk-box {
+  width: 22px;
+  height: 16px;
+  border: 1.5px solid var(--green-hi);
+  border-radius: 4px;
+  background: var(--green-deep);
+}
+.lm-design .pk-box.pk-bad {
+  border-color: var(--bad);
+  background: #3a1512;
+}
+.lm-design .pk-line {
+  flex: 1;
+  height: 0;
+  border-top: 2px dotted var(--gold);
+}
+.lm-cv .lm-peek b {
+  font: 500 18px var(--mono);
+  color: var(--good);
+}
+.lm-cv .pk-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.lm-cv .pk-bar i {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+.lm-interview .lm-peek {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.pk-bub {
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-style: normal;
+}
+.pk-bub.pk-me {
+  align-self: flex-end;
+  background: var(--navy-deep);
+  border: 1px solid var(--navy-hi);
+}
+.lm-study .pk-card {
+  padding: 6px 10px;
+  border: 1px solid var(--gold-lo);
+  border-radius: 6px;
+  color: var(--gold-hi);
+  font-style: normal;
+}
+.lm-peek em {
+  font-style: normal;
+}

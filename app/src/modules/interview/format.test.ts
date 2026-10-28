@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STYLE, ageLabel, clock, groupByRole, scoreTone, styleSummary } from "./format";
+import { DEFAULT_STYLE, ageLabel, clock, groupByRole, scoreTone, scoreTrend, styleSummary } from "./format";
 import type { SessionSummary } from "./types";
 
 const session = (id: number, roleId: number, title: string): SessionSummary => ({
@@ -24,6 +24,14 @@ describe("interview format", () => {
     expect(ageLabel(now - 9 * day, now)).toBe("9 days ago");
     expect(ageLabel(now - 90 * day, now)).toBe("3 months ago");
     expect(ageLabel(now + day, now)).toBe("today");
+  });
+
+  it("reads a score trend only from two or more scored sessions, oldest first", () => {
+    const scored = (id: number, score: number | null): SessionSummary => ({ ...session(id, 1, "x"), score });
+    expect(scoreTrend([])).toBeNull();
+    expect(scoreTrend([scored(1, 50)])).toBeNull();
+    expect(scoreTrend([scored(3, null), scored(2, 50)])).toBeNull();
+    expect(scoreTrend([scored(3, 70), scored(1, 50), scored(2, 80)])).toEqual({ scores: [50, 80, 70], delta: 20, best: 80 });
   });
 
   it("formats a clock", () => {

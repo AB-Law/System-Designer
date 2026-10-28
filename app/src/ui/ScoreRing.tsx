@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { pct } from "./ProgressBar";
 
 /** Under 50 is weak, under 75 fair, otherwise strong. */
@@ -9,7 +10,7 @@ export function ScoreRing({ value, size = 72, label }: { value: number; size?: n
   return (
     <div
       className={"ui-ring " + ringTone(p)}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, "--to": p } as CSSProperties}
       role="img"
       aria-label={`${label ?? "Score"} ${p} out of 100`}
     >
@@ -17,7 +18,8 @@ export function ScoreRing({ value, size = 72, label }: { value: number; size?: n
         <circle className="ui-ring-track" cx="18" cy="18" r={r} />
         <circle className="ui-ring-fill" cx="18" cy="18" r={r} strokeDasharray={`${p} 100`} />
       </svg>
-      <b>{p}</b>
+      {/* the number is drawn by CSS so it can count up; the label above carries it for assistive tech */}
+      <b aria-hidden="true" />
     </div>
   );
 }

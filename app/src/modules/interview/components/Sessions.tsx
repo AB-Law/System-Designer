@@ -5,7 +5,9 @@ import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
 import { interviewApi } from "../api";
-import { dateLabel, groupByRole, scoreTone, styleSummary, type RoleGroup } from "../format";
+import { ScoreRing } from "../../../ui/ScoreRing";
+import { dateLabel, groupByRole, scoreTone, scoreTrend, styleSummary, type RoleGroup, type ScoreTrend } from "../format";
+import "../interview-woah.css";
 import { go } from "../route";
 import { YourData } from "./YourData";
 import type { SessionSummary } from "../types";
@@ -27,11 +29,43 @@ function SessionRow({ s, onDelete }: { s: SessionSummary; onDelete: (id: number)
         <small>{styleSummary(s.style)}</small>
       </div>
       <Badge tone={s.status === "failed" ? "bad" : s.status === "ended" ? "good" : "neutral"}>{STATUS_LABEL[s.status]}</Badge>
-      <b className={"iv-score " + scoreTone(s.score)}>{s.score === null ? "–" : s.score}</b>
+      {s.score === null ? (
+        <b className={"iv-score " + scoreTone(s.score)}>–</b>
+      ) : (
+        <ScoreRing value={s.score} size={44} label="Interview score" />
+      )}
       <Button size="small" variant="ghost" aria-label={`Delete the interview from ${dateLabel(s.created)}`} onClick={() => onDelete(s.id)}>
         Delete
       </Button>
     </li>
+  );
+}
+
+/** Scores over time as a small line, with the change since the first attempt in words. */
+function Trend({ trend }: { trend: ScoreTrend | null }) {
+  if (!trend) return null;
+  const { scores, delta, best } = trend;
+  const w = 160;
+  const h = 36;
+  const pts = scores.map((v, i) => [(i / (scores.length - 1)) * (w - 8) + 4, h - 4 - (Math.min(100, Math.max(0, v)) / 100) * (h - 8)]);
+  const last = pts[pts.length - 1];
+  const word =
+    delta > 0
+      ? `Up ${delta} since your first attempt`
+      : delta < 0
+        ? `Down ${-delta} since your first attempt`
+        : "Level with your first attempt";
+  return (
+    <div className="iv-trend">
+      <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Scores over time: ${scores.join(", ")}`}>
+        <polyline className="iv-trend-line" points={pts.map((p) => p.join(",")).join(" ")} pathLength={1} />
+        <circle className="iv-trend-dot" cx={last[0]} cy={last[1]} r="3.5" />
+      </svg>
+      <div>
+        <strong className={delta >= 0 ? "up" : "down"}>{word}</strong>
+        <small>Best so far {best}</small>
+      </div>
+    </div>
   );
 }
 
@@ -58,6 +92,7 @@ function RoleCard({
         </>
       }
     >
+      <Trend trend={scoreTrend(group.sessions)} />
       <ul className="iv-sessions">
         {group.sessions.map((s) => (
           <SessionRow key={s.id} s={s} onDelete={onDelete} />

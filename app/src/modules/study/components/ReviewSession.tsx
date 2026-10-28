@@ -5,6 +5,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { studyApi } from "../api";
 import { go } from "../route";
 import type { Card, Rating } from "../types";
+import "../study-woah.css";
 
 const RATES: { rating: Rating; label: string; key: string }[] = [
   { rating: "again", label: "Again", key: "1" },
@@ -63,6 +64,23 @@ export function ReviewSession({ deckId }: { deckId: number | null }) {
 
   if (!queue) return <p className="st-hint">Loading…</p>;
 
+  if (!current && done > 0) {
+    return (
+      <div className="st-done">
+        <div className="st-check" aria-hidden="true">
+          ✓
+        </div>
+        <h3>Session complete</h3>
+        <p className="st-muted">
+          You reviewed {done} card{done === 1 ? "" : "s"}. See you tomorrow.
+        </p>
+        <Button variant="primary" onClick={() => go(deckId != null ? { name: "deck", deckId } : { name: "decks" })}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
   if (!current) {
     return (
       <EmptyState
@@ -80,12 +98,36 @@ export function ReviewSession({ deckId }: { deckId: number | null }) {
 
   return (
     <div className="st-review">
+      <div
+        className="st-progress"
+        role="progressbar"
+        aria-label="Session progress"
+        aria-valuemin={0}
+        aria-valuemax={done + queue.length}
+        aria-valuenow={done}
+      >
+        <i style={{ width: `${(done / (done + queue.length)) * 100}%` }} />
+      </div>
       <p className="st-muted">
         {done + 1} of {done + queue.length}
       </p>
-      <button type="button" className="st-flip" onClick={() => setFlipped(true)} aria-label={flipped ? "Answer shown" : "Show answer"}>
-        <div className="st-flip-label">{flipped ? "Answer" : "Question · space to flip"}</div>
-        <p className="st-flip-text">{flipped ? current.back : current.front}</p>
+      <button
+        key={current.id}
+        type="button"
+        className={"st-flip st-flip3d" + (flipped ? " is-flipped" : "")}
+        onClick={() => setFlipped(true)}
+        aria-label={flipped ? "Answer shown" : "Show answer"}
+      >
+        <span className="st-flip-in">
+          <span className="st-face" aria-hidden={flipped}>
+            <span className="st-flip-label">Question · space to flip</span>
+            <span className="st-flip-text">{current.front}</span>
+          </span>
+          <span className="st-face st-back" aria-hidden={!flipped}>
+            <span className="st-flip-label">Answer</span>
+            <span className="st-flip-text">{current.back}</span>
+          </span>
+        </span>
       </button>
       {flipped ? (
         <div className="st-rates">

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { getVoiceKey, setVoiceKey } from "./key";
 import type { TtsProviderId, VoicePrefs } from "./types";
 
 interface Props {
@@ -7,6 +9,7 @@ interface Props {
 }
 
 export function VoiceSettings({ prefs, onChange, speechSynthesis }: Props) {
+  const [key, setKey] = useState(getVoiceKey);
   return (
     <details className="iv-voice-settings">
       <summary>Voice settings</summary>
@@ -23,6 +26,23 @@ export function VoiceSettings({ prefs, onChange, speechSynthesis }: Props) {
             onChange={(e) => onChange({ ...prefs, speakInterviewer: e.target.checked })}
           />
           Speak interviewer replies
+        </label>
+        <label className="iv-field">
+          OpenAI key for transcription <small>(optional)</small>
+          <input
+            type="password"
+            value={key}
+            placeholder="sk-…"
+            autoComplete="off"
+            onChange={(e) => {
+              setKey(e.target.value);
+              setVoiceKey(e.target.value);
+            }}
+          />
+          <small className="muted">
+            Saved in this browser only. Audio goes straight to api.openai.com with your key and never through our server. Leave blank to use
+            the server&apos;s key, if it has one.
+          </small>
         </label>
         <label className="iv-field">
           Voice engine

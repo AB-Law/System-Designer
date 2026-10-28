@@ -97,10 +97,31 @@
   opacity: 0.6;
   cursor: default;
 }
+@property --ur-n {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
 .ui-ring {
+  --ur-n: var(--to, 0);
   position: relative;
   display: grid;
   place-items: center;
+  counter-reset: ur var(--ur-n);
+  animation: ur-count 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.ui-ring b::after {
+  content: counter(ur);
+}
+@keyframes ur-count {
+  from {
+    --ur-n: 0;
+  }
+}
+@keyframes ur-sweep {
+  from {
+    stroke-dasharray: 0 100;
+  }
 }
 .ui-ring svg {
   position: absolute;
@@ -117,15 +138,25 @@
 .ui-ring-fill {
   stroke-linecap: round;
   transition: stroke-dasharray 0.4s;
+  animation: ur-sweep 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .ui-ring.good .ui-ring-fill {
   stroke: var(--good);
+  filter: drop-shadow(0 0 1.6px var(--good));
 }
 .ui-ring.warn .ui-ring-fill {
   stroke: var(--warn);
+  filter: drop-shadow(0 0 1.6px var(--warn));
 }
 .ui-ring.bad .ui-ring-fill {
   stroke: var(--bad);
+  filter: drop-shadow(0 0 1.6px var(--bad));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-ring,
+  .ui-ring-fill {
+    animation: none;
+  }
 }
 .ui-ring b {
   font-family: var(--mono);
