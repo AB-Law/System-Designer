@@ -7,6 +7,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { studyApi } from "../api";
 import { go } from "../route";
 import type { Deck, StudyStats } from "../types";
+import { StudyHero } from "./StudyHero";
 
 type Mode = "blank" | "topic" | "glossary" | "lesson" | "jd" | "interview_weakness" | "document";
 
@@ -121,86 +122,7 @@ export function DeckList() {
 
   return (
     <div className="st-stack">
-      {stats && (
-        <Card title="Overview">
-          <ul className="st-stats">
-            <li>
-              <b>{stats.dueToday}</b>
-              <span>Due today</span>
-            </li>
-            <li>
-              <b>{stats.streak}</b>
-              <span>Day streak</span>
-            </li>
-            <li>
-              <b>{stats.retention == null ? "–" : `${Math.round(stats.retention * 100)}%`}</b>
-              <span>Retention</span>
-            </li>
-          </ul>
-        </Card>
-      )}
-
-      <Card
-        title="New deck"
-        actions={
-          <Button variant="primary" disabled={busy || !canSubmit} onClick={() => void create()}>
-            {mode === "blank" ? "Create" : "Generate"}
-          </Button>
-        }
-      >
-        <div className="st-stack">
-          <label className="st-field">
-            <span className="st-muted">Source</span>
-            <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-              <option value="blank">Blank (add cards yourself)</option>
-              <option value="topic">AI from a topic</option>
-              <option value="glossary">Design glossary</option>
-              <option value="lesson">Design lesson</option>
-              <option value="jd">Pasted job description</option>
-              <option value="interview_weakness">Interview weaknesses</option>
-              <option value="document">Interview document id</option>
-            </select>
-          </label>
-          {mode === "blank" && (
-            <label className="st-field">
-              <span className="st-muted">Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Caching" maxLength={120} />
-            </label>
-          )}
-          {mode === "topic" && (
-            <label className="st-field">
-              <span className="st-muted">Topic</span>
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. write-through caches" maxLength={200} />
-            </label>
-          )}
-          {mode === "lesson" && (
-            <label className="st-field">
-              <span className="st-muted">Lesson</span>
-              <select value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
-                {lessons.map((L) => (
-                  <option key={L.id} value={L.id}>
-                    {L.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {mode === "jd" && (
-            <label className="st-field">
-              <span className="st-muted">Job description</span>
-              <textarea value={jd} onChange={(e) => setJd(e.target.value)} maxLength={60000} placeholder="Paste the JD…" />
-            </label>
-          )}
-          {mode === "glossary" && <p className="st-hint">Builds definition and cloze cards from the Design glossary — no AI call.</p>}
-          {mode === "interview_weakness" && <p className="st-hint">Builds cards from topics marked as weaknesses in Interview feedback.</p>}
-          {mode === "document" && (
-            <label className="st-field">
-              <span className="st-muted">Interview document id</span>
-              <input value={docId} onChange={(e) => setDocId(e.target.value)} placeholder="e.g. 3" inputMode="numeric" />
-            </label>
-          )}
-        </div>
-      </Card>
+      {stats && <StudyHero stats={stats} />}
 
       {!decks.length ? (
         <EmptyState title="No decks yet">
@@ -213,6 +135,73 @@ export function DeckList() {
           ))}
         </ul>
       )}
+
+      <details className="st-new" open={!decks.length}>
+        <summary>New deck</summary>
+        <Card
+          title="New deck"
+          actions={
+            <Button variant="primary" disabled={busy || !canSubmit} onClick={() => void create()}>
+              {mode === "blank" ? "Create" : "Generate"}
+            </Button>
+          }
+        >
+          <div className="st-stack">
+            <label className="st-field">
+              <span className="st-muted">Source</span>
+              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+                <option value="blank">Blank (add cards yourself)</option>
+                <option value="topic">AI from a topic</option>
+                <option value="glossary">Design glossary</option>
+                <option value="lesson">Design lesson</option>
+                <option value="jd">Pasted job description</option>
+                <option value="interview_weakness">Interview weaknesses</option>
+                <option value="document">Interview document id</option>
+              </select>
+            </label>
+            {mode === "blank" && (
+              <label className="st-field">
+                <span className="st-muted">Name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Caching" maxLength={120} />
+              </label>
+            )}
+            {mode === "topic" && (
+              <label className="st-field">
+                <span className="st-muted">Topic</span>
+                <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. write-through caches" maxLength={200} />
+              </label>
+            )}
+            {mode === "lesson" && (
+              <label className="st-field">
+                <span className="st-muted">Lesson</span>
+                <select value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
+                  {lessons.map((L) => (
+                    <option key={L.id} value={L.id}>
+                      {L.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {mode === "jd" && (
+              <label className="st-field">
+                <span className="st-muted">Job description</span>
+                <textarea value={jd} onChange={(e) => setJd(e.target.value)} maxLength={60000} placeholder="Paste the JD…" />
+              </label>
+            )}
+            {mode === "glossary" && <p className="st-hint">Builds definition and cloze cards from the Design glossary — no AI call.</p>}
+            {mode === "interview_weakness" && (
+              <p className="st-hint">Builds cards from topics marked as weaknesses in Interview feedback.</p>
+            )}
+            {mode === "document" && (
+              <label className="st-field">
+                <span className="st-muted">Interview document id</span>
+                <input value={docId} onChange={(e) => setDocId(e.target.value)} placeholder="e.g. 3" inputMode="numeric" />
+              </label>
+            )}
+          </div>
+        </Card>
+      </details>
     </div>
   );
 }

@@ -1,0 +1,251 @@
+/* Study: the due-today hero, a 3D card flip, a session progress bar and a finish moment. All motion is off for reduced motion. */
+@property --st-n {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --st-p {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.st-new > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--gold-hi);
+  font-weight: 600;
+  list-style: none;
+}
+.st-new > summary::-webkit-details-marker {
+  display: none;
+}
+.st-new > summary::before {
+  content: "+ ";
+}
+.st-new[open] > summary {
+  margin-bottom: 8px;
+}
+
+/* hero */
+.st-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: radial-gradient(520px 200px at 0 0, rgba(212, 180, 90, 0.12), transparent 70%), var(--panel);
+}
+.st-hero-main {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.st-kicker {
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.st-due {
+  --st-n: var(--to);
+  font: 400 88px/1 var(--display);
+  color: var(--gold-hi);
+  counter-reset: n var(--st-n);
+  animation: st-count 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.st-due::after {
+  content: counter(n);
+}
+@keyframes st-count {
+  from {
+    --st-n: 0;
+  }
+}
+.st-go {
+  margin-top: 8px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gold);
+  color: #08080a;
+  font-weight: 700;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.st-go:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -14px var(--gold);
+}
+.st-go:disabled {
+  background: var(--raise);
+  color: var(--muted);
+  cursor: default;
+}
+.st-hero-side {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-hero-side li {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.st-hero-side b {
+  font: 400 34px/1 var(--display);
+}
+.st-hero-side span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.st-ring {
+  --st-p: var(--to);
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: conic-gradient(var(--good) calc(var(--st-p) * 1%), var(--raise) 0);
+  animation: st-ring 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s backwards;
+}
+.st-ring i {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: var(--panel);
+  font: 500 14px var(--mono);
+}
+@keyframes st-ring {
+  from {
+    --st-p: 0;
+  }
+}
+
+/* review */
+.st-progress {
+  width: min(100%, 520px);
+  height: 6px;
+  border-radius: 999px;
+  background: var(--raise);
+  overflow: hidden;
+}
+.st-progress i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.st-flip3d {
+  perspective: 1100px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  display: block;
+  min-height: 240px;
+  animation: st-deal 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.st-flip3d:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+.st-flip-in {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 240px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.is-flipped .st-flip-in {
+  transform: rotateY(180deg);
+}
+.st-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--panel) 0%, var(--bg-2) 100%);
+  box-shadow: 0 18px 50px -24px rgba(0, 0, 0, 0.8);
+  backface-visibility: hidden;
+}
+.st-back {
+  transform: rotateY(180deg);
+  border-color: var(--gold-lo);
+}
+@keyframes st-deal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+/* finish */
+.st-done {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 40px 12px;
+  text-align: center;
+}
+.st-done h3 {
+  margin: 0;
+  font: 400 30px var(--display);
+}
+.st-check {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--green-deep);
+  border: 2px solid var(--good);
+  color: var(--good);
+  font-size: 36px;
+  animation:
+    st-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) backwards,
+    st-burst 1s ease-out 0.2s backwards;
+}
+@keyframes st-pop {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes st-burst {
+  from {
+    box-shadow: 0 0 0 0 rgba(79, 181, 138, 0.55);
+  }
+  to {
+    box-shadow: 0 0 0 36px rgba(79, 181, 138, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-due,
+  .st-ring,
+  .st-flip3d,
+  .st-check {
+    animation: none;
+  }
+  .st-flip-in,
+  .st-progress i,
+  .st-go {
+    transition: none;
+  }
+}
