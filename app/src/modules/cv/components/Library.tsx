@@ -10,6 +10,7 @@ import { attempt, useAction } from "../hooks";
 import { go } from "../route";
 import { useCv } from "../store";
 import { CvUpload } from "./CvUpload";
+import "../cv-woah.css";
 
 export function Library() {
   const cvs = useCv((s) => s.cvs);
@@ -66,10 +67,16 @@ export function Library() {
             </p>
           ))}
           <div className="cv-row">
-            <Button variant="primary" size="small" onClick={() => go({ name: "review", cvId: c.id })}>
+            <Button size="small" onClick={() => go({ name: "review", cvId: c.id })}>
               Review how it was read
             </Button>
-            <Button size="small" onClick={() => go({ name: "score" })} disabled={!c.active} title={c.active ? "" : "Make it active first"}>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={() => go({ name: "score" })}
+              disabled={!c.active}
+              title={c.active ? "" : "Make it active first"}
+            >
               Score it
             </Button>
             {!c.active && (
@@ -92,24 +99,27 @@ export function Library() {
       ))}
 
       {cvs && cvs.length > 0 && (
-        <Card title="Your data">
-          <p className="cv-hint">Download everything this module holds about you, or remove it all.</p>
-          <div className="cv-row">
-            <Button size="small" onClick={() => void exportAll()}>
-              Download my data
-            </Button>
-            <Button
-              size="small"
-              variant="danger"
-              onClick={() => {
-                if (window.confirm("Delete every CV, score and suggestion you have saved? This cannot be undone."))
-                  void act(() => cvApi.deleteAll(), "All CV data deleted.");
-              }}
-            >
-              Delete all my CV data
-            </Button>
-          </div>
-        </Card>
+        <details className="cv-data">
+          <summary>Your data and privacy</summary>
+          <Card title="Your data">
+            <p className="cv-hint">Download everything this module holds about you, or remove it all.</p>
+            <div className="cv-row">
+              <Button size="small" onClick={() => void exportAll()}>
+                Download my data
+              </Button>
+              <Button
+                size="small"
+                variant="danger"
+                onClick={() => {
+                  if (window.confirm("Delete every CV, score and suggestion you have saved? This cannot be undone."))
+                    void act(() => cvApi.deleteAll(), "All CV data deleted.");
+                }}
+              >
+                Delete all my CV data
+              </Button>
+            </div>
+          </Card>
+        </details>
       )}
     </div>
   );
