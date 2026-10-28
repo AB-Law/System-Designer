@@ -50,6 +50,13 @@ describe("nodeVisual", () => {
     expect(nodeVisual(nr({ incoming: 0 }), "server").state).toBe("idle");
     expect(nodeVisual(undefined, "server").state).toBe("idle");
   });
+  it("shows a surviving killed block as having lost a copy, not as healthy", () => {
+    expect(nodeVisual(nr({}), "cdn", 0, true).state).toBe("degraded");
+    expect(nodeVisual(nr({}), "cdn", 0, true).label).toBe("Lost a copy");
+    expect(nodeVisual(nr({ utilization: 1.2, dropped: 10 }), "cdn", 0, true).state).toBe("saturated");
+    expect(nodeVisual(nr({ down: true }), "cdn", 0, true).state).toBe("down");
+    expect(nodeVisual(nr({}), "cdn", 0, false).state).toBe("healthy");
+  });
   it("carries queue depth", () => {
     expect(nodeVisual(nr({}), "queue", 12).queue).toBe(12);
     expect(nodeVisual(nr({}), "queue", 0).queue).toBeUndefined();
@@ -96,6 +103,32 @@ describe("live scenarios", () => {
     const cap = captionFor(d, L, spike, steady, { spike: true });
     expect(cap.what).toMatch(/Traffic jumped/);
     expect(cap.why.length).toBeGreaterThan(10);
+  });
+
+  it("killing one of several copies says a copy went down, not the whole block", () => {
+    const d = design(3);
+    const steady = runLive(d, L, undefined, { spike: false });
+    const killed = runLive(d, L, undefined, { spike: false, killed: "s" });
+    expect(killed.nodes["s"].down).toBeFalsy();
+    const cap = captionFor(d, L, killed, steady, { spike: false, killed: "s" });
+    expect(cap.what).toMatch(/One copy of Server went down/);
+  });
+
+  it("a CDN with spare copies survives a kill and is shown as having lost one", () => {
+    const d: Design = {
+      nodes: [mk("u", "user"), mk("c", "cdn"), mk("s", "server", {}, ["search", "checkout"])],
+      edges: [e("u", "c"), e("c", "s")],
+    };
+    const steady = runLive(d, L, undefined, { spike: false });
+    const killed = runLive(d, L, undefined, { spike: false, killed: "c" });
+    const vis = nodeVisuals(d, killed, {}, "c");
+    const cap = captionFor(d, L, killed, steady, { spike: false, killed: "c" });
+    if (killed.nodes["c"].down) expect(vis["c"].state).toBe("down");
+    else {
+      expect(vis["c"].state).toBe("degraded");
+      expect(cap.what).toMatch(/One copy of CDN went down/);
+    }
+    expect(cap.what).not.toMatch(/^CDN went down, and 100%/);
   });
 
   it("killing the only server is called out as a loss", () => {

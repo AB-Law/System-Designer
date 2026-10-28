@@ -5,7 +5,7 @@ import { simulate } from "./engine";
 import { diagnoseNode } from "./diagnose";
 import type { Design, Finding, NodeResult, Problem, Scenario, ScenarioResult } from "../types";
 
-export type LiveState = "idle" | "healthy" | "busy" | "saturated" | "failing" | "down";
+export type LiveState = "idle" | "healthy" | "busy" | "saturated" | "failing" | "degraded" | "down";
 
 export interface NodeVisual {
   state: LiveState;
@@ -59,7 +59,7 @@ export function runLive(design: Design, problem: Problem, base: Scenario | undef
   return simulate(design, problem, liveScenario(base, c));
 }
 
-export function nodeVisual(res: NodeResult | undefined, blockId: string, queue = 0): NodeVisual {
+export function nodeVisual(res: NodeResult | undefined, blockId: string, queue = 0, lostCopy = false): NodeVisual {
   const q = queue >= 1 ? { queue } : {};
   if (!res || blockId === "user") return { state: "idle", label: "", icon: "", ...q };
   if (res.down) return { state: "down", label: "Down", icon: "✕", ...q };
@@ -68,13 +68,20 @@ export function nodeVisual(res: NodeResult | undefined, blockId: string, queue =
   const lost = res.dropped / res.incoming;
   if (u >= 1.5 || lost > 0.25) return { state: "failing", label: "Dropping requests", icon: "⚠", ...q };
   if (u >= 1) return { state: "saturated", label: "Saturated", icon: "▲", ...q };
+  // the killed block survived because it has spare copies: say so instead of looking untouched
+  if (lostCopy) return { state: "degraded", label: "Lost a copy", icon: "✕", ...q };
   if (u >= 0.8) return { state: "busy", label: "Busy", icon: "◐", ...q };
   return { state: "healthy", label: "Healthy", icon: "✓", ...q };
 }
 
-export function nodeVisuals(design: Design, result: ScenarioResult, queues: Record<string, number> = {}): Record<string, NodeVisual> {
+export function nodeVisuals(
+  design: Design,
+  result: ScenarioResult,
+  queues: Record<string, number> = {},
+  killed?: string,
+): Record<string, NodeVisual> {
   const out: Record<string, NodeVisual> = {};
-  for (const n of design.nodes) out[n.id] = nodeVisual(result.nodes[n.id], n.blockId, queues[n.id] ?? 0);
+  for (const n of design.nodes) out[n.id] = nodeVisual(result.nodes[n.id], n.blockId, queues[n.id] ?? 0, n.id === killed);
   return out;
 }
 
@@ -184,6 +191,20 @@ export function captionFor(
 
   if (c.killed) {
     const name = labelOf(design, c.killed);
+    // the engine takes one copy of a block away: with spares the block lives on at lower capacity
+    if (!result.nodes[c.killed]?.down) {
+      if (before.served - sv <= 0.02)
+        return {
+          tone: "good",
+          what: `One copy of ${name} went down, and ${served}% of requests are still served.`,
+          why: `${name} runs more than one copy, so the rest took over its share and users barely notice. That is what spare copies buy you.`,
+        };
+      return {
+        tone: sv < 0.95 ? "bad" : "warn",
+        what: `One copy of ${name} went down, and ${served}% of requests are served now, down from ${servedBefore}%.`,
+        why: `The remaining copies of ${name} cannot carry the whole load, so about ${fmt(droppedPerSec(result, sv))} requests a second are lost. Add spare capacity.`,
+      };
+    }
     if (sv >= before.served - 0.02)
       return {
         tone: "good",

@@ -147,9 +147,14 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
   const value = useMemo<LiveValue>(
     () =>
       sim
-        ? { on: true, animate: !reduced && visible, nodes: nodeVisuals(design, sim.now, queues), flows: edgeFlows(design, sim.now) }
+        ? {
+            on: true,
+            animate: !reduced && visible,
+            nodes: nodeVisuals(design, sim.now, queues, controls.killed),
+            flows: edgeFlows(design, sim.now),
+          }
         : OFF,
-    [sim, design, queues, reduced, visible],
+    [sim, design, queues, reduced, visible, controls.killed],
   );
   const caption: Caption | undefined = useMemo(
     () => (sim && problem ? captionFor(design, problem, sim.now, sim.steady, controls, run?.findings) : undefined),
@@ -195,10 +200,10 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
                 className={killed ? "active bad" : ""}
                 disabled={!pick}
                 aria-pressed={!!killed}
-                title="Take this block down mid-run and see whether traffic reroutes"
+                title="Take one copy of this block down mid-run and see whether the rest pick up the traffic. A block with a single copy goes fully down."
                 onClick={() => setCtl({ ...ctl, killed: killed ? undefined : pick })}
               >
-                {killed ? "↺ Revive" : "✕ Kill block"}
+                {killed ? "↺ Revive" : "✕ Kill a copy"}
               </button>
             </>
           )}

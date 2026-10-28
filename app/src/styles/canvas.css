@@ -230,6 +230,14 @@
 .bnode.live-failing {
   animation: live-pulse 1.1s ease-in-out infinite;
 }
+.bnode.live-degraded {
+  border-color: var(--warn);
+  border-style: dashed;
+}
+.bnode.live-degraded .bn-util {
+  border-color: var(--warn);
+  color: var(--warn);
+}
 .bnode.live-down {
   border-color: var(--bad);
   border-style: dashed;
