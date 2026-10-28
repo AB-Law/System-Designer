@@ -166,7 +166,6 @@
 }
 
 
-<<<<<<< HEAD
 /* the route through a design */
 .flow {
   padding: 10px 12px 8px;
@@ -211,7 +210,8 @@
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 12.5px;
-=======
+}
+
 /* ---------- live simulation ---------- */
 .bnode.live {
   transition: box-shadow 0.3s, border-color 0.3s, background-color 0.3s;
@@ -350,5 +350,4 @@
   .bnode.live-failing {
     animation: none;
   }
->>>>>>> f7c6432 (Add live simulation to the design canvas: flowing requests, block states, spike and kill controls, captions)
 }
