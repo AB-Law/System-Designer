@@ -4,9 +4,11 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from dc_platform import tracks
 from modules import enabled_modules
 
 from . import actions, readiness_view, setup, targets
+from . import track as track_of
 
 FIT_GAPS = 3
 
@@ -55,18 +57,19 @@ def build(user_id: int) -> dict[str, Any]:
     row = targets.active_row(user_id)
     target = targets.public(row, full=False) if row else None
     jd_text = row["jd_text"] if row else None
-    seen = readiness_view.build(user_id, jd_text)
+    track = track_of.of(user_id, row)
+    seen = readiness_view.build(user_id, jd_text, tracks.by_slug(track["slug"]))
     fit = _fit(user_id, row)
     enabled = frozenset(enabled_modules())
     context = actions.Context(
         target=target, topics=seen["topics"], due_cards=_due_cards(user_id), fit=fit,
-        enabled=enabled, has_interview=_has_interview(seen["topics"]),
+        enabled=enabled, has_interview=_has_interview(seen["topics"]), track=track["slug"],
     )
     return {
         "setup": setup.build(user_id, {"target": target, "fit": fit}),
         "target": target and {**target, "daysLeft": _days_left(target["date"])},
         "targets": targets.list_targets(user_id),
-        "readiness": seen["topics"], "fit": fit, "actions": actions.next_actions(context),
+        "readiness": seen["topics"], "track": track, "fit": fit, "actions": actions.next_actions(context),
         "activity": seen["activity"], "streak": seen["streak"], "dataPoints": seen["dataPoints"],
         "modules": sorted(enabled),
     }

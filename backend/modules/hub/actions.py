@@ -19,6 +19,7 @@ class Context:
     fit: dict[str, Any] | None
     enabled: frozenset[str]
     has_interview: bool
+    track: str = "backend"
 
 
 def _action(key: str, priority: int, title: str, why: str, module: str, href: str) -> dict[str, Any]:
@@ -66,7 +67,9 @@ def untouched_relevant(c: Context) -> dict[str, Any] | None:
     if not fresh:
         return None
     t = fresh[0]
-    return _action(f"start-{t['slug']}", 55, f"Start with {t['label'].lower()}", "The job description asks for it and you have nothing recorded yet.", "design", "#/learn")
+    # the lessons teach system design; for any other track the way in is a deck of your own
+    where = ("study", "#/study") if c.track != "backend" and "study" in c.enabled else ("design", "#/learn")
+    return _action(f"start-{t['slug']}", 55, f"Start with {t['label'].lower()}", "The job description asks for it and you have nothing recorded yet.", *where)
 
 
 def first_mock(c: Context) -> dict[str, Any] | None:

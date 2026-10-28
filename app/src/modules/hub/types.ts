@@ -36,6 +36,14 @@ export interface TopicCard {
   points: number;
   relevant: boolean;
   sources: string[];
+  /** Outside the user's track, shown only because they have evidence for it. */
+  extra?: boolean;
+}
+
+export interface Track {
+  slug: string;
+  label: string;
+  source: "target" | "cv" | "default";
 }
 
 export interface Gap {
@@ -87,6 +95,7 @@ export interface Summary {
   target: ActiveTarget | null;
   targets: Target[];
   readiness: TopicCard[];
+  track: Track;
   fit: Fit | null;
   actions: NextAction[];
   activity: Activity[];

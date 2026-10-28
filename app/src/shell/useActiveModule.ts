@@ -16,5 +16,6 @@ export function useActiveModule(): { module: ModuleDef; rest: string } | null {
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
-  return parseModuleHash(hash, MODULES);
+  const found = parseModuleHash(hash, MODULES);
+  return found && found.module.id !== "design" ? found : null; // Design draws itself; the host is for the others
 }

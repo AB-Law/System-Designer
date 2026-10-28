@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from dc_platform import readiness, topics
+from dc_platform import readiness, topics, tracks
 from modules.hub import actions, readiness_view
 from tests.helpers import assert_isolated, two_users
 
@@ -77,6 +77,72 @@ def test_events_are_stored_under_a_known_topic(clients: tuple[TestClient, TestCl
     with open_db() as db:
         stored = {r["topic"] for r in db.execute("SELECT topic FROM readiness_events")}
     assert stored == {"caching", topics.OTHER}
+
+
+# ---------------------------------------------------------------- tracks
+
+
+def slugs(client: TestClient) -> list[str]:
+    return [t["slug"] for t in client.get("/api/hub/summary").json()["readiness"]]
+
+
+def test_a_user_with_no_signal_gets_the_system_design_topics(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    got = alice.get("/api/hub/summary").json()
+    assert got["track"] == {"slug": "backend", "label": "System design", "source": "default"}
+    assert slugs(alice) == list(tracks.by_slug("backend").topics)
+
+
+@pytest.mark.parametrize(
+    ("title", "track", "first_topic"),
+    [("Senior DevOps Engineer", "devops", "ci-cd"), ("Frontend Engineer, React", "frontend", "rendering-performance")],
+)
+def test_the_target_role_picks_the_track(clients: tuple[TestClient, TestClient], title: str, track: str, first_topic: str) -> None:
+    alice, _ = clients
+    target(alice, title)
+    got = alice.get("/api/hub/summary").json()
+    assert got["track"]["slug"] == track and got["track"]["source"] == "target"
+    assert got["readiness"][0]["slug"] == first_topic and "scalability" not in slugs(alice)
+
+
+def test_evidence_outside_the_track_is_still_shown(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    target(alice, "Frontend Engineer")
+    record(uid(alice), "Scalability mock", 0.8, "m1", module="interview")
+    cards = alice.get("/api/hub/summary").json()["readiness"]
+    assert card(alice, "scalability")["extra"] is True and card(alice, "accessibility")["extra"] is False
+    assert cards[-1]["slug"] == "scalability"
+
+
+def test_the_cv_picks_the_track_when_the_target_does_not_say(app_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENABLED_MODULES", "design,hub,cv")
+    from main import create_app
+    from modules.cv import service
+
+    alice, _bobby = two_users(lambda: TestClient(create_app()))
+    structure = {
+        "headline": "Site Reliability Engineer", "skills": ["Kubernetes", "Terraform", "Prometheus"],
+        "experience": [{"employer": "Acme", "title": "Platform Engineer", "bullets": ["Ran the Jenkins pipelines and Docker builds"]}],
+    }
+    monkeypatch.setattr(service, "active_cv", lambda user_id: {"id": 1, "latest": {"structure": structure}})
+    target(alice, "Engineer")  # says nothing about a track
+    got = alice.get("/api/hub/summary").json()
+    assert got["track"] == {"slug": "devops", "label": "DevOps and SRE", "source": "cv"}
+    target(alice, "Frontend Engineer")  # the role being prepared for wins over the CV
+    assert alice.get("/api/hub/summary").json()["track"]["slug"] == "frontend"
+
+
+def test_frontend_and_devops_labels_resolve() -> None:
+    assert topics.resolve("React rendering performance") == "rendering-performance"
+    assert topics.resolve("Terraform modules") == "iac"
+    assert topics.resolve("Kubernetes") == "containers"
+    assert topics.resolve("Redis caching") == "caching"  # a label both lists could claim keeps its older topic
+
+
+def test_every_track_lists_real_topics_and_javascript_is_not_java() -> None:
+    assert tracks.detect([("Java developer", 1)]).slug == "backend"
+    assert tracks.detect([("JavaScript developer", 1)]).slug == "frontend"
+    assert tracks.detect([("a chef", 1)]) is None
 
 
 # ---------------------------------------------------------------- targets

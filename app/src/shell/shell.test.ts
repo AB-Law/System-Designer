@@ -8,7 +8,7 @@ import { ScoreRing, ringTone } from "../ui/ScoreRing";
 import { Tabs } from "../ui/Tabs";
 import { Table } from "../ui/Table";
 import { DESIGN, activeModules, availability, enabledFlags, enabledModules, featureOn } from "./registry";
-import { moduleHash, parseModuleHash } from "./route";
+import { DESIGN_HASH, hashAfterSwitch, moduleHash, parseModuleHash } from "./route";
 import type { ModuleDef } from "./types";
 
 const cv: ModuleDef = { id: "cv", title: "CV", hashPrefix: "#/cv", requires: ["backend", "auth"], flag: "cv" };
@@ -56,6 +56,18 @@ describe("module hash routing", () => {
     expect(parseModuleHash("#/learn/caching", mods)).toBeNull();
     expect(parseModuleHash("#/cvs", mods)).toBeNull();
     expect(parseModuleHash("#/cv-extra", mods)).toBeNull();
+  });
+  it("Design has its own address, so it is no longer the same route as the home", () => {
+    expect(parseModuleHash("#/design", mods)).toMatchObject({ module: { id: "design" }, rest: "" });
+    expect(DESIGN.hashPrefix).toBe(DESIGN_HASH);
+  });
+  it("switching to Design sets its address from the empty one or another module, and leaves its own links alone", () => {
+    expect(hashAfterSwitch(DESIGN, "", mods)).toBe("#/design");
+    expect(hashAfterSwitch(DESIGN, "#/cv/upload", mods)).toBe("#/design");
+    expect(hashAfterSwitch(DESIGN, "#/design", mods)).toBeNull();
+    expect(hashAfterSwitch(DESIGN, "#/learn/caching", mods)).toBeNull();
+    expect(hashAfterSwitch(DESIGN, "#share=abcdefgh12", mods)).toBeNull();
+    expect(hashAfterSwitch(cv, "#/design", mods)).toBe("#/cv");
   });
   it("round-trips", () => {
     const r = parseModuleHash(moduleHash(cv, "a/b"), mods);

@@ -4,11 +4,12 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { hubApi } from "../api";
 import { go } from "../route";
 import type { Summary } from "../types";
-import { RecentActivity, StreakCard } from "./ActivityCards";
+import { RecentActivity, StreakChip } from "./ActivityCards";
 import { FitCard } from "./FitCard";
 import { ModuleCards } from "./ModuleCards";
 import { NextActions } from "./NextActions";
 import { ReadinessGrid } from "./ReadinessGrid";
+import { ResumeCard } from "./ResumeCard";
 import { SetupCard } from "./SetupCard";
 import { TargetSwitcher } from "./TargetSwitcher";
 
@@ -42,7 +43,10 @@ export function Dashboard() {
             {target?.company && <span className="hub-muted"> at {target.company}</span>}
           </h2>
         </div>
-        <TargetSwitcher targets={summary.targets} active={target} disabled={busy} onSwitch={(id) => void switchTo(id)} />
+        <div className="hub-head-side">
+          <StreakChip streak={summary.streak} />
+          <TargetSwitcher targets={summary.targets} active={target} disabled={busy} onSwitch={(id) => void switchTo(id)} />
+        </div>
       </header>
 
       {!target && (
@@ -59,17 +63,15 @@ export function Dashboard() {
       )}
 
       <SetupCard steps={summary.setup} onChange={() => void load()} />
-      <ModuleCards />
+      <ResumeCard activity={summary.activity} />
 
       <div className="hub-cols">
         <NextActions actions={summary.actions} />
         {summary.modules.includes("cv") && <FitCard fit={summary.fit} target={target} />}
       </div>
-      <ReadinessGrid topics={summary.readiness} />
-      <div className="hub-cols">
-        <RecentActivity items={summary.activity} />
-        <StreakCard streak={summary.streak} />
-      </div>
+      <ReadinessGrid topics={summary.readiness} track={summary.track} modules={summary.modules} />
+      <ModuleCards />
+      <RecentActivity items={summary.activity} />
     </div>
   );
 }

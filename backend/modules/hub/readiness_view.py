@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Any
 
 from db import open_db
-from dc_platform import topics
+from dc_platform import topics, tracks
 from dc_platform.rows import now
 
 MS_PER_DAY = 86_400_000
@@ -43,15 +43,19 @@ def _events(user_id: int) -> list[Any]:
         return db.execute("SELECT module, topic, strength, ref, at FROM readiness_events WHERE user_id=?", (user_id,)).fetchall()
 
 
-def grid(events: list[Any], jd_text: str | None) -> list[dict[str, Any]]:
-    """One card per topic. Topics the job description mentions come first; the rest keep the shared list's order."""
+def grid(events: list[Any], jd_text: str | None, track: tracks.Track = tracks.DEFAULT) -> list[dict[str, Any]]:
+    """One card per topic of the track, plus any other topic the user has evidence for (a frontend engineer's system-design mock
+    still shows). Topics the job description mentions come first; the rest keep the track's order."""
     by_topic: dict[str, list[Any]] = defaultdict(list)
     for e in events:
         by_topic[topics.resolve(e["topic"])].append(e)
     wanted = topics.mentioned_in(jd_text) if jd_text else set()
     current = now()
-    cards = [_topic_card(slug, by_topic.get(slug, []), current, slug in wanted) for slug in topics.SLUGS]
-    return sorted(cards, key=lambda c: not c["relevant"])  # stable: keeps the list order inside each group
+    shown = [*track.topics, *(s for s in topics.SLUGS if s not in track.topics and by_topic.get(s))]
+    cards = [
+        _topic_card(slug, by_topic.get(slug, []), current, slug in wanted) | {"extra": slug not in track.topics} for slug in shown
+    ]
+    return sorted(cards, key=lambda c: not c["relevant"])  # stable: keeps the track's order inside each group
 
 
 def activity(events: list[Any]) -> list[dict[str, Any]]:
@@ -83,6 +87,6 @@ def streak(events: list[Any], today: dt.date | None = None) -> dict[str, Any]:
     return {"days": count, "week": week}
 
 
-def build(user_id: int, jd_text: str | None) -> dict[str, Any]:
+def build(user_id: int, jd_text: str | None, track: tracks.Track = tracks.DEFAULT) -> dict[str, Any]:
     events = _events(user_id)
-    return {"topics": grid(events, jd_text), "activity": activity(events), "streak": streak(events), "dataPoints": len(events)}
+    return {"topics": grid(events, jd_text, track), "activity": activity(events), "streak": streak(events), "dataPoints": len(events)}

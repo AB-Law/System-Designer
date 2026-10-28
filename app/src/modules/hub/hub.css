@@ -385,3 +385,135 @@
 .hub-setup-inline {
   padding: 0 14px 14px;
 }
+
+/* streak chip in the header */
+.hub-head-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.hub-streak {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.hub-streak strong {
+  color: var(--gold-hi);
+  font: 600 18px var(--display);
+}
+.hub-week-dots {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub-week-dots .hub-day {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+/* setup strip */
+.hub-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.hub-strip-bar {
+  flex: 0 1 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raise);
+  overflow: hidden;
+}
+.hub-strip-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+.hub-strip-next {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* pick up where you left off */
+.hub-resume {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub-resume > li {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.hub-resume-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.hub-resume-item:hover {
+  border-color: var(--gold-lo);
+}
+
+/* readiness: the weakest topics lead, the rest are rows */
+.hub-rows {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.hub-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(80px, 160px) 90px;
+  gap: 12px;
+  align-items: center;
+}
+.hub-row-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raise);
+  overflow: hidden;
+}
+.hub-row-bar > span {
+  display: block;
+  height: 100%;
+}
+.hub-calibrate {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+.hub-calibrate p {
+  margin: 0;
+}
+.hub-calibrate-go {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

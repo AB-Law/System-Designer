@@ -1,4 +1,6 @@
 import { BLURBS } from "../../shell/blurbs";
+import { DESIGN } from "../../shell/registry";
+import { goModule } from "../../shell/route";
 import { useModules } from "../../shell/useActiveModule";
 import { useStore } from "../../store";
 import "../../styles/landing.css";
@@ -13,7 +15,8 @@ const HOW = [
 export function Landing() {
   const setAuthOpen = useStore((s) => s.setAuthOpen);
   const setLandingSeen = useStore((s) => s.setLandingSeen);
-  const modules = useModules().filter((m) => m.id !== "hub");
+  const all = useModules();
+  const modules = all.filter((m) => m.id !== "hub");
 
   return (
     <div className="landing">
@@ -29,7 +32,14 @@ export function Landing() {
             <button type="button" className="btn primary lg" onClick={() => setAuthOpen(true)}>
               Sign in or create an account
             </button>
-            <button type="button" className="btn lg" onClick={() => setLandingSeen(true)}>
+            <button
+              type="button"
+              className="btn lg"
+              onClick={() => {
+                setLandingSeen(true);
+                goModule(DESIGN, all);
+              }}
+            >
               Try the Design Canvas as a guest
             </button>
           </div>

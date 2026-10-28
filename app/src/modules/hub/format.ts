@@ -1,4 +1,4 @@
-import type { Activity, Tier } from "./types";
+import type { Activity, Tier, TopicCard } from "./types";
 
 export const TIER_WORD: Record<Tier, string> = {
   strong: "Strong",
@@ -39,6 +39,41 @@ export function activityText(a: Activity): string {
   if (a.module === "study") return `Reviewed a card on ${where}`;
   if (a.module === "interview") return `Finished a mock interview round (${where})`;
   return `Progress on ${where}`;
+}
+
+const FOCUS = 3;
+
+/** The topics with evidence, weakest first, so the ones to work on lead. Topics with nothing recorded stay out of the way. */
+export function splitTopics(topics: TopicCard[]): { focus: TopicCard[]; rest: TopicCard[]; empty: TopicCard[] } {
+  const seen = topics.filter((t) => t.tier !== "none");
+  const focus = [...seen].sort((a, b) => (a.strength ?? 1) - (b.strength ?? 1)).slice(0, FOCUS);
+  return { focus, rest: seen.filter((t) => !focus.includes(t)), empty: topics.filter((t) => t.tier === "none") };
+}
+
+export interface ResumeItem {
+  key: string;
+  title: string;
+  detail: string;
+  href: string;
+}
+
+const where = (a: Activity): string => (a.topics.length ? a.topics.join(", ") : "general");
+
+/** The last mock interview and the last study session, newest first in `activity`, as places to carry on from. */
+export function resumeItems(activity: Activity[], now: number = Date.now()): ResumeItem[] {
+  const out: ResumeItem[] = [];
+  const interview = activity.find((a) => a.module === "interview");
+  const sessionId = interview && /^interview_session:(\d{1,9})$/.exec(interview.ref)?.[1];
+  if (interview && sessionId)
+    out.push({
+      key: "interview",
+      title: "Your last mock interview",
+      detail: `${where(interview)} · ${ago(interview.at, now)}`,
+      href: `#/interview/session/${sessionId}`,
+    });
+  const study = activity.find((a) => a.module === "study");
+  if (study) out.push({ key: "study", title: "Keep studying", detail: `${where(study)} · ${ago(study.at, now)}`, href: "#/study" });
+  return out;
 }
 
 export function ago(at: number, now: number = Date.now()): string {

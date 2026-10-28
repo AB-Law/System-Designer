@@ -40,9 +40,29 @@ function Inline({ step, onDone }: { step: SetupStep; onDone: () => void }) {
 export function SetupCard({ steps, onChange }: { steps: SetupStep[]; onChange: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(read);
+  const [shown, setShown] = useState<boolean | null>(null); // null: follow the default, open until something is done
   const done = steps.filter((s) => s.done).length;
   if (dismissed || steps.length === 0 || done === steps.length) return null;
-  const next = steps.find((s) => !s.done)?.key;
+  const nextStep = steps.find((s) => !s.done);
+  const next = nextStep?.key;
+  const expanded = shown ?? done === 0;
+
+  if (!expanded) {
+    return (
+      <div className="hub-strip">
+        <strong>
+          Get set up · {done} of {steps.length}
+        </strong>
+        <span className="hub-strip-bar" aria-hidden="true">
+          <span style={{ width: `${Math.round((done / steps.length) * 100)}%` }} />
+        </span>
+        <span className="hub-muted hub-strip-next">Next: {nextStep?.title}</span>
+        <button type="button" className="hub-link" onClick={() => setShown(true)}>
+          Show steps
+        </button>
+      </div>
+    );
+  }
 
   const dismiss = () => {
     setDismissed(true);
@@ -57,9 +77,16 @@ export function SetupCard({ steps, onChange }: { steps: SetupStep[]; onChange: (
     <Card
       title={`Get set up · ${done} of ${steps.length}`}
       actions={
-        <button type="button" className="hub-link" onClick={dismiss}>
-          Hide
-        </button>
+        <>
+          {done > 0 && (
+            <button type="button" className="hub-link" onClick={() => setShown(false)}>
+              Collapse
+            </button>
+          )}
+          <button type="button" className="hub-link" onClick={dismiss}>
+            Hide
+          </button>
+        </>
       }
     >
       <ol className="hub-setup">

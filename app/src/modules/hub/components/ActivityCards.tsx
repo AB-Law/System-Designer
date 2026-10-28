@@ -23,25 +23,22 @@ export function RecentActivity({ items }: { items: Activity[] }) {
   );
 }
 
-export function StreakCard({ streak }: { streak: Streak }) {
+/** The streak as a small chip beside the target: the count and the last seven days as dots. */
+export function StreakChip({ streak }: { streak: Streak }) {
   return (
-    <Card title="Streak">
-      <div className="hub-big">
-        {streak.days}
-        <span className="hub-muted"> day{streak.days === 1 ? "" : "s"} in a row</span>
-      </div>
-      <ul className="hub-week" aria-label="Last seven days">
+    <div className="hub-streak" title="Consecutive days with some practice">
+      <strong>{streak.days}</strong>
+      <span className="hub-muted">day streak</span>
+      <ul className="hub-week-dots" aria-label="Last seven days">
         {streak.week.map((d) => (
-          <li key={d.date}>
-            <span
-              className={"hub-day" + (d.active ? " on" : "")}
-              role="img"
-              aria-label={`${weekday(d.date)}: ${d.active ? "active" : "no activity"}`}
-            />
-            <span className="hub-muted">{weekday(d.date)}</span>
-          </li>
+          <li
+            key={d.date}
+            className={"hub-day" + (d.active ? " on" : "")}
+            role="img"
+            aria-label={`${weekday(d.date)}: ${d.active ? "active" : "no activity"}`}
+          />
         ))}
       </ul>
-    </Card>
+    </div>
   );
 }

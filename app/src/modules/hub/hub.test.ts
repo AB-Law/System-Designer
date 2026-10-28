@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { activityText, ago, barWidth, daysLeftText, TIER_WORD, weekday } from "./format";
+import { activityText, ago, barWidth, daysLeftText, resumeItems, splitTopics, TIER_WORD, weekday } from "./format";
 import { format, hashFor, parse } from "./route";
+import type { TopicCard } from "./types";
 
 describe("hub routes", () => {
   it("round-trips known paths and sends unknown ones home", () => {
@@ -26,6 +27,48 @@ describe("hub formatting", () => {
     expect(daysLeftText(0)).toBe("today");
     expect(daysLeftText(1)).toBe("tomorrow");
     expect(daysLeftText(18)).toBe("18 days away");
+  });
+
+  it("leads with the three weakest topics that have data and leaves empty ones out of the way", () => {
+    const t = (slug: string, tier: TopicCard["tier"], strength: number | null): TopicCard => ({
+      slug,
+      label: slug,
+      tier,
+      strength,
+      points: strength === null ? 0 : 3,
+      relevant: false,
+      sources: [],
+    });
+    const got = splitTopics([
+      t("a", "strong", 0.9),
+      t("b", "none", null),
+      t("c", "needs_work", 0.2),
+      t("d", "building", 0.5),
+      t("e", "needs_work", 0.3),
+      t("f", "strong", 0.8),
+    ]);
+    expect(got.focus.map((x) => x.slug)).toEqual(["c", "e", "d"]);
+    expect(got.rest.map((x) => x.slug)).toEqual(["a", "f"]);
+    expect(got.empty.map((x) => x.slug)).toEqual(["b"]);
+    expect(splitTopics([t("b", "none", null)]).focus).toEqual([]);
+  });
+
+  it("offers the last interview and study session to carry on from, newest first", () => {
+    const now = 5 * 86_400_000;
+    const items = resumeItems(
+      [
+        { module: "study", ref: "study_card:4", at: now, topics: ["Caching"] },
+        { module: "interview", ref: "interview_session:12", at: now - 86_400_000, topics: ["Security"] },
+        { module: "interview", ref: "interview_session:3", at: 0, topics: [] },
+      ],
+      now,
+    );
+    expect(items.map((i) => [i.key, i.href])).toEqual([
+      ["interview", "#/interview/session/12"],
+      ["study", "#/study"],
+    ]);
+    expect(items[0].detail).toBe("Security · Yesterday");
+    expect(resumeItems([])).toEqual([]);
   });
 
   it("words activity by module and ages it in days", () => {
