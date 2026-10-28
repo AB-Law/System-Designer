@@ -61,7 +61,9 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
   const vis = live.on ? live.nodes[id] : undefined;
   const res = run?.scenarios.find((s) => s.scenarioId === simScenario)?.nodes[id];
   const u = res && res.incoming > 0 ? res.utilization : undefined;
-  const copies = replicaKey(data.blockId) ? Math.max(1, Math.round(Number(data.cfg[replicaKey(data.blockId)!] ?? modelOf(data.blockId, data.cfg).instances ?? 1))) : 1;
+  const copies = replicaKey(data.blockId)
+    ? Math.max(1, Math.round(Number(data.cfg[replicaKey(data.blockId)!] ?? modelOf(data.blockId, data.cfg).instances ?? 1)))
+    : 1;
   const status = res?.down ? "down" : u === undefined ? "" : u >= 1 ? "hot" : u >= 0.8 ? "warm" : "ok";
   return (
     <div className={`bnode cat-${def.category} ${selected ? "sel" : ""} ${vis ? "live live-" + vis.state : status}`}>

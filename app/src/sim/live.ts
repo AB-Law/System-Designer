@@ -47,7 +47,14 @@ export function liveScenario(base: Scenario | undefined, c: LiveControls): Scena
   const down = (id: string): Failure => ({ target: { nodeId: id }, mode: "down" });
   return {
     id: "__live",
-    title: killed.length > 1 ? "Live: several blocks are down" : killed.length ? "Live: a block is down" : c.spike ? "Live: traffic spike" : "Live: steady traffic",
+    title:
+      killed.length > 1
+        ? "Live: several blocks are down"
+        : killed.length
+          ? "Live: a block is down"
+          : c.spike
+            ? "Live: traffic spike"
+            : "Live: steady traffic",
     description: "",
     trafficMultiplier: mult,
     capabilityLoad: c.spike ? base?.capabilityLoad : undefined,
