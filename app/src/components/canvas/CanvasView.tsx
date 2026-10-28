@@ -17,6 +17,7 @@ import { useRun } from "../../hooks";
 import { useProblem, useStore, type RFNode } from "../../store";
 import { capIdsOf } from "../../sim/caps";
 import { isPlaceable, regionId, regionShort } from "../../sim/regions";
+import { placeBlock, useNotice } from "../../store/place";
 import { ChatDock } from "./ChatDock";
 import type { EdgeKind } from "../../types";
 
@@ -25,6 +26,26 @@ function loadTitle(u: number, database: boolean): string {
   const base = `Receiving ${u >= 10 ? "more than 10 times" : `${Math.round(u * 100)}% of`} what this block can handle.`;
   if (u < 1) return base;
   return `${base} Above 100% it cannot keep up, so requests wait or fail.${database ? " For a database, a missing index is a common cause: each request then reads far more rows than it needs." : ""}`;
+}
+
+/** What the player should know about the block they just added: over budget, or an identical block already there. */
+function PlaceNoticeBar() {
+  const notice = useNotice((s) => s.notice);
+  const clear = useNotice((s) => s.clear);
+  if (!notice) return null;
+  return (
+    <div className={"place-notice " + notice.tone} role="status">
+      <span>{notice.text}</span>
+      {notice.action && (
+        <button type="button" className="btn small primary" onClick={notice.action.run}>
+          {notice.action.label}
+        </button>
+      )}
+      <button type="button" className="btn small ghost" onClick={clear} aria-label="Dismiss">
+        ×
+      </button>
+    </div>
+  );
 }
 
 function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
@@ -81,7 +102,6 @@ function Inner() {
   const onNodesChange = useStore((s) => s.onNodesChange);
   const onEdgesChange = useStore((s) => s.onEdgesChange);
   const connect = useStore((s) => s.connect);
-  const addNode = useStore((s) => s.addNode);
   const select = useStore((s) => s.select);
   const beginDrag = useStore((s) => s.beginDrag);
   const edgeMode = useStore((s) => s.edgeMode);
@@ -108,13 +128,14 @@ function Inner() {
       const id = e.dataTransfer.getData("application/x-block");
       if (!id || !BLOCK_MAP[id]) return;
       const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      addNode(id, { x: p.x - 45, y: p.y - 20 });
+      placeBlock(id, { x: p.x - 45, y: p.y - 20 });
     },
-    [screenToFlowPosition, addNode],
+    [screenToFlowPosition],
   );
 
   return (
     <div className="canvas" data-tour="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
+      <PlaceNoticeBar />
       <ReactFlow
         nodes={nodes}
         edges={edges}

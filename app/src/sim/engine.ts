@@ -145,6 +145,7 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
 
   // ----- failure injection -----
   let failureTarget: SimNode | undefined;
+  let peers: SimNode[] = [];
   let failedInstancesBefore = 0;
   const failedNodes: SimNode[] = [];
   let regionDown: RegionId | undefined;
@@ -217,10 +218,15 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
         m.latencyMs = 0;
         notes.push(`${label(failureTarget)} went down, so every read now goes straight to the store behind it.`);
       } else {
+        const target = failureTarget;
+        // a block with no spare copy of its own is not the same as a design with no spare: another block of the same kind may take over
+        peers = all.filter((n) => n !== target && n.role !== "source" && n.node.blockId === target.node.blockId && !n.down);
         notes.push(
-          failureTarget.down
-            ? `${label(failureTarget)} went down with no spare instance.`
-            : `${label(failureTarget)} lost one of its instances and kept running at reduced capacity.`,
+          !target.down
+            ? `${label(target)} lost one of its instances and kept running at reduced capacity.`
+            : peers.length
+              ? `${label(target)} went down. ${peers.map(label).join(" and ")} take${peers.length === 1 ? "s" : ""} over its traffic.`
+              : `${label(target)} went down and no other block can do its job.`,
         );
       }
     } else {
@@ -561,7 +567,9 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
       memoS.set(mkey, 0);
       return 0;
     }
-    let childS = 1;
+    // a balancer whose every target is down has nowhere to send the traffic: that is a failure, not a pass
+    const hadKids = (syncOut.get(id) ?? []).some((k) => (pos.get(k) ?? -1) > (pos.get(id) ?? 0));
+    let childS = ks.length === 0 && hadKids ? 0 : 1;
     if (ks.length) {
       const cs = ks.map(([k, w]) => {
         const kid = sim.get(k)!;
@@ -713,6 +721,11 @@ export function simulate(design: Design, problem: Problem, scenario: Scenario): 
   // ----- scoring -----
   const target = problem.latencyTargetMs;
   const latScore = lat <= target ? 1 : Math.max(0, target / lat);
+  if (failureTarget?.down && peers.length && servedRatio < 0.97) {
+    notes.push(
+      `${peers.map(label).join(" and ")} could not carry the extra load, so only ${Math.round(servedRatio * 100)}% of requests were served.`,
+    );
+  }
   const servedScore = servedRatio >= 0.99 ? 1 : Math.max(0, servedRatio) ** 3;
   const eventScore = 1 - Math.min(1, queueDropFrac * 2 + (Object.keys(backlog).length ? 0.3 : 0));
   let score = offered > 0 ? Math.round(100 * (0.55 * servedScore + 0.3 * latScore + 0.15 * eventScore)) : 0;

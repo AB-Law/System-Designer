@@ -132,11 +132,15 @@ export function TopBar() {
               <button
                 className="btn tall primary"
                 onClick={() => setRunOpen(true)}
-                title="Score your design now. This is a preview and is not saved."
+                title="Score your design now. The score is not saved; a snapshot of your canvas is kept in Versions. Submit to save the score."
               >
                 Preview score
               </button>
-              <button className="btn tall success" onClick={() => void submit()} title="Save this attempt to your submissions and progress">
+              <button
+                className="btn tall success"
+                onClick={() => void submit()}
+                title="Save this attempt: its score and canvas go to Submissions and your progress"
+              >
                 Submit
               </button>
             </div>

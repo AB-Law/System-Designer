@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { BLOCKS, BLOCK_MAP, CATEGORIES, blockCost, modelOf, money } from "../../blocks";
+import { BLOCKS, BLOCK_MAP, CATEGORIES, blockCost, defaultCfg, modelOf, money } from "../../blocks";
+import { useRun } from "../../hooks";
+import { placeBlock } from "../../store/place";
 import { useProblem } from "../../store";
 import { HOST_BLOCKS, capIdsOf, workFactor } from "../../sim/caps";
 import { DataModelEditor } from "./DataModelEditor";
@@ -55,14 +57,18 @@ function MultiSelect({ count }: { count: number }) {
 function Palette() {
   const [q, setQ] = useState("");
   const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const addNode = useStore((s) => s.addNode);
   const mode = useMode((s) => s.mode);
   const setMode = useMode((s) => s.setMode);
+  const problem = useProblem();
+  const run = useRun();
   const query = q.trim().toLowerCase();
+  const spent = run?.cost ?? 0;
+  const budget = problem?.budget;
 
   return (
     <>
       <div className="panel-title">Building Blocks</div>
+      <div className="mode-label">After adding a block</div>
       <div className="mode-switch" role="group" aria-label="What happens when you add a block">
         {(["build", "configure"] as const).map((m) => (
           <button
@@ -72,7 +78,7 @@ function Palette() {
             onClick={() => setMode(m)}
             title={m === "build" ? "Added blocks stay unselected, so you can keep placing blocks" : "Added blocks open their settings"}
           >
-            {m === "build" ? "Build" : "Configure"}
+            {m === "build" ? "Keep building" : "Open settings"}
           </button>
         ))}
       </div>
@@ -99,14 +105,18 @@ function Palette() {
                       e.dataTransfer.setData("application/x-block", b.id);
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    onDoubleClick={() => addNode(b.id)}
-                    title="Drag onto the canvas (or double-click to add)"
+                    onDoubleClick={() => placeBlock(b.id)}
+                    title="Drag onto the canvas, or press Add"
                   >
                     <span className={`chip cat-${b.category}`}>{b.icon}</span>
-                    <span>
+                    <span className="bi-text">
                       <div className="bi-name">{b.label}</div>
                       <div className="bi-sum">{b.summary}</div>
+                      <PriceTag blockId={b.id} spent={spent} budget={budget} />
                     </span>
+                    <button type="button" className="btn small bi-add" aria-label={`Add ${b.label}`} onClick={() => placeBlock(b.id)}>
+                      Add
+                    </button>
                   </div>
                 ))}
             </section>
@@ -114,10 +124,31 @@ function Palette() {
         })}
       </div>
       <div className="hint">
-        Drag a block onto the canvas. Build keeps this list open; Configure opens each new block's settings. Click one to edit it;
-        Ctrl+click or Shift+drag to select several.
+        Press Add or drag a block onto the canvas. "Keep building" leaves this list open; "Open settings" jumps to the new block's settings.
+        Click a block on the canvas to edit it; Ctrl+click or Shift+drag selects several.
       </div>
     </>
+  );
+}
+
+/** What one block costs per month with its starting settings, and whether adding it would break the budget. */
+function PriceTag({ blockId, spent, budget }: { blockId: string; spent: number; budget?: number }) {
+  const problem = useProblem();
+  const def = BLOCK_MAP[blockId];
+  const price = blockCost(blockId, defaultCfg(def), problem?.traffic.writeShare, problem);
+  const over = budget !== undefined && price > 0 && spent + price > budget;
+  if (price <= 0) return <div className="bi-price">No cost</div>;
+  return (
+    <div
+      className={"bi-price" + (over ? " over" : "")}
+      title={
+        over
+          ? `Adding this would take the estimate to ${money(spent + price)}, over the ${money(budget!)} budget`
+          : "Starting cost; it changes with the settings"
+      }
+    >
+      from {money(price)}/mo{over ? " · over budget" : ""}
+    </div>
   );
 }
 

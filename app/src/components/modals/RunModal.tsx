@@ -48,7 +48,7 @@ export function RunModal() {
           <div className="m-status">
             <small>Status</small>
             <b>Preview</b>
-            <small>Run only, not saved</small>
+            <small>Score not saved. Submit to keep it.</small>
           </div>
         </div>
         <div className="m-bars">
