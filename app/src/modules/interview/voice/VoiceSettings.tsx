@@ -40,8 +40,8 @@ export function VoiceSettings({ prefs, onChange, speechSynthesis }: Props) {
             }}
           />
           <small className="muted">
-            Saved in this browser only. Audio goes straight to api.openai.com with your key and never through our server. Leave blank to
-            use the server&apos;s key, if it has one.
+            Saved in this browser only. Audio goes straight to api.openai.com with your key and never through our server. Leave blank to use
+            the server&apos;s key, if it has one.
           </small>
         </label>
         <label className="iv-field">
