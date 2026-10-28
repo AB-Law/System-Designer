@@ -12,6 +12,16 @@ interface Props {
   onChange: (next: RoleDraft) => void;
 }
 
+/** Two scores of one job differ by depth, result and date, so each entry says which it is. */
+export function runLabel(r: ScoreRunOption): string {
+  const parts = [r.jdTitle || `Score ${r.id}`];
+  if (r.mode) parts.push(r.mode === "deep" ? "Deep score" : "Fast score");
+  if (r.total !== undefined && r.total !== null) parts.push(`${r.total}/100`);
+  if (r.created) parts.push(new Date(r.created).toLocaleDateString([], { month: "short", day: "numeric" }));
+  if (r.cvName) parts.push(r.cvName);
+  return parts.join(" · ");
+}
+
 export function RoleFields({ draft, roles, runs, onChange }: Props) {
   const set = (patch: Partial<RoleDraft>) => onChange({ ...draft, ...patch });
   return (
@@ -37,8 +47,7 @@ export function RoleFields({ draft, roles, runs, onChange }: Props) {
                 <option value="">No, I will describe the role</option>
                 {runs.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.jdTitle || `Score ${r.id}`}
-                    {r.cvName ? ` (${r.cvName})` : ""}
+                    {runLabel(r)}
                   </option>
                 ))}
               </select>

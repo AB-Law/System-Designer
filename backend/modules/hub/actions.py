@@ -51,7 +51,14 @@ def cv_gap(c: Context) -> dict[str, Any] | None:
     gaps = (c.fit or {}).get("gaps") or []
     if "cv" not in c.enabled or not gaps:
         return None
-    return _action("cv-gap", 60, f"Tailor your CV for \"{gaps[0]['text']}\"", "The biggest missing requirement in this job description.", "cv", "#/cv")
+    return _action("cv-gap", 60, f"Tailor your CV for \"{gaps[0]['text']}\"", "The biggest missing requirement in this job description.", "cv", f"#/cv/score/{(c.fit or {}).get('runId', '')}".rstrip("/"))
+
+
+def score_target(c: Context) -> dict[str, Any] | None:
+    if c.target is None or "cv" not in c.enabled or c.fit is not None:
+        return None
+    href = f"#/cv/score/target/{c.target.get('id')}" if c.target.get("hasJd") else "#/cv/score"
+    return _action("score-target", 70, f"Score your CV against {c.target['title']}", "Shows your fit and the gaps to close.", "cv", href)
 
 
 def untouched_relevant(c: Context) -> dict[str, Any] | None:
@@ -68,7 +75,9 @@ def first_mock(c: Context) -> dict[str, Any] | None:
     return _action("first-mock", 50, f"Run a mock interview for {c.target['title']}", "A first round shows where to focus.", "interview", "#/interview")
 
 
-RULES: tuple[Callable[[Context], dict[str, Any] | None], ...] = (set_target, review_cards, weakest_topic, cv_gap, untouched_relevant, first_mock)
+RULES: tuple[Callable[[Context], dict[str, Any] | None], ...] = (
+    set_target, review_cards, weakest_topic, score_target, cv_gap, untouched_relevant, first_mock,
+)
 
 
 def next_actions(c: Context) -> list[dict[str, Any]]:

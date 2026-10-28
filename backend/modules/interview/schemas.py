@@ -26,6 +26,7 @@ class Style(BaseModel):
     categories: list[Category] = Field(default_factory=list, max_length=4)
     counts: dict[Category, int] = Field(default_factory=dict)
     showPlan: bool = False
+    useCv: bool = True  # False practises from the job description alone: the CV (and the name in it) is not shown to the interviewer
 
     @model_validator(mode="after")
     def _check_counts(self) -> Style:

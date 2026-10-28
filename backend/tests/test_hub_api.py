@@ -227,7 +227,31 @@ def test_actions_are_ranked_and_use_only_enabled_modules() -> None:
 
 def test_a_thin_topic_is_never_called_weak() -> None:
     thin = {"slug": "caching", "label": "Caching", "tier": "needs_work", "points": 1, "strength": 0.1, "relevant": True}
-    assert actions.next_actions(ctx(topics=[thin])) == []
+    assert actions.next_actions(ctx(topics=[thin], fit={"gaps": []})) == []
+
+
+def test_an_unscored_target_is_nudged_to_the_score_form_for_its_job() -> None:
+    with_jd = ctx(target={"id": 7, "title": "Backend Engineer", "hasJd": True})
+    assert next(a for a in actions.next_actions(with_jd) if a["key"] == "score-target")["href"] == "#/cv/score/target/7"
+    assert next(a for a in actions.next_actions(ctx()) if a["key"] == "score-target")["href"] == "#/cv/score"
+    assert not any(a["key"] == "score-target" for a in actions.next_actions(ctx(fit={"gaps": []})))
+
+
+def test_scoring_the_targets_job_links_the_score_without_setting_a_link(app_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENABLED_MODULES", "design,hub,cv")
+    from main import create_app
+    from modules.cv import service
+
+    alice, _bobby = two_users(lambda: TestClient(create_app()))
+
+    t = alice.post("/api/hub/targets", json={"title": "Staff Backend Engineer", "level": "Staff", "jdText": "We need a staff backend engineer " * 4}).json()
+    assert alice.get("/api/hub/summary").json()["fit"] is None
+    monkeypatch.setattr(service, "matching_run", lambda user_id, jd, title: 9 if title == "Staff Backend Engineer" else None)
+    monkeypatch.setattr(service, "get_run", lambda user_id, run_id: {"id": run_id, "total": 71, "band": "good", "analysis": {"gaps": []}})
+    got = alice.get("/api/hub/summary").json()
+    assert got["fit"]["runId"] == 9 and got["fit"]["total"] == 71
+    assert next(s for s in got["setup"] if s["key"] == "score")["done"] is True
+    assert t["id"] == got["target"]["id"]
 
 
 def test_summary_lists_actions_for_the_active_target(clients: tuple[TestClient, TestClient]) -> None:

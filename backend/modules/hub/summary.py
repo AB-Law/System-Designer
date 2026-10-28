@@ -17,15 +17,23 @@ def _days_left(date: str | None) -> int | None:
     return (dt.date.fromisoformat(date) - dt.datetime.now(dt.timezone.utc).date()).days
 
 
-def _fit(user_id: int, run_id: int | None) -> dict[str, Any] | None:
-    """The CV score for this target's job description, when the CV module is on and the run still exists."""
-    if run_id is None or "cv" not in enabled_modules():
+def _fit(user_id: int, row: Any) -> dict[str, Any] | None:
+    """The CV score for this target's job description, when the CV module is on. A linked run wins; otherwise the best score of
+    the same job description (or, failing that, the same job title) is used, so scoring the target's job is enough."""
+    if row is None or "cv" not in enabled_modules():
         return None
     from modules.cv import service
 
-    try:
-        run = service.get_run(user_id, run_id)
-    except Exception:  # the run was deleted since the target was linked
+    run = None
+    if row["score_run_id"] is not None:
+        try:
+            run = service.get_run(user_id, row["score_run_id"])
+        except Exception:  # the run was deleted since the target was linked
+            run = None
+    if run is None:
+        found = service.matching_run(user_id, row["jd_text"], row["title"])
+        run = service.get_run(user_id, found) if found is not None else None
+    if run is None:
         return None
     gaps = [g for g in run["analysis"].get("gaps", []) if g["status"] != "met"][:FIT_GAPS]
     return {"runId": run["id"], "total": run["total"], "band": run["band"], "gaps": gaps}
@@ -48,7 +56,7 @@ def build(user_id: int) -> dict[str, Any]:
     target = targets.public(row, full=False) if row else None
     jd_text = row["jd_text"] if row else None
     seen = readiness_view.build(user_id, jd_text)
-    fit = _fit(user_id, row["score_run_id"]) if row else None
+    fit = _fit(user_id, row)
     enabled = frozenset(enabled_modules())
     context = actions.Context(
         target=target, topics=seen["topics"], due_cards=_due_cards(user_id), fit=fit,

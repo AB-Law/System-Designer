@@ -17,6 +17,7 @@ export interface Style {
   categories: Category[];
   counts: Partial<Record<Category, number>>;
   showPlan: boolean;
+  useCv: boolean;
 }
 
 export interface RoleSummary {
@@ -122,6 +123,9 @@ export interface ScoreRunOption {
   id: number;
   jdTitle: string;
   cvName?: string;
+  mode?: "fast" | "deep";
+  total?: number | null;
+  created?: number;
 }
 
 export type DocScope = "global" | "role";

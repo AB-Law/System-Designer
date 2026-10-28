@@ -5,6 +5,7 @@ const routes: CvRoute[] = [
   { name: "library" },
   { name: "review", cvId: 12 },
   { name: "score" },
+  { name: "score", targetId: 7 },
   { name: "result", runId: 7 },
   { name: "rewrites", runId: 7 },
   { name: "history" },
@@ -34,6 +35,7 @@ describe("cv routes", () => {
   it("builds hashes under #/cv", () => {
     expect(hashFor({ name: "library" })).toBe("#/cv");
     expect(hashFor({ name: "result", runId: 4 })).toBe("#/cv/score/4");
+    expect(hashFor({ name: "score", targetId: 7 })).toBe("#/cv/score/target/7");
   });
   it("groups routes into tabs", () => {
     expect(tabOf({ name: "review", cvId: 1 })).toBe("library");

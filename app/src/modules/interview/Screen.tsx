@@ -25,7 +25,9 @@ export default function Screen({ rest }: { rest: string }) {
       />
       <div className="iv-body">
         {route.name === "sessions" && <Sessions />}
-        {route.name === "new" && <Setup key={route.roleId ?? "new"} roleId={route.roleId} />}
+        {route.name === "new" && (
+          <Setup key={`${route.roleId ?? "new"}-${route.scoreRunId ?? ""}`} roleId={route.roleId} scoreRunId={route.scoreRunId} />
+        )}
         {route.name === "session" && <SessionPage key={route.sessionId} sessionId={route.sessionId} />}
         {route.name === "docs" && <Docs />}
       </div>

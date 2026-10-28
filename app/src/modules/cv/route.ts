@@ -2,7 +2,7 @@
 export type CvRoute =
   | { name: "library" }
   | { name: "review"; cvId: number }
-  | { name: "score" }
+  | { name: "score"; targetId?: number }
   | { name: "result"; runId: number }
   | { name: "rewrites"; runId: number }
   | { name: "history" }
@@ -16,6 +16,7 @@ export function parse(rest: string): CvRoute {
   const [a, b, c, d] = p;
   if (a === "cv" && id(b) !== null && p.length === 2) return { name: "review", cvId: id(b)! };
   if (a === "score" && p.length === 1) return { name: "score" };
+  if (a === "score" && b === "target" && id(c) !== null && p.length === 3) return { name: "score", targetId: id(c)! };
   if (a === "score" && id(b) !== null && p.length === 2) return { name: "result", runId: id(b)! };
   if (a === "score" && id(b) !== null && c === "rewrites" && p.length === 3) return { name: "rewrites", runId: id(b)! };
   if (a === "history" && p.length === 1) return { name: "history" };
@@ -32,7 +33,7 @@ export function format(r: CvRoute): string {
     case "review":
       return `cv/${r.cvId}`;
     case "score":
-      return "score";
+      return r.targetId !== undefined ? `score/target/${r.targetId}` : "score";
     case "result":
       return `score/${r.runId}`;
     case "rewrites":

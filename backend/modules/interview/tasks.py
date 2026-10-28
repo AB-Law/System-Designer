@@ -24,7 +24,8 @@ def plan_job(ctx: jobs.JobContext) -> dict[str, Any]:
         reading = roles.jd_reading(uid, role)
         ctx.progress(0.5, "Planning the questions")
         researched = research_banks.prompt_lines(uid, role["id"]) if feature_on(research_config.FLAG) else []
-        plan = planner.build_plan(role, reading, sources.candidate_brief(uid), sessions.style_of(row), uid, researched=researched)
+        style = sessions.style_of(row)
+        plan = planner.build_plan(role, reading, sources.candidate_brief(uid) if style.useCv else "", style, uid, researched=researched)
         sessions.set_plan(uid, sid, plan)
         return {"sessionId": sid, "questions": len(plan.items)}
     except jobs.JobCancelled:

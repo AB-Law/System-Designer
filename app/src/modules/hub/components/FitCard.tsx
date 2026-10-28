@@ -24,16 +24,23 @@ export function FitCard({ fit, target }: { fit: Fit | null; target: ActiveTarget
               </ul>
             </>
           )}
-          <a href="#/cv" className="hub-link">
+          <a href={`#/cv/score/${fit.runId}`} className="hub-link">
             Open the score
           </a>
         </div>
       ) : (
-        <p className="hub-muted">
-          {target
-            ? "No CV score is linked to this target yet. Score your CV against its job description in the CV module."
-            : "Set a target to see how your CV fits it."}
-        </p>
+        <div className="hub-stack">
+          <p className="hub-muted">
+            {target
+              ? "No CV score matches this target yet. Scoring your CV against its job description links it here."
+              : "Set a target to see how your CV fits it."}
+          </p>
+          {target && (
+            <a href={target.hasJd ? `#/cv/score/target/${target.id}` : "#/cv/score"} className="btn small primary">
+              Score your CV for this target
+            </a>
+          )}
+        </div>
       )}
     </Card>
   );

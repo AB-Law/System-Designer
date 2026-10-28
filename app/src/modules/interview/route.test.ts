@@ -5,6 +5,7 @@ const routes: InterviewRoute[] = [
   { name: "sessions" },
   { name: "new", roleId: null },
   { name: "new", roleId: 4 },
+  { name: "new", roleId: null, scoreRunId: 9 },
   { name: "session", sessionId: 12 },
   { name: "docs" },
 ];

@@ -48,8 +48,9 @@ def _check_turn_allowed(turns: list[Turn], text: str | None) -> None:
 
 def _context(user_id: int, row: Any, references: str = "") -> Context:
     role = roles.get_row(user_id, row["role_id"])
+    style = sessions.style_of(row)
     return Context(
-        role, roles.job_text(role), sources.candidate_brief(user_id), sessions.style_of(row), sessions.plan_of(row),
+        role, roles.job_text(role), sources.candidate_brief(user_id) if style.useCv else "", style, sessions.plan_of(row),
         references=references,
     )
 

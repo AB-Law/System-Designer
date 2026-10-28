@@ -240,3 +240,30 @@
 .module-nav button.on {
   color: var(--gold-hi);
 }
+.ui-progress.busy > div {
+  background:
+    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.28) 50%, transparent 100%) 0 0 / 60px 100% repeat-x,
+    linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
+  animation: ui-progress-shimmer 1.1s linear infinite;
+}
+@keyframes ui-progress-shimmer {
+  from {
+    background-position: -60px 0, 0 0;
+  }
+  to {
+    background-position: 60px 0, 0 0;
+  }
+}
+.ui-job-time,
+.ui-job-wait {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ui-job-wait {
+  margin: 4px 0 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-progress.busy > div {
+    animation: none;
+  }
+}

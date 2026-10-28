@@ -5,6 +5,7 @@ import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
 import { FileDrop } from "../../../ui/FileDrop";
 import { toast } from "../../../ui/Toast";
+import { call } from "../../../api";
 import { cvApi } from "../api";
 import { go } from "../route";
 import { attempt, useAction } from "../hooks";
@@ -19,17 +20,42 @@ interface Draft {
 const MAX_JDS = 3;
 const MIN_CHARS = 40;
 
-export function ScoreForm() {
+interface TargetJd {
+  title: string;
+  level: string;
+  company: string | null;
+  jdText?: string | null;
+}
+
+/** "Staff" + "Backend Engineer" is "Staff Backend Engineer"; a title that already says its level is left alone. */
+export function titleWithLevel(title: string, level: string): string {
+  const t = title.trim();
+  const l = level.trim();
+  return l && !t.toLowerCase().includes(l.toLowerCase()) ? `${l} ${t}` : t;
+}
+
+export function ScoreForm({ targetId }: { targetId?: number }) {
   const cvs = useCv((s) => s.cvs);
   const load = useCv((s) => s.loadCvs);
   const [cvId, setCvId] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("fast");
   const [jds, setJds] = useState<Draft[]>([{ title: "", text: "" }]);
+  const [from, setFrom] = useState<TargetJd | null>(null);
   const { busy, run } = useAction();
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // opened from the Hub: use the target's job description and level, so nothing has to be pasted twice
+  useEffect(() => {
+    if (targetId === undefined) return;
+    void attempt(() => call<TargetJd>(`/hub/targets/${targetId}`)).then((t) => {
+      if (!t) return;
+      setFrom(t);
+      setJds([{ title: titleWithLevel(t.title, t.level), text: t.jdText ?? "" }]);
+    });
+  }, [targetId]);
 
   const active = cvs?.find((c) => c.active);
   const chosen = cvId ?? active?.id ?? null;
@@ -78,6 +104,13 @@ export function ScoreForm() {
   return (
     <div className="cv-stack">
       <Card title="Score a CV against a job">
+        {from && (
+          <p className="cv-hint">
+            Filled in from your target, {from.title}
+            {from.level ? ` (${from.level})` : ""}
+            {from.company ? ` at ${from.company}` : ""}. The score will link to it on the Hub.
+          </p>
+        )}
         <div className="cv-grid">
           <label className="cv-field">
             <span>CV</span>

@@ -25,10 +25,10 @@ function roleInput(d: RoleDraft) {
   };
 }
 
-export function Setup({ roleId }: { roleId: number | null }) {
+export function Setup({ roleId, scoreRunId }: { roleId: number | null; scoreRunId?: number }) {
   const [roles, setRoles] = useState<RoleSummary[] | null>(null);
   const [runs, setRuns] = useState<ScoreRunOption[]>([]);
-  const [draft, setDraft] = useState<RoleDraft>(emptyDraft(roleId ?? "new"));
+  const [draft, setDraft] = useState<RoleDraft>({ ...emptyDraft(roleId ?? "new"), scoreRunId: scoreRunId ?? null });
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const { busy, run } = useAction();
   const researchOn = featureOn(RESEARCH);

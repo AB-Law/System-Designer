@@ -48,8 +48,10 @@ STEPS: tuple[tuple[str, str | None, str, str, str, Check], ...] = (
 def build(user_id: int, seen: dict[str, Any]) -> list[dict[str, Any]]:
     """The steps for the modules that are on. `seen` is the part of the summary built so far (target and fit)."""
     on = set(enabled_modules())
+    target = seen["target"]
+    where = {"score": f"#/cv/score/target/{target['id']}" if target and target.get("hasJd") else "#/cv/score"}
     return [
-        {"key": key, "title": title, "hint": hint, "href": href, "done": bool(check(user_id, seen)), "module": module or "hub"}
+        {"key": key, "title": title, "hint": hint, "href": where.get(key, href), "done": bool(check(user_id, seen)), "module": module or "hub"}
         for key, module, title, hint, href, check in STEPS
         if module is None or module in on
     ]

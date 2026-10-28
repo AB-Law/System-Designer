@@ -31,7 +31,7 @@ export default function Screen({ rest }: { rest: string }) {
       <div className="cv-body">
         {route.name === "library" && <Library />}
         {route.name === "review" && <ParseReview key={route.cvId} cvId={route.cvId} />}
-        {route.name === "score" && <ScoreForm />}
+        {route.name === "score" && <ScoreForm key={route.targetId ?? "new"} targetId={route.targetId} />}
         {route.name === "result" && <ScoreResult key={route.runId} runId={route.runId} />}
         {route.name === "rewrites" && <Rewrites key={route.runId} runId={route.runId} />}
         {route.name === "history" && <History />}

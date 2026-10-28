@@ -66,6 +66,15 @@ export function StyleFields({ style, hasCompany, onChange }: Props) {
         <p className="iv-hint">The mix is chosen from the role's level and the length.</p>
       )}
       <label className="iv-check">
+        <input type="checkbox" checked={style.useCv} onChange={(e) => onChange({ ...style, useCv: e.target.checked })} />
+        Use my CV to shape the questions
+      </label>
+      <p className="iv-hint">
+        {style.useCv
+          ? "Questions can build on your active CV, and the interviewer may use your name and background. Turn this off to practise from the job description alone."
+          : "The interviewer will not see your CV. Questions come from the role, level and job description only."}
+      </p>
+      <label className="iv-check">
         <input type="checkbox" checked={style.showPlan} onChange={(e) => onChange({ ...style, showPlan: e.target.checked })} />
         Show me the planned questions first (less realistic)
       </label>

@@ -1,6 +1,6 @@
 import { CATEGORIES, CATEGORY_LABELS, type SessionSummary, type Style, type TurnTag } from "./types";
 
-export const DEFAULT_STYLE: Style = { tone: "friendly", durationMin: 30, categories: [], counts: {}, showPlan: false };
+export const DEFAULT_STYLE: Style = { tone: "friendly", durationMin: 30, categories: [], counts: {}, showPlan: false, useCv: true };
 export const DURATIONS = [15, 30, 45, 60];
 export const MAX_QUESTIONS = 12;
 export const LEVELS = ["Junior", "Mid", "Senior", "Staff"];

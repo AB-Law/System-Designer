@@ -9,6 +9,7 @@ import { Table } from "../../../ui/Table";
 import { cvApi, watchJob } from "../api";
 import { STRENGTH, bandLabel, bandTone, cite, statusTone } from "../format";
 import { go } from "../route";
+import { featureOn } from "../../../shell/registry";
 import { useAction } from "../hooks";
 import { errText, useCv } from "../store";
 import type { Component, Job, Match, Mode, Run } from "../types";
@@ -219,9 +220,15 @@ export function ScoreResult({ runId }: { runId: number }) {
                   Run a deep score
                 </Button>
               )}
-              <Button size="small" disabled title="Available when the Interview module is added">
-                Start an interview for this role
-              </Button>
+              {featureOn("interview") ? (
+                <a className="btn small" href={`#/interview/new/score/${run.id}`}>
+                  Start an interview for this role
+                </a>
+              ) : (
+                <Button size="small" disabled title="Turn on the Interview module to practise for this role">
+                  Start an interview for this role
+                </Button>
+              )}
             </div>
           </div>
         </div>

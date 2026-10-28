@@ -428,3 +428,16 @@ def test_critique_input_carries_the_job_and_the_requirement_each_question_probes
     assert text.startswith("<job>\nTitle: Backend")
     assert text.count("job_requirement") == 1 and "Kafka at scale" in text
     assert "<job>" not in feedback._critique_input([plain])
+
+
+def test_the_cv_stays_out_of_the_prompts_when_the_user_turns_it_off(clients: tuple[TestClient, TestClient], monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.interview import conversation, sessions, sources
+
+    monkeypatch.setattr(sources, "candidate_brief", lambda user_id: "Jane Doe, Acme Pay engineer")
+    alice, _ = clients
+    with open_db() as db:
+        user_id = int(db.execute("SELECT id FROM users WHERE username='alice'").fetchone()["id"])
+    for use_cv in (True, False):
+        sid = start(alice, make_role(alice)["id"], {**STYLE, "useCv": use_cv})
+        ctx = conversation._context(user_id, sessions.get_row(user_id, sid))
+        assert ("Jane Doe" in ctx.cv) is use_cv

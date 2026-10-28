@@ -243,6 +243,23 @@ def list_runs(user_id: int, *, band: str | None = None, cv_id: int | None = None
     return [_run(r, full=False) | {"cvId": r["cv_id"], "cvName": r["cv_name"]} for r in rows]
 
 
+def matching_run(user_id: int, jd_text: str | None, title: str) -> int | None:
+    """The best finished score for this job: the same text first, else the same job title. A deep score beats a fast one, then newest wins."""
+    text = (jd_text or "").strip()
+    wanted_hash = sha(text) if text else None
+    wanted_title = title.strip().lower()
+    with open_db() as db:
+        rows = db.execute(
+            "SELECT id, jd_title, jd_hash, mode FROM cv_score_runs WHERE user_id=? AND status='done' ORDER BY created DESC, id DESC", (user_id,),
+        ).fetchall()
+
+    def best(found: list[Any]) -> int | None:
+        return int(min(found, key=lambda r: r["mode"] != "deep")["id"]) if found else None  # min keeps the first (newest) among equals
+
+    by_text = [r for r in rows if wanted_hash and r["jd_hash"] == wanted_hash]
+    return best(by_text) or best([r for r in rows if wanted_title and r["jd_title"].strip().lower() == wanted_title])
+
+
 def delete_run(user_id: int, run_id: int) -> None:
     get_run_row(user_id, run_id)
     with open_db() as db, db:
