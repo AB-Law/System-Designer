@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { activityText, ago, barWidth, daysLeftText, resumeItems, splitTopics, TIER_WORD, weekday } from "./format";
+import {
+  activityText,
+  ago,
+  barWidth,
+  daysLeftText,
+  overallReadiness,
+  readinessTier,
+  resumeItems,
+  splitTopics,
+  TIER_WORD,
+  weekday,
+} from "./format";
 import { format, hashFor, parse } from "./route";
 import type { TopicCard } from "./types";
 
@@ -79,5 +90,27 @@ describe("hub formatting", () => {
     expect(ago(now - 86_400_000, now)).toBe("Yesterday");
     expect(ago(now - 3 * 86_400_000, now)).toBe("3 days ago");
     expect(weekday("2026-03-10")).toBe("Tue");
+  });
+
+  it("averages topics with evidence into one readiness number", () => {
+    const t = (strength: number | null, tier: TopicCard["tier"], extra = false): TopicCard => ({
+      slug: `t${strength}${tier}${extra}`,
+      label: "x",
+      tier,
+      strength,
+      points: 3,
+      relevant: false,
+      sources: [],
+      extra,
+    });
+    expect(overallReadiness([])).toBeNull();
+    expect(overallReadiness([t(null, "none")])).toBeNull();
+    expect(overallReadiness([t(0.8, "strong"), t(0.4, "needs_work"), t(0.9, "strong", true), t(null, "none")])).toEqual({
+      score: 60,
+      topics: 2,
+    });
+    expect(readinessTier(75)).toBe("strong");
+    expect(readinessTier(50)).toBe("building");
+    expect(readinessTier(49)).toBe("needs_work");
   });
 });

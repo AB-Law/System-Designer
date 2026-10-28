@@ -84,3 +84,15 @@ export function ago(at: number, now: number = Date.now()): string {
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const weekday = (isoDate: string): string => WEEKDAY[new Date(`${isoDate}T12:00:00Z`).getUTCDay()];
+
+/** One headline number: the mean strength of the topics that have evidence, outside-track extras left out. Null when nothing is recorded. */
+export function overallReadiness(topics: TopicCard[]): { score: number; topics: number } | null {
+  const seen = topics.filter((t) => t.tier !== "none" && t.strength !== null && !t.extra);
+  if (seen.length === 0) return null;
+  const mean = seen.reduce((sum, t) => sum + (t.strength ?? 0), 0) / seen.length;
+  return { score: Math.round(mean * 100), topics: seen.length };
+}
+
+export function readinessTier(score: number): Tier {
+  return score >= 75 ? "strong" : score >= 50 ? "building" : "needs_work";
+}

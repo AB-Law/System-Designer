@@ -6,6 +6,7 @@ import { go } from "../route";
 import type { Summary } from "../types";
 import { RecentActivity, StreakChip } from "./ActivityCards";
 import { FitCard } from "./FitCard";
+import { HubHero } from "./HubHero";
 import { ModuleCards } from "./ModuleCards";
 import { NextActions } from "./NextActions";
 import { ReadinessGrid } from "./ReadinessGrid";
@@ -30,7 +31,14 @@ export function Dashboard() {
     if (await run(() => hubApi.setActive(id))) await load();
   };
 
-  if (!summary) return <p className="hub-muted">Loading…</p>;
+  if (!summary)
+    return (
+      <div className="hub-skel" role="status" aria-label="Loading">
+        <i style={{ height: 200 }} />
+        <i />
+        <i />
+      </div>
+    );
   const { target } = summary;
 
   return (
@@ -62,6 +70,7 @@ export function Dashboard() {
         </EmptyState>
       )}
 
+      <HubHero summary={summary} />
       <SetupCard steps={summary.setup} onChange={() => void load()} />
       <ResumeCard activity={summary.activity} />
 
