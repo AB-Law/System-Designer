@@ -87,8 +87,8 @@ def test_stop_loop_ends_the_loop_at_once(user: int) -> None:
 
 def test_a_slow_tool_times_out_without_stopping_the_loop(user: int) -> None:
     result = go(
-        FakeAdapter([act("slow"), act("finish")]), [Tool("slow", "x", lambda a: time.sleep(1.5) or "late")], user,
-        limits=Limits(max_steps=3, step_seconds=0.2, total_seconds=30.0),
+        FakeAdapter([act("slow"), act("finish")]), [Tool("slow", "x", lambda a: time.sleep(3.0) or "late")], user,
+        limits=Limits(max_steps=3, step_seconds=1.0, total_seconds=30.0),  # the model call shares this limit, so leave room on a slow runner
     )
     assert result.steps[0].note == "timed out" and result.reason == "finish"
 
