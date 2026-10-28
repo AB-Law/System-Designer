@@ -61,3 +61,21 @@ export function groupByRole(sessions: SessionSummary[]): RoleGroup[] {
   }
   return [...groups.values()];
 }
+
+export interface ScoreTrend {
+  /** scores of finished, scored sessions, oldest first */
+  scores: number[];
+  /** latest minus first */
+  delta: number;
+  best: number;
+}
+
+/** How a role's scores moved over time. Null until there are two scored sessions, since one point is not a trend. */
+export function scoreTrend(sessions: SessionSummary[]): ScoreTrend | null {
+  const scores = sessions
+    .filter((s): s is SessionSummary & { score: number } => s.score !== null)
+    .sort((a, b) => a.created - b.created)
+    .map((s) => s.score);
+  if (scores.length < 2) return null;
+  return { scores, delta: scores[scores.length - 1] - scores[0], best: Math.max(...scores) };
+}
