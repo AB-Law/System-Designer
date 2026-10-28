@@ -102,7 +102,6 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
   const simScenario = useStore((s) => s.simScenario);
   const [on, setOn] = useState(false);
   const [ctl, setCtl] = useState<LiveControls>({ spike: false });
-  const [target, setTarget] = useState("");
   const [queues, setQueues] = useState<Record<string, number>>({});
   const [lost, setLost] = useState(0);
   const reduced = usePrefersReducedMotion();
@@ -111,23 +110,25 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
   const design = useMemo(() => toDesign(nodes, edges), [nodes, edges]);
   const killable = useMemo(() => design.nodes.filter((n) => n.blockId !== "user"), [design]);
   const base = problem?.scenarios.find((s) => s.id === simScenario) ?? problem?.scenarios[0];
-  const killed = ctl.killed && killable.some((n) => n.id === ctl.killed) ? ctl.killed : undefined;
+  const killedKey = (ctl.killed ?? []).filter((id) => killable.some((n) => n.id === id)).join(",");
+  const killed = useMemo(() => (killedKey ? killedKey.split(",") : []), [killedKey]);
   const controls = useMemo<LiveControls>(() => ({ spike: ctl.spike, killed }), [ctl.spike, killed]);
+  const toggleKill = (id: string) => setCtl({ ...ctl, killed: killed.includes(id) ? killed.filter((k) => k !== id) : [...killed, id] });
 
   const sim = useMemo(() => {
     if (!on || !problem || design.nodes.length === 0) return undefined;
     const steady = runLive(design, problem, base, { spike: false });
-    const now = controls.spike || controls.killed ? runLive(design, problem, base, controls) : steady;
+    const now = controls.spike || killed.length ? runLive(design, problem, base, controls) : steady;
     return { steady, now };
-  }, [on, problem, design, base, controls]);
+  }, [on, problem, design, base, controls, killed.length]);
 
   // queue depth and lost requests accumulate over time; the clock only runs while the tab is visible
   const backlogRef = useRef<Record<string, number>>({});
   const lostRate = useRef(0);
   useEffect(() => {
     backlogRef.current = sim?.now.queueBacklog ?? {};
-    lostRate.current = sim ? droppedPerSec(sim.now, servedOf(design, sim.now, sim.steady, controls.killed)) : 0;
-  }, [sim, design, controls.killed]);
+    lostRate.current = sim ? droppedPerSec(sim.now, servedOf(design, sim.now, sim.steady, killed)) : 0;
+  }, [sim, design, killed]);
   useEffect(() => {
     if (!on || !visible) return;
     const t = setInterval(() => {
@@ -150,17 +151,16 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
         ? {
             on: true,
             animate: !reduced && visible,
-            nodes: nodeVisuals(design, sim.now, queues, controls.killed),
+            nodes: nodeVisuals(design, sim.now, queues, killed),
             flows: edgeFlows(design, sim.now),
           }
         : OFF,
-    [sim, design, queues, reduced, visible, controls.killed],
+    [sim, design, queues, reduced, visible, killed],
   );
   const caption: Caption | undefined = useMemo(
     () => (sim && problem ? captionFor(design, problem, sim.now, sim.steady, controls, run?.findings) : undefined),
     [sim, problem, design, controls, run?.findings],
   );
-  const pick = target && killable.some((n) => n.id === target) ? target : killable.find((n) => n.blockId !== "load_balancer")?.id;
 
   return (
     <LiveContext.Provider value={value}>
@@ -188,23 +188,25 @@ export function LiveLayer({ children }: { children: React.ReactNode }) {
               >
                 ⚡ Traffic spike
               </button>
-              <select value={pick ?? ""} onChange={(e) => setTarget(e.target.value)} aria-label="Block to kill" disabled={!killable.length}>
-                {killable.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {BLOCK_MAP[n.blockId]?.label ?? n.blockId}
-                    {n.responsibilities[0] ? ` (${n.responsibilities[0]})` : ""}
-                  </option>
-                ))}
-              </select>
-              <button
-                className={killed ? "active bad" : ""}
-                disabled={!pick}
-                aria-pressed={!!killed}
-                title="Take one copy of this block down mid-run and see whether the rest pick up the traffic. A block with a single copy goes fully down."
-                onClick={() => setCtl({ ...ctl, killed: killed ? undefined : pick })}
-              >
-                {killed ? "↺ Revive" : "✕ Kill a copy"}
-              </button>
+              <details className="kill-menu">
+                <summary
+                  className={killed.length ? "active bad" : ""}
+                  title="Pick the blocks to take down together. Each loses one copy; a block with a single copy goes fully down."
+                >
+                  {killed.length ? `✕ ${killed.length} down` : "✕ Kill blocks"}
+                </summary>
+                <div className="kill-list" role="group" aria-label="Blocks to kill">
+                  {killable.map((n) => (
+                    <label key={n.id}>
+                      <input type="checkbox" checked={killed.includes(n.id)} onChange={() => toggleKill(n.id)} />
+                      {BLOCK_MAP[n.blockId]?.label ?? n.blockId}
+                      {n.responsibilities[0] ? ` (${n.responsibilities[0]})` : ""}
+                    </label>
+                  ))}
+                  {!killable.length && <small>Add a block to kill.</small>}
+                </div>
+              </details>
+              {killed.length > 0 && <button onClick={() => setCtl({ ...ctl, killed: [] })}>↺ Revive all</button>}
             </>
           )}
         </div>

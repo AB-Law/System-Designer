@@ -77,7 +77,7 @@ describe("live scenarios", () => {
   it("builds steady, spike and kill scenarios", () => {
     expect(liveScenario(undefined, { spike: false }).trafficMultiplier).toBe(1);
     expect(liveScenario(undefined, { spike: true }).trafficMultiplier).toBeGreaterThanOrEqual(3);
-    expect(liveScenario(undefined, { spike: false, killed: "s" }).failure?.target.nodeId).toBe("s");
+    expect(liveScenario(undefined, { spike: false, killed: ["s"] }).failure?.target.nodeId).toBe("s");
   });
 
   it("carries traffic along connections and marks dead ones", () => {
@@ -87,7 +87,7 @@ describe("live scenarios", () => {
     expect(f.ulb.rate).toBeGreaterThan(0);
     expect(f.ulb.particles).toBeGreaterThan(0);
     expect(Object.values(f).every((x) => !x.dead)).toBe(true);
-    const killed = runLive(design(1), L, undefined, { spike: false, killed: "s" });
+    const killed = runLive(design(1), L, undefined, { spike: false, killed: ["s"] });
     const fk = edgeFlows(d, killed);
     expect(fk.lbs.dead).toBe(true);
     expect(fk.lbs.particles).toBe(0);
@@ -108,9 +108,9 @@ describe("live scenarios", () => {
   it("killing one of several copies says a copy went down, not the whole block", () => {
     const d = design(3);
     const steady = runLive(d, L, undefined, { spike: false });
-    const killed = runLive(d, L, undefined, { spike: false, killed: "s" });
+    const killed = runLive(d, L, undefined, { spike: false, killed: ["s"] });
     expect(killed.nodes["s"].down).toBeFalsy();
-    const cap = captionFor(d, L, killed, steady, { spike: false, killed: "s" });
+    const cap = captionFor(d, L, killed, steady, { spike: false, killed: ["s"] });
     expect(cap.what).toMatch(/One copy of Server went down/);
   });
 
@@ -120,9 +120,9 @@ describe("live scenarios", () => {
       edges: [e("u", "c"), e("c", "s")],
     };
     const steady = runLive(d, L, undefined, { spike: false });
-    const killed = runLive(d, L, undefined, { spike: false, killed: "c" });
-    const vis = nodeVisuals(d, killed, {}, "c");
-    const cap = captionFor(d, L, killed, steady, { spike: false, killed: "c" });
+    const killed = runLive(d, L, undefined, { spike: false, killed: ["c"] });
+    const vis = nodeVisuals(d, killed, {}, ["c"]);
+    const cap = captionFor(d, L, killed, steady, { spike: false, killed: ["c"] });
     if (killed.nodes["c"].down) expect(vis["c"].state).toBe("down");
     else {
       expect(vis["c"].state).toBe("degraded");
@@ -134,9 +134,17 @@ describe("live scenarios", () => {
   it("killing the only server is called out as a loss", () => {
     const d = design(1);
     const steady = runLive(d, L, undefined, { spike: false });
-    const killed = runLive(d, L, undefined, { spike: false, killed: "s" });
-    const cap = captionFor(d, L, killed, steady, { spike: false, killed: "s" });
+    const killed = runLive(d, L, undefined, { spike: false, killed: ["s"] });
+    const cap = captionFor(d, L, killed, steady, { spike: false, killed: ["s"] });
     expect(cap.tone).toBe("bad");
     expect(cap.what).toMatch(/Server went down/);
+  });
+});
+
+describe("killing several blocks at once", () => {
+  it("scenario lists every killed block", () => {
+    const s = liveScenario(undefined, { spike: false, killed: ["a", "b", "c"] });
+    expect(s.failure?.target.nodeId).toBe("a");
+    expect(s.alsoDown?.map((f) => f.target.nodeId)).toEqual(["b", "c"]);
   });
 });

@@ -12,12 +12,12 @@ import {
   useViewport,
   type NodeProps,
 } from "@xyflow/react";
-import { BLOCK_MAP } from "../../blocks";
+import { BLOCK_MAP, modelOf } from "../../blocks";
 import { useRun } from "../../hooks";
 import { useProblem, useStore, type RFNode } from "../../store";
 import { capIdsOf } from "../../sim/caps";
 import { isPlaceable, regionId, regionShort } from "../../sim/regions";
-import { placeBlock, useNotice } from "../../store/place";
+import { placeBlock, replicaKey, useNotice } from "../../store/place";
 import { ChatDock } from "./ChatDock";
 import { FlowEdge, LiveLayer, useLive } from "./live";
 import type { EdgeKind } from "../../types";
@@ -61,6 +61,7 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
   const vis = live.on ? live.nodes[id] : undefined;
   const res = run?.scenarios.find((s) => s.scenarioId === simScenario)?.nodes[id];
   const u = res && res.incoming > 0 ? res.utilization : undefined;
+  const copies = replicaKey(data.blockId) ? Math.max(1, Math.round(Number(data.cfg[replicaKey(data.blockId)!] ?? modelOf(data.blockId, data.cfg).instances ?? 1))) : 1;
   const status = res?.down ? "down" : u === undefined ? "" : u >= 1 ? "hot" : u >= 0.8 ? "warm" : "ok";
   return (
     <div className={`bnode cat-${def.category} ${selected ? "sel" : ""} ${vis ? "live live-" + vis.state : status}`}>
@@ -94,6 +95,14 @@ function BlockNode({ id, data, selected }: NodeProps<RFNode>) {
           {u >= 1.5 ? "Overloaded" : `${Math.round(u * 100)}%`}
         </div>
       ) : null}
+      {copies > 1 && data.blockId !== "user" && (
+        <div
+          className={"bn-copies" + (vis?.state === "down" || vis?.state === "degraded" ? " lost" : "")}
+          title={`${copies} copies of this block run side by side, each handling a share of the traffic.`}
+        >
+          {vis?.state === "degraded" ? `×${copies - 1}/${copies}` : `×${copies}`}
+        </div>
+      )}
     </div>
   );
 }

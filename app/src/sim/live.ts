@@ -3,7 +3,7 @@
 import { BLOCK_MAP } from "../blocks";
 import { simulate } from "./engine";
 import { diagnoseNode } from "./diagnose";
-import type { Design, Finding, NodeResult, Problem, Scenario, ScenarioResult } from "../types";
+import type { Design, Failure, Finding, NodeResult, Problem, Scenario, ScenarioResult } from "../types";
 
 export type LiveState = "idle" | "healthy" | "busy" | "saturated" | "failing" | "degraded" | "down";
 
@@ -31,8 +31,8 @@ export interface EdgeFlow {
 
 export interface LiveControls {
   spike: boolean;
-  /** node id of the block that has been killed */
-  killed?: string;
+  /** node ids of the blocks that have been killed, all at once */
+  killed?: string[];
 }
 
 export const MAX_PARTICLES = 5;
@@ -43,14 +43,17 @@ const fmt = (n: number) => Math.round(n).toLocaleString();
 /** Scenario to simulate for the current controls: steady traffic, optionally a spike, optionally a dead block. */
 export function liveScenario(base: Scenario | undefined, c: LiveControls): Scenario {
   const mult = c.spike ? Math.max(SPIKE_MIN, base?.trafficMultiplier ?? 1) : 1;
+  const killed = c.killed ?? [];
+  const down = (id: string): Failure => ({ target: { nodeId: id }, mode: "down" });
   return {
     id: "__live",
-    title: c.killed ? "Live: a block is down" : c.spike ? "Live: traffic spike" : "Live: steady traffic",
+    title: killed.length > 1 ? "Live: several blocks are down" : killed.length ? "Live: a block is down" : c.spike ? "Live: traffic spike" : "Live: steady traffic",
     description: "",
     trafficMultiplier: mult,
     capabilityLoad: c.spike ? base?.capabilityLoad : undefined,
     regionMix: base?.regionMix,
-    failure: c.killed ? { target: { nodeId: c.killed }, mode: "down" } : undefined,
+    failure: killed.length ? down(killed[0]) : undefined,
+    alsoDown: killed.length > 1 ? killed.slice(1).map(down) : undefined,
     interviewQuestion: "",
   };
 }
@@ -78,10 +81,10 @@ export function nodeVisuals(
   design: Design,
   result: ScenarioResult,
   queues: Record<string, number> = {},
-  killed?: string,
+  killed: string[] = [],
 ): Record<string, NodeVisual> {
   const out: Record<string, NodeVisual> = {};
-  for (const n of design.nodes) out[n.id] = nodeVisual(result.nodes[n.id], n.blockId, queues[n.id] ?? 0, n.id === killed);
+  for (const n of design.nodes) out[n.id] = nodeVisual(result.nodes[n.id], n.blockId, queues[n.id] ?? 0, killed.includes(n.id));
   return out;
 }
 
@@ -136,16 +139,20 @@ export function stepQueues(depth: Record<string, number>, backlog: Record<string
  * Share of requests served. The engine treats a router whose only target is down as a leaf and reports full service,
  * so when a killed block went fully down and no sibling of the same kind picked up its traffic, count what it carried as lost.
  */
-export function servedOf(design: Design, result: ScenarioResult, before: ScenarioResult, killed?: string): number {
-  const k = killed ? result.nodes[killed] : undefined;
-  const was = killed ? before.nodes[killed] : undefined;
-  if (!killed || !k?.down || !was || before.offered <= 0) return result.served;
-  const kind = design.nodes.find((n) => n.id === killed)?.blockId;
-  const takeover = design.nodes
-    .filter((n) => n.id !== killed && n.blockId === kind)
-    .reduce((a, n) => a + Math.max(0, (result.nodes[n.id]?.incoming ?? 0) - (before.nodes[n.id]?.incoming ?? 0)), 0);
-  const lost = Math.min(1, Math.max(0, was.incoming - takeover) / before.offered);
-  return Math.max(0, Math.min(result.served, before.served - lost));
+export function servedOf(design: Design, result: ScenarioResult, before: ScenarioResult, killed: string[] = []): number {
+  if (before.offered <= 0) return result.served;
+  let lost = 0;
+  for (const id of killed) {
+    const was = before.nodes[id];
+    if (!result.nodes[id]?.down || !was) continue;
+    const kind = design.nodes.find((n) => n.id === id)?.blockId;
+    const takeover = design.nodes
+      .filter((n) => !killed.includes(n.id) && n.blockId === kind)
+      .reduce((a, n) => a + Math.max(0, (result.nodes[n.id]?.incoming ?? 0) - (before.nodes[n.id]?.incoming ?? 0)), 0);
+    lost += Math.max(0, was.incoming - takeover) / before.offered;
+  }
+  if (lost <= 0) return result.served;
+  return Math.max(0, Math.min(result.served, before.served - Math.min(1, lost)));
 }
 
 /** Requests lost per second, given the share served. */
@@ -182,17 +189,34 @@ export function captionFor(
   c: LiveControls,
   findings: Finding[] = [],
 ): Caption {
-  const sv = servedOf(design, result, before, c.killed);
+  const sv = servedOf(design, result, before, c.killed ?? []);
   const served = Math.round(sv * 100);
   const servedBefore = Math.round(before.served * 100);
   const worst = worstNode(design, result);
   const wres = worst ? result.nodes[worst.id] : undefined;
   const diag = worst ? diagnoseNode(worst, wres, result, findings, design, problem) : undefined;
 
-  if (c.killed) {
-    const name = labelOf(design, c.killed);
+  const killed = c.killed ?? [];
+  if (killed.length > 1) {
+    const names = killed.map((id) => labelOf(design, id));
+    const fullyDown = killed.filter((id) => result.nodes[id]?.down).map((id) => labelOf(design, id));
+    const lost = before.served - sv;
+    return {
+      tone: lost <= 0.02 ? "good" : sv < 0.95 ? "bad" : "warn",
+      what: `${killed.length} blocks went down together (${names.join(", ")}), and ${served}% of requests are served${lost > 0.02 ? `, down from ${servedBefore}%` : ""}.`,
+      why:
+        lost <= 0.02
+          ? "Every one of them had spare copies, so the rest took over and users barely notice."
+          : fullyDown.length
+            ? `${fullyDown.join(", ")} had no copy left to take over, and failures at the same moment leave the others less room to help. About ${fmt(droppedPerSec(result, sv))} requests a second are lost.`
+            : `The surviving copies cannot carry the whole load, so about ${fmt(droppedPerSec(result, sv))} requests a second are lost.`,
+    };
+  }
+  if (killed.length === 1) {
+    const id = killed[0];
+    const name = labelOf(design, id);
     // the engine takes one copy of a block away: with spares the block lives on at lower capacity
-    if (!result.nodes[c.killed]?.down) {
+    if (!result.nodes[id]?.down) {
       if (before.served - sv <= 0.02)
         return {
           tone: "good",

@@ -208,6 +208,8 @@ export interface Scenario {
   description: string;
   trafficMultiplier: number;
   failure?: Failure;
+  /** more blocks that go down at the same time as `failure` (the live view kills several at once) */
+  alsoDown?: Failure[];
   /** multiply how often a capability is needed in this scenario, e.g. {"post": 10} when a celebrity posts. Background jobs scale their rate. */
   capabilityLoad?: Record<string, number>;
   /** where the users are in this scenario, as shares that add up to 1 (default: all in the problem's home region) */
