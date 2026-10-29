@@ -1,3 +1,4 @@
-pymupdf>=1.24
+# 2.x pulls in onnxruntime, numpy and networkx (~150 MB); plain text extraction only needs 1.x
+pymupdf>=1.24,<2
 pdfplumber>=0.11
 python-docx>=1.1
