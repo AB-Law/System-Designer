@@ -1,26 +1,30 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { useStore } from "./store";
 import { TopBar } from "./components/TopBar";
-import { LeftPanel } from "./components/canvas/LeftPanel";
-import { CanvasView } from "./components/canvas/CanvasView";
-import { RightPanel } from "./components/canvas/RightPanel";
-import { RunModal } from "./components/modals/RunModal";
-import { AiSettingsModal } from "./components/modals/AiSettingsModal";
-import { RoadmapScreen } from "./components/roadmap/RoadmapScreen";
-import { PrimerPanel } from "./components/roadmap/PrimerPanel";
-import { CelebrateCard } from "./components/roadmap/CelebrateCard";
-import { LearnScreen } from "./components/learn/LearnScreen";
 import { HomeScreen } from "./components/home/HomeScreen";
 import { Landing } from "./components/home/Landing";
-import { SharedView } from "./components/share/SharedView";
 import { AuthModal } from "./components/modals/AuthModal";
-import { ShareModal } from "./components/modals/ShareModal";
-import { CompareModal } from "./components/modals/CompareModal";
 import { TourLayer } from "./components/tour/TourLayer";
 import { backend } from "./api";
 import { hubOn } from "./shell/hub";
 import { ModuleHost } from "./shell/ModuleHost";
 import { useActiveModule } from "./shell/useActiveModule";
+
+// The canvas, its panels and the secondary screens load on demand, so the landing page and the other modules do not pay for them.
+const named = <T extends string>(load: () => Promise<Record<T, React.ComponentType>>, name: T) =>
+  lazy(() => load().then((m) => ({ default: m[name] })));
+const LeftPanel = named(() => import("./components/canvas/LeftPanel"), "LeftPanel");
+const CanvasView = named(() => import("./components/canvas/CanvasView"), "CanvasView");
+const RightPanel = named(() => import("./components/canvas/RightPanel"), "RightPanel");
+const RunModal = named(() => import("./components/modals/RunModal"), "RunModal");
+const AiSettingsModal = named(() => import("./components/modals/AiSettingsModal"), "AiSettingsModal");
+const RoadmapScreen = named(() => import("./components/roadmap/RoadmapScreen"), "RoadmapScreen");
+const PrimerPanel = named(() => import("./components/roadmap/PrimerPanel"), "PrimerPanel");
+const CelebrateCard = named(() => import("./components/roadmap/CelebrateCard"), "CelebrateCard");
+const LearnScreen = named(() => import("./components/learn/LearnScreen"), "LearnScreen");
+const SharedView = named(() => import("./components/share/SharedView"), "SharedView");
+const ShareModal = named(() => import("./components/modals/ShareModal"), "ShareModal");
+const CompareModal = named(() => import("./components/modals/CompareModal"), "CompareModal");
 
 export function App() {
   const init = useStore((s) => s.init);
@@ -38,6 +42,7 @@ export function App() {
   const paste = useStore((s) => s.paste);
   const duplicate = useStore((s) => s.duplicate);
   const selectAll = useStore((s) => s.selectAll);
+  const booted = useStore((s) => s.booted);
   const activeModule = useActiveModule();
   const user = useStore((s) => s.user);
   const landingSeen = useStore((s) => s.landingSeen);
@@ -47,6 +52,20 @@ export function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // The tab title names the page the visitor is on; the static head carries the default.
+  const heading = activeModule
+    ? activeModule.module.title
+    : ({
+        home: "System design practice",
+        learn: "Learn",
+        roadmap: "Learning roadmap",
+        shared: "Shared design",
+        canvas: "System design simulator",
+      }[view] ?? "");
+  useEffect(() => {
+    document.title = heading ? `${heading} | Design Canvas` : "Design Canvas";
+  }, [heading]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -76,6 +95,18 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, copySelection, paste, duplicate, selectAll]);
 
+  // Until the session and problems are read, show the bar and nothing else: no "standalone" pill, zero counts or raw ids that then jump.
+  if (!booted) {
+    return (
+      <div className="app">
+        <header className="topbar topbar-page">
+          <span className="brand">Design Canvas</span>
+        </header>
+        <main className="app-boot" aria-busy="true" aria-label="Loading" />
+      </div>
+    );
+  }
+
   if (activeModule) {
     return (
       <div className="app">
@@ -89,36 +120,38 @@ export function App() {
   return (
     <div className="app">
       <TopBar />
-      {view === "home" ? (
-        showLanding ? (
-          <Landing />
+      <Suspense fallback={null}>
+        {view === "home" ? (
+          showLanding ? (
+            <Landing />
+          ) : (
+            <HomeScreen />
+          )
+        ) : view === "shared" ? (
+          <SharedView />
+        ) : view === "learn" ? (
+          <LearnScreen />
+        ) : view === "roadmap" ? (
+          <RoadmapScreen />
         ) : (
-          <HomeScreen />
-        )
-      ) : view === "shared" ? (
-        <SharedView />
-      ) : view === "learn" ? (
-        <LearnScreen />
-      ) : view === "roadmap" ? (
-        <RoadmapScreen />
-      ) : (
-        <div className="main">
-          <p className="small-screen-note" role="note">
-            <b>Best on a larger screen.</b> You can read the brief and scores here, but dragging and connecting blocks works best on a
-            laptop or tablet.
-          </p>
-          <LeftPanel />
-          <CanvasView />
-          <RightPanel />
-        </div>
-      )}
-      {view === "canvas" && celebrate && <CelebrateCard />}
-      {primerOpen && <PrimerPanel />}
-      {runOpen && <RunModal />}
-      {aiOpen && <AiSettingsModal />}
-      {authOpen && <AuthModal />}
-      {shareOpen && <ShareModal />}
-      {compareOpen && <CompareModal />}
+          <div className="main">
+            <p className="small-screen-note" role="note">
+              <b>Best on a larger screen.</b> You can read the brief and scores here, but dragging and connecting blocks works best on a
+              laptop or tablet.
+            </p>
+            <LeftPanel />
+            <CanvasView />
+            <RightPanel />
+          </div>
+        )}
+        {view === "canvas" && celebrate && <CelebrateCard />}
+        {primerOpen && <PrimerPanel />}
+        {runOpen && <RunModal />}
+        {aiOpen && <AiSettingsModal />}
+        {authOpen && <AuthModal />}
+        {shareOpen && <ShareModal />}
+        {compareOpen && <CompareModal />}
+      </Suspense>
       <TourLayer />
     </div>
   );

@@ -15,7 +15,8 @@ export default function Screen({ rest }: { rest: string }) {
 
   return (
     <div className="st-module">
-      <h2 className="st-title">Study</h2>
+      <h1 className="st-title">Study</h1>
+      <p className="module-lede">Flashcards with spaced repetition, and mind maps for concepts.</p>
       <Tabs
         label="Study sections"
         tabs={tabs}

@@ -62,8 +62,6 @@
   border: 0;
   padding: 14px 4px 6px;
   font: 600 10.5px var(--body);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--gold-lo);
 }
 .cat span:first-child {
@@ -119,19 +117,19 @@
 
 /* category colours, shared by palette chips, nodes and the settings tag */
 .cat-entry {
-  background: linear-gradient(160deg, #264b8c, var(--navy-deep));
+  background: #1f3f78;
 }
 .cat-compute {
-  background: linear-gradient(160deg, #1f6b50, var(--green-deep));
+  background: #1a5a43;
 }
 .cat-data {
-  background: linear-gradient(160deg, #9c7a22, #3a2d0a);
+  background: #7a5f1a;
 }
 .cat-async {
-  background: linear-gradient(160deg, #1f5c6e, #0b2630);
+  background: #18495a;
 }
 .cat-external {
-  background: linear-gradient(160deg, #474d5c, #1c1f27);
+  background: #343944;
 }
 
 /* ---------- settings ---------- */
@@ -228,8 +226,6 @@
   padding: 10px 0;
   text-align: left;
   font: 600 11px var(--body);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--text);
 }
 .sec-h span {
@@ -344,8 +340,6 @@
 .why-h,
 .why-k {
   font: 600 11px var(--body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 .why-k {
@@ -371,8 +365,6 @@
   margin: 0 14px 4px;
   color: var(--faint);
   font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 .bi-text {
   flex: 1;

@@ -24,7 +24,11 @@ function FitButton() {
   const { fitView } = useReactFlow();
   return (
     <Panel position="top-right">
-      <Button size="small" onClick={() => void fitView({ padding: 0.12, duration: 250 })} title="Zoom so the whole map is visible">
+      <Button
+        size="small"
+        onClick={() => void fitView({ padding: 0.08, minZoom: 0.7, duration: 250 })}
+        title="Zoom so the whole map is visible"
+      >
         Fit to view
       </Button>
     </Panel>
@@ -70,8 +74,8 @@ function MapScreen({ mapId }: { mapId: number }) {
         background: "var(--panel)",
         color: "var(--text)",
         borderRadius: 8,
-        fontSize: 16,
-        padding: "10px 16px",
+        fontSize: 15,
+        padding: "6px 12px",
         minWidth: 150,
       },
     }));
@@ -79,7 +83,7 @@ function MapScreen({ mapId }: { mapId: number }) {
       id: e.id,
       source: e.source,
       target: e.target,
-      style: { stroke: "var(--gold)" },
+      style: { stroke: "var(--gold-lo)", strokeWidth: 1.5 },
     }));
     return { nodes: layoutMindMap(rawNodes, rawEdges), edges: rawEdges };
   }, [map, selected]);
@@ -154,8 +158,8 @@ function MapScreen({ mapId }: { mapId: number }) {
               nodes={nodes}
               edges={edges}
               fitView
-              fitViewOptions={{ padding: 0.12 }}
-              minZoom={0.1}
+              fitViewOptions={{ padding: 0.08, minZoom: 0.7, maxZoom: 1 }}
+              minZoom={0.2}
               onNodeClick={onNodeClick}
               nodesDraggable={false}
               proOptions={{ hideAttribution: true }}
@@ -163,7 +167,7 @@ function MapScreen({ mapId }: { mapId: number }) {
               <Background gap={18} color="var(--line-soft)" />
               <Controls showInteractive={false} />
               <FitButton />
-              <MiniMap pannable zoomable />
+              <MiniMap pannable zoomable maskColor="rgba(8, 8, 10, 0.7)" nodeColor="#2b2822" />
             </ReactFlow>
           </div>
           <Card title={selected ? selected.label : "Select a node"} className="st-map-panel">

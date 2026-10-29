@@ -1,6 +1,6 @@
 {
-  "bytes": 1034364,
-  "gzip": 318920,
-  "recorded": "2026-10-27",
-  "note": "Phase 0.1 baseline, index-*.js after npm run build on feature/modular-platform"
+  "bytes": 369078,
+  "gzip": 120527,
+  "recorded": "2026-10-30",
+  "note": "index-*.js after the Hub system, header palette and the Design home rebuild; the hero and its simulator load as a lazy chunk"
 }

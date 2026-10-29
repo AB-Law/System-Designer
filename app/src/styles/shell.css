@@ -17,17 +17,15 @@
   align-items: center;
   gap: 24px;
   padding: 0 20px;
-  background: linear-gradient(180deg, #0e0d10, var(--bg));
-  border-bottom: 1px solid var(--line);
-  position: relative;
+  background: var(--bg);
+  transition: background 0.25s, box-shadow 0.25s;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
-.topbar::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 -1px 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold-lo), transparent);
-  opacity: 0.6;
+/* every screen except the workbench shares the page's outer margins, so the bar lines up with the content beneath it */
+.topbar.topbar-page {
+  padding-inline: max(clamp(16px, 4vw, 56px), calc((100% - 1360px) / 2));
 }
 .brand {
   font: 400 26px/1 var(--display);
@@ -103,12 +101,12 @@
   color: var(--muted);
 }
 .btn.primary {
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  background: var(--gold);
   border-color: var(--gold-hi);
   color: #1a1405;
 }
 .btn.primary:hover {
-  background: linear-gradient(180deg, #f3deA0, var(--gold-hi));
+  background: var(--gold-hi);
 }
 .btn.success {
   background: var(--green-deep);
@@ -150,3 +148,205 @@
   color: var(--gold-hi);
 }
 
+
+/* account button: an initial in a plain disc, the name, a quiet chevron */
+.acct > .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+  border-radius: 999px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1405;
+  font: 700 13px var(--body);
+}
+.chev {
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 640px) {
+  /* wordmark left, account right on one row; the nav scrolls on its own row beneath */
+  .topbar .brand {
+    flex: 1;
+  }
+  .topbar .actions {
+    order: 2;
+    flex: none;
+    flex-basis: auto;
+  }
+  .topbar .module-nav button {
+    padding: 8px 14px;
+  }
+}
+
+/* the bar blends into the page at the top and lifts off it once the page has scrolled beneath */
+.topbar.scrolled {
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* header extras: target chip, search, streak */
+.hdr-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  max-width: 280px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.hdr-chip:hover {
+  background: var(--raise);
+}
+.hdr-chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.hdr-chip-sub {
+  flex: none;
+  color: var(--gold-hi);
+  font-weight: 700;
+}
+.hdr-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+.hdr-search:hover {
+  background: var(--raise);
+  color: var(--text);
+}
+.hdr-search kbd {
+  font: 600 12px var(--body);
+}
+.hdr-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gold-hi);
+  font-weight: 700;
+}
+.nav-count {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #1a1405;
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 1100px) {
+  .hdr-chip-title {
+    max-width: 120px;
+  }
+  .hdr-search kbd {
+    display: none;
+  }
+}
+
+/* command palette */
+.cp-back {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding-top: 14vh;
+  background: rgba(0, 0, 0, 0.55);
+}
+.cp {
+  width: min(560px, 92vw);
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+.cp-input {
+  width: 100%;
+  padding: 18px 20px;
+  border: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 18px;
+  outline: none;
+}
+.cp-list {
+  max-height: 50vh;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  list-style: none;
+}
+.cp-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.cp-list li.on {
+  background: var(--raise);
+}
+.cp-list em {
+  color: var(--muted);
+  font-size: 14px;
+  font-style: normal;
+}
+.cp-none {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* phones: the modules become a bar at the bottom, where a thumb reaches */
+@media (max-width: 640px) {
+  .app:has(.module-nav) {
+    padding-bottom: 76px;
+  }
+  .topbar .module-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    order: 0;
+    flex-basis: auto;
+    justify-content: space-around;
+    margin: 0;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    overflow: visible;
+    background: var(--panel);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
+  }
+  .topbar .module-nav button {
+    flex: 1;
+    padding: 12px 4px;
+    font-size: 14px;
+  }
+  .hdr-chip,
+  .hdr-search {
+    display: none;
+  }
+}

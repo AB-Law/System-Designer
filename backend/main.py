@@ -59,6 +59,8 @@ def create_app() -> FastAPI:
         @application.get("/{path:path}", include_in_schema=False)
         def spa(path: str) -> FileResponse:
             f = (DIST_DIR / path).resolve()
+            if path and DIST_DIR in f.parents and f.is_dir() and (f / "index.html").is_file():
+                f = f / "index.html"  # prerendered pages such as /learn/ and /problems/<id>/
             if path and DIST_DIR in f.parents and f.is_file():
                 return FileResponse(f)
             return FileResponse(DIST_DIR / "index.html")

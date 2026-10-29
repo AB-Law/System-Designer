@@ -1,0 +1,204 @@
+/* Hub readiness system: modules feed a ring of topic segments, which feeds the interview day. */
+.rs {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 2vw, 32px);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.rs-fig {
+  margin: 0;
+}
+.rs-fig svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 60vh;
+  overflow: visible;
+}
+.rs-edge {
+  fill: none;
+  stroke: var(--raise);
+  stroke-width: 2;
+  stroke-dasharray: 3 8;
+}
+.rs-edge.live {
+  stroke: #4a4228;
+  stroke-dasharray: none;
+}
+.rs-edge.weak {
+  stroke: var(--warn);
+  stroke-dasharray: 3 8;
+  opacity: 0.8;
+}
+.rs-packet {
+  fill: var(--gold);
+}
+
+.rs-node {
+  cursor: pointer;
+  outline: none;
+}
+.rs-box {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1.5;
+  transition: fill 0.2s, stroke 0.2s;
+}
+.rs-node:hover .rs-box,
+.rs-node:focus-visible .rs-box {
+  stroke: var(--gold-hi);
+  stroke-width: 2.5;
+}
+.m-design .rs-box {
+  fill: #2b230c;
+  stroke: var(--gold);
+}
+.m-cv .rs-box {
+  fill: #0f2145;
+  stroke: var(--navy-hi);
+}
+.m-interview .rs-box {
+  fill: #0c2e22;
+  stroke: var(--green-hi);
+}
+.m-study .rs-box {
+  fill: #12333f;
+  stroke: #4aa3bd;
+}
+.rs-node.off {
+  opacity: 0.4;
+}
+.rs-name {
+  fill: var(--text);
+  font: 700 17px var(--body);
+}
+.rs-detail {
+  fill: var(--muted);
+  font: 400 14px var(--body);
+}
+.rs-health {
+  font: 600 13px var(--body);
+}
+.rs-halo {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 2;
+  animation: rs-pulse 2s ease-in-out infinite;
+}
+@keyframes rs-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.rs-track {
+  fill: none;
+  stroke: var(--raise);
+  stroke-linecap: butt;
+}
+.rs-track.empty {
+  stroke: #1a191e;
+}
+.rs-fill {
+  fill: none;
+  stroke-dasharray: 1;
+  animation: rs-draw 1.1s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 70ms + 200ms) backwards;
+}
+@keyframes rs-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.rs-seg {
+  cursor: default;
+  outline: none;
+}
+.rs-seg .rs-track {
+  transition: stroke 0.2s;
+}
+.rs-seg.hot .rs-track,
+.rs-seg:focus-visible .rs-track {
+  stroke: var(--line);
+}
+.rs-score {
+  fill: var(--text);
+  font: 400 72px var(--display);
+  letter-spacing: -0.03em;
+}
+.rs-cap {
+  fill: var(--muted);
+  font: 400 16px var(--body);
+}
+.rs-day .rs-box {
+  fill: var(--panel-2);
+  stroke: var(--gold-lo);
+}
+.rs-dayfig {
+  fill: var(--gold-hi);
+  font: 400 40px var(--display);
+}
+
+.rs-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+.rs-weak {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 17px;
+}
+.rs-weak b {
+  color: var(--warn);
+}
+.rs-streak {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.rs-streak b {
+  color: var(--text);
+  font: 400 24px var(--display);
+}
+.rs-streak ul {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rs-streak li {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--raise);
+}
+.rs-streak li.on {
+  background: var(--gold);
+}
+@media (max-width: 640px) {
+  .rs-score {
+    font-size: 56px;
+  }
+  .rs-fig svg {
+    max-height: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-fill,
+  .rs-halo {
+    animation: none;
+  }
+  .rs-halo {
+    opacity: 0.6;
+  }
+}

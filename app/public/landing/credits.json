@@ -1,0 +1,76 @@
+[
+ {
+  "file": "app/public/landing/switchboard-1930-jpg.jpg",
+  "media": "image",
+  "ref": "commons:101987692",
+  "title": "Wisconsin Bell Telephone Company Switchboard",
+  "creator": "ID#: Gary Langebartels / FortepanIowa",
+  "creatorUrl": null,
+  "date": "2016-05-01",
+  "license": "CC BY-SA 4.0",
+  "licenseCode": "by-sa",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+  "creditRequired": true,
+  "page": "https://commons.wikimedia.org/wiki/File:Wisconsin_Bell_Telephone_Company_Switchboard.jpg",
+  "via": "Wikimedia Commons",
+  "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Wisconsin_Bell_Telephone_Company_Switchboard.jpg/1920px-Wisconsin_Bell_Telephone_Company_Switchboard.jpg",
+  "width": 1920,
+  "height": 1118,
+  "bytes": 280579,
+  "credit": "\"Wisconsin Bell Telephone Company Switchboard\" by ID#: Gary Langebartels / FortepanIowa, CC BY-SA 4.0, via Wikimedia Commons",
+  "notes": [
+   "Share-alike: an altered version (recoloured, combined with other pictures) must be shared under the same licence."
+  ],
+  "saved": "2026-10-29T17:13:57.091Z"
+ },
+ {
+  "file": "app/public/landing/card-catalog-jpg.jpg",
+  "media": "image",
+  "ref": "commons:153582891",
+  "title": "Inside a card catalog at the Indiana State Library - ask the librarian",
+  "creator": "TBurmeister (WMF)",
+  "creatorUrl": null,
+  "date": "2024-10-04",
+  "license": "CC BY-SA 4.0",
+  "licenseCode": "by-sa",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+  "creditRequired": true,
+  "page": "https://commons.wikimedia.org/wiki/File:Inside_a_card_catalog_at_the_Indiana_State_Library_-_ask_the_librarian.jpg",
+  "via": "Wikimedia Commons",
+  "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Inside_a_card_catalog_at_the_Indiana_State_Library_-_ask_the_librarian.jpg/1920px-Inside_a_card_catalog_at_the_Indiana_State_Library_-_ask_the_librarian.jpg",
+  "width": 1920,
+  "height": 1440,
+  "bytes": 585644,
+  "credit": "\"Inside a card catalog at the Indiana State Library - ask the librarian\" by TBurmeister (WMF), CC BY-SA 4.0, via Wikimedia Commons",
+  "notes": [
+   "Share-alike: an altered version (recoloured, combined with other pictures) must be shared under the same licence."
+  ],
+  "saved": "2026-10-29T17:13:57.977Z"
+ },
+ {
+  "file": "app/public/landing/mail-sorting-webm.webm",
+  "media": "video",
+  "poster": "app/public/landing/mail-sorting-webm-poster.jpg",
+  "ref": "commons:74278380",
+  "title": "2018 Vote by mail envelopes being sorted in Santa Clara County",
+  "creator": "Legoktm",
+  "creatorUrl": null,
+  "date": "2018-11-07",
+  "license": "CC BY-SA 4.0",
+  "licenseCode": "by-sa",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+  "creditRequired": true,
+  "page": "https://commons.wikimedia.org/wiki/File:2018_Vote_by_mail_envelopes_being_sorted_in_Santa_Clara_County.webm",
+  "via": "Wikimedia Commons",
+  "video": "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/cf/2018_Vote_by_mail_envelopes_being_sorted_in_Santa_Clara_County.webm/2018_Vote_by_mail_envelopes_being_sorted_in_Santa_Clara_County.webm.480p.vp9.webm",
+  "width": 854,
+  "height": 480,
+  "duration": 12.3,
+  "bytes": 524675,
+  "credit": "\"2018 Vote by mail envelopes being sorted in Santa Clara County\" by Legoktm, CC BY-SA 4.0, via Wikimedia Commons",
+  "notes": [
+   "Share-alike: an altered version (recoloured, combined with other pictures) must be shared under the same licence."
+  ],
+  "saved": "2026-10-29T17:14:01.539Z"
+ }
+]

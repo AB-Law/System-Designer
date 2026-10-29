@@ -89,6 +89,18 @@ function applyChanges(
 
 let lastCfgEdit = { key: "", at: 0 };
 
+/** The canvas and the roadmap have addresses of their own, so the browser's Back button returns from them and a reload lands on them. */
+const CANVAS_HASH = /^#\/design\/problem\/([\w-]+)$/;
+export const canvasHash = (problemId: string): string => `#/design/problem/${problemId}`;
+export const ROADMAP_HASH = "#/design/roadmap";
+const hashForView = (view: State["view"], problemId: string): string | null =>
+  view === "canvas" ? canvasHash(problemId) : view === "roadmap" ? ROADMAP_HASH : view === "home" ? DESIGN_HASH : null;
+/** Moves the address to match the screen. Setting the hash fires hashchange, which also switches the module when we come from another one. */
+function syncAddress(view: State["view"], problemId: string): void {
+  const h = hashForView(view, problemId);
+  if (h && location.hash !== h) location.hash = h;
+}
+
 export const useStore = create<State>((set, get) => {
   const commit = () => {
     const { nodes, edges, past } = get();
@@ -161,37 +173,45 @@ export const useStore = create<State>((set, get) => {
     primerOpen: false,
     primerProblemId: null,
     celebrate: null,
+    booted: false,
 
     init: async () => {
-      const problems = await loadProblems();
-      validateRoadmap(problems);
-      set({ problems });
-      if (backend.online) {
-        // cookie session (or a one-shot legacy bearer) — 401 means guest
-        try {
-          const me = await call<{ user: User }>("/auth/me");
-          setToken("1"); // session flag only; clears any legacy bearer from localStorage
-          set({ user: me.user });
-          if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
-          await syncSubmissionsDown();
-        } catch (e) {
-          if (e instanceof ApiError && e.status === 401) setToken(null);
+      try {
+        const problems = await loadProblems();
+        validateRoadmap(problems);
+        set({ problems });
+        if (backend.online) {
+          // cookie session (or a one-shot legacy bearer) — 401 means guest
+          try {
+            const me = await call<{ user: User }>("/auth/me");
+            setToken("1"); // session flag only; clears any legacy bearer from localStorage
+            set({ user: me.user });
+            if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
+            await syncSubmissionsDown();
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) setToken(null);
+          }
         }
+        // with no Hub there is nothing to choose between, so the empty address is Design (a guest on the landing page keeps it)
+        if (!location.hash && !hubOn()) history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
+        const last = lsGet<string>("dc:last", "");
+        const id = problems.find((p) => p.id === last)?.id ?? problems.find((p) => p.id === "ad_serving")?.id ?? problems[0]?.id ?? "";
+        if (id) await get().setProblem(id);
+        await get().openFromHash();
+        window.addEventListener("hashchange", () => void get().openFromHash());
+      } finally {
+        set({ booted: true });
       }
-      // with no Hub there is nothing to choose between, so the empty address is Design (a guest on the landing page keeps it)
-      if (!location.hash && !hubOn()) history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
-      const last = lsGet<string>("dc:last", "");
-      const id = problems.find((p) => p.id === last)?.id ?? problems.find((p) => p.id === "ad_serving")?.id ?? problems[0]?.id ?? "";
-      if (id) await get().setProblem(id);
-      await get().openFromHash();
-      window.addEventListener("hashchange", () => void get().openFromHash());
     },
 
     setView: (v) => {
       // leaving the lessons clears their address, so a reload or a copied link does not drag the learner back
       if (v !== "learn" && parseLearnHash(location.hash)) history.pushState(null, "", location.pathname + location.search + DESIGN_HASH);
       if (v === "learn") get().openLearn(get().learnLessonId ?? undefined, get().learnPageId ?? undefined);
-      else set({ view: v, roadmapSelectedStepId: v === "canvas" ? null : get().roadmapSelectedStepId });
+      else {
+        set({ view: v, roadmapSelectedStepId: v === "canvas" ? null : get().roadmapSelectedStepId });
+        syncAddress(v, get().problemId);
+      }
     },
     openLearn: (lessonId, pageId, replace) => {
       const target = learnHash({ lessonId, pageId });
@@ -213,6 +233,7 @@ export const useStore = create<State>((set, get) => {
     startRoadmapStep: async (problemId) => {
       await get().setProblem(problemId);
       set({ view: "canvas", rightTab: "problem", roadmapSelectedStepId: null, primerOpen: false, primerProblemId: null });
+      syncAddress("canvas", problemId);
     },
 
     setProblem: async (id) => {
@@ -242,6 +263,9 @@ export const useStore = create<State>((set, get) => {
         submissions: await loadSubmissions(id),
       });
       void get().loadVersions();
+      if (get().view === "canvas" && CANVAS_HASH.test(location.hash) && location.hash !== canvasHash(id)) {
+        history.replaceState(null, "", location.pathname + location.search + canvasHash(id));
+      }
     },
 
     onNodesChange: (changes) => {
@@ -771,6 +795,24 @@ export const useStore = create<State>((set, get) => {
       }
       // back or forward onto an address with no lesson in it leaves the lessons
       if (get().view === "learn") set({ view: get().learnFrom });
+      // the canvas, the roadmap and the home screen each have an address, so Back and Forward move between them
+      const onCanvas = CANVAS_HASH.exec(h);
+      if (onCanvas) {
+        const id = onCanvas[1];
+        if (get().problems.some((p) => p.id === id)) {
+          if (get().problemId !== id) await get().setProblem(id);
+          if (get().view !== "canvas") set({ view: "canvas", rightTab: "problem", roadmapSelectedStepId: null });
+        }
+        return;
+      }
+      if (h === ROADMAP_HASH) {
+        if (get().view !== "roadmap") set({ view: "roadmap" });
+        return;
+      }
+      if ((h === DESIGN_HASH || h === "") && (get().view === "canvas" || get().view === "roadmap")) {
+        set({ view: "home" });
+        return;
+      }
       const t = /^#share=([\w-]{8,64})$/.exec(h);
       if (t) {
         try {

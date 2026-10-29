@@ -30,3 +30,5 @@ backend/server.log
 
 Resources/
 Plan/
+# design-skill inspector output
+.taste-skill/

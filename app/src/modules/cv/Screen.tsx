@@ -21,7 +21,8 @@ export default function Screen({ rest }: { rest: string }) {
   const route = parse(rest);
   return (
     <div className="cv-module">
-      <h2 className="cv-title">CV</h2>
+      <h1 className="cv-title">CV</h1>
+      <p className="module-lede">Score your CV against a job description and close the gaps it shows.</p>
       <Tabs
         label="CV sections"
         tabs={TABS}

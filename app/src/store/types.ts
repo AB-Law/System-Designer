@@ -133,6 +133,8 @@ export interface State {
 
   setAuthOpen: (b: boolean) => void;
   /** True once a visitor chose to skip the landing page for this visit. */
+  /** false until problems, the session and the address have been read, so the first paint is not a half-loaded home */
+  booted: boolean;
   landingSeen: boolean;
   setLandingSeen: (b: boolean) => void;
   signIn: (mode: "login" | "register", username: string, password: string, inviteCode?: string) => Promise<string | null>;

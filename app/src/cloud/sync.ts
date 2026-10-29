@@ -39,22 +39,45 @@ export async function flushDesign(): Promise<void> {
   }
 }
 
+/** Take the account's copy of a design when it is newer than this browser's, keeping a copy of what was here. */
+async function applyRemote(problemId: string, remoteDoc: unknown, updated: number): Promise<void> {
+  const doc = sanitizeDoc(remoteDoc);
+  if (!doc) return;
+  const local = localDesign(problemId);
+  if (updated <= local.at) return;
+  if (local.doc && docKey(local.doc) !== docKey(doc)) {
+    await addVersion(problemId, { label: "Before sync from your account", kind: "auto", doc: local.doc }).catch(() => undefined);
+  }
+  lsSet(designKey(problemId), { ...doc, at: updated });
+}
+
 /** If the account holds a newer canvas than this browser, bring it here (keeping a copy of what was here). */
 export async function pullDesign(problemId: string): Promise<void> {
   if (!cloudOn()) return;
   await flushDesign();
   try {
     const remote = await call<{ doc: unknown; updated: number }>(`/designs/${problemId}`);
-    const doc = sanitizeDoc(remote.doc);
-    if (!doc) return;
-    const local = localDesign(problemId);
-    if (remote.updated <= local.at) return;
-    if (local.doc && docKey(local.doc) !== docKey(doc)) {
-      await addVersion(problemId, { label: "Before sync from your account", kind: "auto", doc: local.doc }).catch(() => undefined);
-    }
-    lsSet(designKey(problemId), { ...doc, at: remote.updated });
+    await applyRemote(problemId, remote.doc, remote.updated);
   } catch {
     /* no design saved in the account yet, or offline: keep the local one */
+  }
+}
+
+/** Bring every newer design from the account in one request, so the home screen shows work done on another device. Returns whether anything changed. */
+export async function pullAllDesigns(): Promise<boolean> {
+  if (!cloudOn()) return false;
+  await flushDesign();
+  try {
+    const rows = await call<{ problemId: string; doc: unknown; updated: number }[]>("/designs");
+    let changed = false;
+    for (const r of rows) {
+      const before = localDesign(r.problemId).at;
+      await applyRemote(r.problemId, r.doc, r.updated);
+      if (localDesign(r.problemId).at !== before) changed = true;
+    }
+    return changed;
+  } catch {
+    return false;
   }
 }
 

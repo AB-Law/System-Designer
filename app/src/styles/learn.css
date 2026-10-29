@@ -1,9 +1,7 @@
 /* ---------- lessons ---------- */
 .learn {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  background: var(--bg-2);
+  flex: none; /* the document scrolls */
+  background: var(--bg);
 }
 .learn-in {
   max-width: 780px;
@@ -356,4 +354,70 @@
 }
 .demo-cols h4 {
   margin: 0 0 6px;
+}
+
+/* the lesson index: the title on the left, the lessons as plain rows on the right */
+.learn-in:has(.learn-list) {
+  max-width: none;
+  margin: 0;
+  padding: clamp(32px, 6vh, 72px) max(clamp(16px, 4vw, 56px), calc((100% - 1360px) / 2)) 96px;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px clamp(32px, 5vw, 80px);
+  align-items: start;
+}
+.learn-in:has(.learn-list) > * {
+  grid-column: 2;
+}
+.learn-in:has(.learn-list) > .learn-head {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  position: sticky;
+  top: 80px;
+}
+.learn-in:has(.learn-list) .learn-head h1 {
+  margin: 0 0 16px;
+  font-size: clamp(48px, 6vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.learn-in:has(.learn-list) .learn-head p {
+  max-width: 36ch;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.learn-in:has(.learn-list) .learn-list {
+  gap: 4px;
+}
+.learn-in:has(.learn-list) .learn-card {
+  padding: 22px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  transition: background 0.15s;
+}
+.learn-in:has(.learn-list) .learn-card:hover {
+  background: var(--panel);
+}
+.learn-in:has(.learn-list) .learn-card b {
+  font: 400 clamp(26px, 2.6vw, 36px) / 1.1 var(--display);
+  letter-spacing: -0.01em;
+}
+.learn-in:has(.learn-list) .learn-card:hover b {
+  color: var(--gold-hi);
+}
+.learn-in:has(.learn-list) .learn-card span {
+  font-size: 15px;
+}
+@media (max-width: 900px) {
+  .learn-in:has(.learn-list) {
+    grid-template-columns: 1fr;
+  }
+  .learn-in:has(.learn-list) > *,
+  .learn-in:has(.learn-list) > .learn-head {
+    grid-column: 1;
+    grid-row: auto;
+    position: static;
+  }
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.build.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.build.json --noEmit && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "bundle:check": "node scripts/check-bundle.mjs",
     "test": "vitest run",

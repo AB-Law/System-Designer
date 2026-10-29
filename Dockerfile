@@ -13,6 +13,9 @@ FROM node:22-alpine AS frontend
 # One switch for the optional modules (for example "design,cv"): the frontend build and the API both read it.
 ARG ENABLED_MODULES=design
 ENV VITE_ENABLED_MODULES=$ENABLED_MODULES
+# Absolute origin for canonical links and the sitemap, for example https://designcanvas.example
+ARG SITE_URL=
+ENV SITE_URL=$SITE_URL
 WORKDIR /src/app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci

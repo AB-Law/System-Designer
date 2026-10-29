@@ -1,32 +1,54 @@
-import { useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { backend } from "../../api";
-import {
-  ROADMAP,
-  TOTAL_STEPS,
-  allSteps,
-  bestScore,
-  continueTarget,
-  countDone,
-  firstNotDone,
-  isStepDone,
-  localSubmissions,
-  statusFor,
-} from "../../roadmap";
+import { pullAllDesigns } from "../../cloud/sync";
 import { hasLessons } from "../../lessons/load";
+import { ROADMAP, TOTAL_STEPS, allSteps, continueTarget, countDone, firstNotDone } from "../../roadmap";
 import { useStore } from "../../store";
+import { ROADMAP_HASH } from "../../store";
+import "../../styles/design-home.css";
+import { cardData, editedText, matches, passedLine, sortCards, type CardData, type Sort } from "./cardData";
+import { DesignMap } from "./DesignMap";
+import { mapFromDoc } from "./designMapModel";
 import { HomeCohorts } from "./HomeCohorts";
 import { HomeShares } from "./HomeShares";
+import { useReveal } from "./motionHooks";
+import { ProblemCard } from "./ProblemCard";
+import type { Problem } from "../../types";
+
+// The hero runs the simulator, which the canvas already ships as its own chunk, so it loads after the first paint instead of with it.
+const HomeHero = lazy(() => import("./HomeHero").then((m) => ({ default: m.HomeHero })));
 
 const FILTERS = ["all", "easy", "medium", "hard"] as const;
-const STATUS: Record<string, string> = { done: "Done", in_progress: "In progress", next: "Recommended next", not_started: "Not started" };
+const SORTS: { id: Sort; label: string }[] = [
+  { id: "path", label: "Path order" },
+  { id: "difficulty", label: "Easiest first" },
+  { id: "recent", label: "Recently edited" },
+  { id: "score", label: "Best score" },
+];
 const BANNER_KEY = "dc-home-banner-dismissed";
+const MODE_KEY = "dc-home-mode";
+const TONES = ["gold", "navy", "green", "teal", "bronze"] as const;
 
-function bannerDismissed() {
+const read = (k: string): string | null => {
   try {
-    return localStorage.getItem(BANNER_KEY) === "1";
+    return localStorage.getItem(k);
   } catch {
-    return false;
+    return null;
   }
+};
+const write = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* private mode: the choice lasts for this visit */
+  }
+};
+
+interface Item {
+  p: Problem;
+  index: number;
+  d: CardData;
+  stageId: string;
 }
 
 export function HomeScreen() {
@@ -36,179 +58,218 @@ export function HomeScreen() {
   const setView = useStore((s) => s.setView);
   const start = useStore((s) => s.startRoadmapStep);
   const showLessons = useMemo(hasLessons, []);
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const root = useReveal<HTMLDivElement>();
 
-  const done = countDone();
-  const pct = TOTAL_STEPS ? Math.round((done / TOTAL_STEPS) * 100) : 0;
+  const [tick, setTick] = useState(0);
+  const [mode, setMode] = useState<"path" | "grid">(() => (read(MODE_KEY) === "grid" ? "grid" : "path"));
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>("path");
+  const [bannerGone, setBannerGone] = useState(() => read(BANNER_KEY) === "1");
+  const search = useRef<HTMLInputElement>(null);
+
+  // work saved on another device arrives in one request, and the cards update when it does
+  useEffect(() => {
+    if (user) void pullAllDesigns().then((changed) => changed && setTick((t) => t + 1));
+  }, [user]);
+
+  // "/" jumps to the search box, as in the header's palette
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") {
+        e.preventDefault();
+        search.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const nextId = firstNotDone();
-  const target = continueTarget();
-  const targetTitle = problems.find((p) => p.id === target)?.title ?? target;
-  const fresh = done === 0 && !problems.some((p) => localSubmissions(p.id).length > 0);
-  const titleOf = (id: string) => problems.find((p) => p.id === id)?.title ?? id;
-  const upNext = allSteps()
-    .filter(({ step }) => !isStepDone(localSubmissions(step.problemId)))
-    .slice(0, 3);
-  // problems in roadmap order, grouped by stage, numbered along the whole path
-  const stages = ROADMAP.map((stage) => ({
-    stage,
-    items: allSteps()
-      .filter((s) => s.stage.id === stage.id)
-      .flatMap(({ step, index }) => {
-        const p = problems.find((q) => q.id === step.problemId);
-        return p && (filter === "all" || p.difficulty === filter) ? [{ p, index }] : [];
-      }),
-  })).filter((s) => s.items.length > 0);
-  const count = (f: (typeof FILTERS)[number]) => (f === "all" ? problems.length : problems.filter((p) => p.difficulty === f).length);
-  const [hidden, setHidden] = useState(bannerDismissed);
-  // the signed-in note stays useful; only the guest/offline nudge can be dismissed
-  const showBanner = !hidden;
-  const dismissBanner = () => {
-    setHidden(true);
-    try {
-      localStorage.setItem(BANNER_KEY, "1");
-    } catch {
-      /* private mode: dismissal lasts for this visit */
-    }
+  const done = countDone();
+  // read straight from storage each render (21 small reads); `tick` re-renders when the account brings newer designs in
+  void tick;
+  const items: Item[] = allSteps().flatMap(({ stage, step, index }) => {
+    const p = problems.find((q) => q.id === step.problemId);
+    return p ? [{ p, index, stageId: stage.id, d: cardData(p.id, nextId) }] : [];
+  });
+
+  const recommended =
+    items.find((i) => i.d.status === "next" || i.d.status === "not_started") ?? items.find((i) => i.p.id === continueTarget()) ?? items[0];
+  const resume = [...items].filter((i) => i.d.status === "in_progress").sort((a, b) => (b.d.edited ?? 0) - (a.d.edited ?? 0))[0];
+
+  const shown = items.filter((i) => (filter === "all" || i.p.difficulty === filter) && matches(i.p, query));
+  const count = (f: (typeof FILTERS)[number]) => (f === "all" ? items.length : items.filter((i) => i.p.difficulty === f).length);
+  const open = (id: string) => () => void start(id);
+  const pick = (m: "path" | "grid") => {
+    setMode(m);
+    write(MODE_KEY, m);
   };
 
-  return (
-    <div className="home">
-      <div className="home-in">
-        <header className="home-hero">
-          <div>
-            <p className="home-kicker">System design practice</p>
-            <h1>Build it, break it, learn why.</h1>
-            <p className="home-sub">
-              Drag blocks onto a canvas, connect them, and run the simulator against real traffic, spikes and failures. Each problem tells
-              you what held, what broke and why.
-            </p>
-            <div className="home-cta">
-              <button className="btn primary lg" onClick={() => void start(target)}>
-                {fresh ? "Start with " : "Continue · "}
-                {targetTitle}
-              </button>
-              <button className="btn lg" onClick={() => setView("roadmap")}>
-                Open the learning roadmap
-              </button>
-              {showLessons && (
-                <button className="btn lg" onClick={() => setView("learn")}>
-                  Learn the building blocks
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="home-progress" role="group" aria-label={`${done} of ${TOTAL_STEPS} problems done`}>
-            <span className="home-progress-num">
-              {done}
-              <i>/{TOTAL_STEPS}</i> done
-            </span>
-            <span className="home-progress-bar" aria-hidden="true">
-              <i style={{ width: `${pct}%` }} />
-            </span>
-            <small>Done means every scenario scores 80 or more.</small>
-          </div>
-        </header>
+  const showBanner = !bannerGone && (!backend.online || !user);
 
+  return (
+    <div className="home dh" ref={root}>
+      <div className="home-in dh-in">
         {showBanner && (
-          <section className={"home-account" + (user ? " in" : "")}>
+          <section className="dh-note">
             {!backend.online ? (
               <p>
                 <b>Running on its own.</b> Your work is saved in this browser. Accounts, share links and cohorts need the Design Canvas
                 server.
-              </p>
-            ) : user ? (
-              <p>
-                <b>Signed in as {user.username}.</b> Your designs, versions and scores are saved to your account and follow you to other
-                devices.
               </p>
             ) : (
               <>
                 <p>
                   <b>Guest mode.</b> Your work stays in this browser. An invite-only account keeps it across devices.
                 </p>
-                <button className="btn" onClick={() => setAuthOpen(true)}>
+                <button type="button" className="btn" onClick={() => setAuthOpen(true)}>
                   Have an invite? Sign in
                 </button>
               </>
             )}
-            <button className="home-x" aria-label="Dismiss this message" onClick={dismissBanner}>
+            <button
+              type="button"
+              className="home-x"
+              aria-label="Dismiss this message"
+              onClick={() => {
+                setBannerGone(true);
+                write(BANNER_KEY, "1");
+              }}
+            >
               ×
             </button>
           </section>
         )}
 
-        <section>
-          <div className="home-h">
-            <h2>Problems</h2>
-            {!user && backend.online && hidden && (
-              <button className="link" onClick={() => setAuthOpen(true)}>
-                Have an invite? Sign in
+        {recommended && (
+          <Suspense fallback={<div className="dh-hero-skel" aria-hidden="true" />}>
+            <HomeHero
+              problem={recommended.p}
+              done={done}
+              total={TOTAL_STEPS}
+              onOpen={open(recommended.p.id)}
+              onLearn={showLessons ? () => setView("learn") : null}
+            />
+          </Suspense>
+        )}
+
+        {resume && (
+          <section className="dh-resume" data-rv aria-label="Continue where you left off">
+            <div className="dh-resume-thumb">
+              {resume.d.doc && <DesignMap data={mapFromDoc(resume.d.doc)} variant="thumb" label={`Your design for ${resume.p.title}`} />}
+            </div>
+            <div className="dh-resume-text">
+              <span className="dh-label">Continue where you left off</span>
+              <h2>{resume.p.title}</h2>
+              <p>
+                {resume.d.blocks} block{resume.d.blocks === 1 ? "" : "s"}
+                {resume.d.edited !== null && ` · ${editedText(resume.d.edited)}`}
+                {resume.d.best !== null && ` · best ${resume.d.best}`}
+                {passedLine(resume.d) && ` · ${passedLine(resume.d)}`}
+              </p>
+            </div>
+            <button type="button" className="btn primary lg" onClick={open(resume.p.id)}>
+              Continue
+            </button>
+          </section>
+        )}
+
+        <section className="dh-problems" aria-labelledby="dh-problems-h">
+          <div className="dh-bar-row">
+            <h2 id="dh-problems-h">Problems</h2>
+            <div className="dh-toggle" role="group" aria-label="View">
+              <button type="button" aria-pressed={mode === "path"} onClick={() => pick("path")}>
+                Path
               </button>
-            )}
-            <div className="chips" role="group" aria-label="Filter by difficulty">
+              <button type="button" aria-pressed={mode === "grid"} onClick={() => pick("grid")}>
+                Grid
+              </button>
+            </div>
+          </div>
+          <div className="dh-tools">
+            <div className="dh-chips2" role="group" aria-label="Filter by difficulty">
               {FILTERS.map((f) => (
-                <button
-                  key={f}
-                  className={"chipbtn" + (filter === f ? " on" : "")}
-                  aria-pressed={filter === f}
-                  onClick={() => setFilter(f)}
-                >
-                  {f === "all" ? "All" : f[0].toUpperCase() + f.slice(1)} <span className="chip-n">{count(f)}</span>
+                <button key={f} type="button" className={filter === f ? "on" : ""} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                  {f === "all" ? "All" : f[0].toUpperCase() + f.slice(1)} <span>{count(f)}</span>
                 </button>
               ))}
             </div>
+            <label className="dh-search">
+              <span className="sr-only">Search problems</span>
+              <input ref={search} type="search" placeholder="Search problems" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <kbd>/</kbd>
+            </label>
+            {mode === "grid" && (
+              <label className="dh-sort">
+                <span className="sr-only">Sort</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                  {SORTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button type="button" className="dh-link" onClick={() => (window.location.hash = ROADMAP_HASH)}>
+              Roadmap and glossary
+            </button>
           </div>
-          {upNext.length > 0 && filter === "all" && (
-            <div className="home-next">
-              <h3>Recommended next</h3>
-              <div className="home-next-row">
-                {upNext.map(({ step, index }) => (
-                  <button key={step.problemId} className="home-next-item" onClick={() => void start(step.problemId)}>
-                    <span className="home-step">{index}</span>
-                    <span>{titleOf(step.problemId)}</span>
-                  </button>
-                ))}
-              </div>
+
+          {shown.length === 0 ? (
+            <p className="dh-empty">No problem matches. Try a different word, or clear the filter.</p>
+          ) : mode === "grid" ? (
+            <div className="dh-grid">
+              {sortCards(shown, sort).map((i) => (
+                <div key={i.p.id} data-rv>
+                  <ProblemCard p={i.p} d={i.d} layout="tile" onOpen={open(i.p.id)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dh-path">
+              {ROADMAP.map((stage, si) => {
+                const rows = shown.filter((i) => i.stageId === stage.id);
+                if (rows.length === 0) return null;
+                const all = items.filter((i) => i.stageId === stage.id);
+                const finished = all.filter((i) => i.d.status === "done").length;
+                return (
+                  <section key={stage.id} className={`dh-stage tone-${TONES[si % TONES.length]}`} aria-label={stage.title}>
+                    <header className="dh-stage-h" data-rv>
+                      <h3>{stage.title}</h3>
+                      <p>{stage.blurb}</p>
+                      <span>
+                        {finished} of {all.length} done
+                      </span>
+                    </header>
+                    <ol className="dh-route">
+                      {rows.map((i) => (
+                        <li key={i.p.id} className={`stop ${i.p.difficulty} ${i.d.status}`} data-rv>
+                          <i className="stop-dot" aria-hidden="true" />
+                          <ProblemCard p={i.p} d={i.d} layout="row" onOpen={open(i.p.id)} />
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                );
+              })}
             </div>
           )}
-          {stages.map(({ stage, items }) => (
-            <div key={stage.id} className="home-stage">
-              <div className="home-stage-h">
-                <h3>{stage.title}</h3>
-                <button className="link" onClick={() => setView("roadmap")}>
-                  See this stage in the roadmap
-                </button>
-              </div>
-              <div className="home-grid">
-                {items.map(({ p, index }) => {
-                  const subs = localSubmissions(p.id);
-                  const status = statusFor(p.id, nextId, subs);
-                  const best = bestScore(subs);
-                  return (
-                    <button key={p.id} className={`pcard status-${status}`} onClick={() => void start(p.id)}>
-                      <span className="pcard-top">
-                        <span className="home-step">{index}</span>
-                        <span className={`diff ${p.difficulty}`}>{p.difficulty}</span>
-                      </span>
-                      <b className="pcard-title">{p.title}</b>
-                      <span className="pcard-brief">{p.brief.split(/(?<=[.!?])\s/)[0]}</span>
-                      <span className="pcard-foot">
-                        <span className={`rm-status-pill ${status}`}>{STATUS[status]}</span>
-                        {best !== null && <span className="rm-score">Best {best}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
         </section>
 
         {user && backend.online && (
-          <div className="home-two">
-            <HomeCohorts />
-            <HomeShares />
-          </div>
+          <details className="dh-collab">
+            <summary>
+              <span>Collaborate</span>
+              <em>Cohorts and shared links</em>
+            </summary>
+            <div className="home-two">
+              <HomeCohorts />
+              <HomeShares />
+            </div>
+          </details>
         )}
       </div>
     </div>

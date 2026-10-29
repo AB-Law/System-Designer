@@ -4,7 +4,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  background: var(--bg-2);
+  background: var(--bg);
 }
 .rm-screen:not(.with-detail) {
   grid-template-columns: minmax(0, 1fr);
@@ -23,14 +23,14 @@
   align-items: flex-start;
   justify-content: space-between;
   /* hero, tabs and path share one centred column, so a wide screen does not leave the right side empty */
-  padding: 22px max(24px, calc((100% - 1000px) / 2)) 12px;
-  border-bottom: 1px solid var(--line-soft);
-  background: linear-gradient(180deg, var(--panel), transparent);
+  padding: 32px max(24px, calc((100% - 1000px) / 2)) 20px;
+  background: var(--bg);
 }
 .rm-hero h1 {
   margin: 0 0 6px;
-  font: 400 32px/1.15 var(--display);
-  color: var(--gold-hi);
+  font: 400 clamp(40px, 5vw, 72px) / 1 var(--display);
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 .rm-hero-text {
   max-width: 52ch;
@@ -82,8 +82,6 @@
   margin-top: 28px;
   font-size: 11px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .rm-continue {
   white-space: nowrap;
@@ -133,7 +131,7 @@
 }
 .rm-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--gold-lo), var(--gold));
+  background: var(--gold);
   border-radius: 99px;
   transition: width 0.35s ease;
 }
@@ -157,7 +155,7 @@
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(180deg, var(--gold-lo), var(--line));
+  background: var(--gold-lo);
 }
 .rm-step-wrap:last-child .rm-path-line {
   bottom: 50%;
@@ -180,7 +178,7 @@
   text-align: left;
   padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid var(--line);
+  border: 0;
   background: var(--panel);
   color: inherit;
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -238,8 +236,6 @@
 }
 .rm-badge {
   font: 600 10px var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   padding: 2px 8px;
   border-radius: 6px;
   background: var(--navy-deep);
@@ -318,7 +314,7 @@
   margin-top: 14px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--line);
+  border: 0;
   background: var(--raise);
 }
 .rm-order-hint p {
@@ -429,7 +425,7 @@
 }
 .rm-hint {
   margin: 0 0 14px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 10px;
   background: var(--panel-2);
   overflow: hidden;
@@ -557,7 +553,7 @@
 .rm-optional {
   margin-left: 6px;
   padding: 1px 8px;
-  border: 1px solid var(--gold-lo);
+  border: 0;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
