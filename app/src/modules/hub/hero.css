@@ -1,66 +1,5 @@
-/* Hub hero and motion. Loaded with HubHero. A ring that sweeps to the score, the countdown, the one best next move. */
-@property --p {
-  syntax: "<integer>";
-  inherits: true;
-  initial-value: 0;
-}
-/* Hub: four stat tiles, one dominant next move, a 12-column board. The readiness figure is the one data hue. */
-.hub-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-.hub-stat {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  min-height: 150px;
-  padding: 20px;
-  border-radius: 12px;
-  background: var(--panel);
-}
-.hub-stat-label {
-  color: var(--muted);
-  font-size: 14px;
-}
-.hub-stat-value {
-  font: 400 clamp(44px, 4.4vw, 64px) / 1 var(--display);
-  letter-spacing: -0.02em;
-}
-.hub-stat-value small {
-  margin-left: 8px;
-  color: var(--muted);
-  font: 400 16px var(--body);
-  letter-spacing: 0;
-}
-.hub-stat.hero .hub-stat-value {
-  color: var(--c, var(--gold));
-}
-.hub-stat-caption {
-  color: var(--muted);
-  font-size: 14px;
-}
-.hub-stat-bar {
-  position: absolute;
-  inset: auto 20px 16px 20px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--raise);
-  overflow: hidden;
-}
-.hub-stat-bar::after {
-  content: "";
-  display: block;
-  width: var(--to);
-  height: 100%;
-  background: var(--c);
-  transform-origin: left;
-  animation: hub-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s backwards;
-}
-.hub-stat.hero {
-  padding-bottom: 36px;
-}
+/* Hub top: the next move, readiness, and the board beneath them. Loaded with HubHero. */
+/* Hub: one dominant "today" panel, one big readiness figure, then a 12-column board. */
 .hub-board {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -69,80 +8,144 @@
 .hub-board > * {
   min-width: 0;
 }
-.hub-span-4 {
-  grid-column: span 4;
-}
 .hub-span-5 {
   grid-column: span 5;
+}
+.hub-span-6 {
+  grid-column: span 6;
 }
 .hub-span-7 {
   grid-column: span 7;
 }
-.hub-span-8 {
-  grid-column: span 8;
-}
 .hub-span-12 {
   grid-column: 1 / -1;
 }
-.hub-side {
-  display: grid;
-  gap: 16px;
-  align-content: start;
+.hub-board > .hub-cell:empty {
+  display: none;
 }
-.hub-span-8 > .hub-next,
-.hub-span-4 > *,
-.hub-span-7 > *,
-.hub-span-12 > * {
+.hub-board > :not(.hub-cell) > *,
+.hub-board > .hub-cell > * {
   height: 100%;
+}
+.hub-stat-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* today: the next move, then the few after it */
+.hub-today {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: clamp(24px, 2.4vw, 36px);
+  border-radius: 12px;
+  background: var(--gold);
+  color: #1a1405;
 }
 .hub-next {
   display: grid;
-  align-content: end;
-  gap: 8px;
-  min-height: 220px;
-  padding: 28px;
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--text);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label label" "title go" "why go";
+  align-items: end;
+  gap: 8px 24px;
+  padding-bottom: 28px;
+  color: #1a1405;
   text-decoration: none;
-  transition: background 0.2s;
-}
-.hub-next:hover,
-.hub-next:focus-visible {
-  background: var(--panel-2);
 }
 .hub-next .hub-stat-label {
-  color: var(--muted);
+  grid-area: label;
+  color: rgba(26, 20, 5, 0.75);
 }
 .hub-next strong {
-  font: 400 clamp(32px, 3.4vw, 52px) / 1.02 var(--display);
+  grid-area: title;
+  font: 400 clamp(36px, 3.8vw, 60px) / 1 var(--display);
   letter-spacing: -0.02em;
 }
 .hub-next-why {
+  grid-area: why;
   max-width: 52ch;
+  color: rgba(26, 20, 5, 0.8);
   font-size: 16px;
 }
 .hub-go {
-  justify-self: start;
-  margin-top: 8px;
-  padding: 10px 22px;
-  border-radius: 8px;
-  background: var(--gold);
-  color: #1a1405;
+  grid-area: go;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  border-radius: 999px;
+  background: #1a1405;
+  color: var(--gold-hi);
+  font-size: 18px;
   font-weight: 700;
+  transition: background 0.2s;
 }
-.hub-next:hover .hub-go {
-  background: var(--gold-hi);
+.hub-go i {
+  font-style: normal;
+  transition: transform 0.2s;
 }
+.hub-next:hover .hub-go,
+.hub-next:focus-visible .hub-go {
+  background: #000;
+}
+.hub-next:hover .hub-go i {
+  transform: translateX(4px);
+}
+.hub-after-h {
+  margin: 0 0 4px;
+  color: rgba(26, 20, 5, 0.75);
+  font: 600 14px var(--body);
+}
+.hub-after ol {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub-after-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 12px;
+  margin: 0 -12px;
+  border-radius: 10px;
+  color: #1a1405;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.hub-after-row:hover {
+  background: rgba(26, 20, 5, 0.1);
+}
+.hub-after-row strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+}
+.hub-after-row small {
+  color: rgba(26, 20, 5, 0.75);
+  font-size: 14px;
+}
+.hub-after-row em {
+  flex: none;
+  color: #1a1405;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 @media (max-width: 1000px) {
-  .hub-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .hub-span-4,
   .hub-span-5,
-  .hub-span-7,
-  .hub-span-8 {
+  .hub-span-6,
+  .hub-span-7 {
     grid-column: 1 / -1;
+  }
+}
+@media (max-width: 640px) {
+  .hub-next {
+    grid-template-columns: 1fr;
+    grid-template-areas: "label" "title" "why" "go";
   }
 }
 
@@ -178,14 +181,6 @@
     transform: scaleX(0);
   }
 }
-.hub-action {
-  transition:
-    transform 0.15s,
-    border-color 0.15s;
-}
-.hub-action:hover {
-  transform: translateX(3px);
-}
 .hub-skel {
   display: grid;
   gap: 16px;
@@ -206,11 +201,13 @@
   .hub-stack > *,
   .hub-bar > div,
   .hub-row-bar > span,
+  .hub-ready-bar::after,
   .hub-skel i {
     animation: none;
   }
   .hub-next,
-  .hub-action {
+  .hub-after-row,
+  .hub-go i {
     transition: none;
   }
 }

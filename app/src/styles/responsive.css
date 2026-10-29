@@ -98,24 +98,3 @@
     display: none;
   }
 }
-
-/* phones: wordmark and account share the first row, the module nav scrolls on its own row beneath */
-@media (max-width: 640px) {
-  .topbar .module-nav {
-    order: 5;
-    flex-basis: 100%;
-    margin-left: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .topbar .module-nav button {
-    flex: none;
-    padding: 8px 12px;
-  }
-}
-
-@media (max-width: 1280px) {
-  .topbar.topbar-page {
-    padding-inline: max(clamp(16px, 4vw, 56px), calc((100% - 1360px) / 2));
-  }
-}

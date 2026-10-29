@@ -7,10 +7,7 @@ export function FitCard({ fit, target }: { fit: Fit | null; target: ActiveTarget
     <Card title="Fit to this role">
       {fit ? (
         <div className="hub-stack">
-          <div className="hub-big">
-            {fit.total ?? "–"}
-            <span className="hub-muted"> / 100 · your CV against the job description</span>
-          </div>
+          <p className="hub-muted">Where your CV falls short of this job description, biggest first.</p>
           {fit.gaps.length > 0 && (
             <>
               <div className="hub-label">Top gaps</div>
