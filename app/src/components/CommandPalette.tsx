@@ -13,7 +13,6 @@ interface Item {
 /** Jump anywhere from the keyboard: type a few letters, arrow to a result, press Enter. Opened with Ctrl or Cmd and K. */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const modules = useModules();
-  const setView = useStore((s) => s.setView);
   const openLearn = useStore((s) => s.openLearn);
   const user = useStore((s) => s.user);
   const signOut = useStore((s) => s.signOut);
@@ -27,13 +26,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       window.location.hash = h;
     };
     const list: Item[] = [
-      {
-        id: "design",
-        label: "Design Canvas",
-        hint: "Build and simulate",
-        run: () => (setView("canvas"), (window.location.hash = "#/design")),
-      },
-      { id: "roadmap", label: "Learning roadmap", hint: "Design", run: () => (setView("roadmap"), (window.location.hash = "#/design")) },
+      { id: "design", label: "Design home", hint: "Problems and your progress", run: hash("#/design") },
+      { id: "roadmap", label: "Learning roadmap", hint: "Design", run: hash("#/design/roadmap") },
       { id: "learn", label: "Learn the building blocks", hint: "Design", run: () => openLearn() },
     ];
     if (has("hub"))
@@ -60,7 +54,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
     if (user) list.push({ id: "out", label: "Sign out", hint: "Account", run: () => void signOut() });
     return list;
-  }, [modules, user, setView, openLearn, signOut]);
+  }, [modules, user, openLearn, signOut]);
 
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();

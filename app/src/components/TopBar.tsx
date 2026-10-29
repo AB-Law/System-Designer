@@ -174,7 +174,7 @@ export function TopBar() {
               Sign in
             </button>
           ))}
-        {inDesign && !onLanding && (
+        {workbench && (
           <button
             type="button"
             className={"btn tall" + (view === "roadmap" ? " primary" : " ghost")}

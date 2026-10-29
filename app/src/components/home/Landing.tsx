@@ -7,7 +7,7 @@ import { useStore } from "../../store";
 import "../../styles/landing.css";
 import { HeroSystem, useIncident } from "./HeroSystem";
 import { CvFragment, DesignFragment, InterviewFragment, StudyFragment } from "./LandingFragments";
-import { useMagnet } from "./motionHooks";
+import { useMagnet, useReveal } from "./motionHooks";
 import { PUBLIC_LESSONS } from "./publicPages";
 
 // Below the first screen and heavy with drawing, so they load after it instead of with it.
@@ -110,42 +110,6 @@ function useTween(target: number) {
     return () => cancelAnimationFrame(raf);
   }, [target]);
   return Math.round(v);
-}
-
-/**
- * Marks every [data-rv] inside the page, including ones added later by lazy sections, as shown once it scrolls into view, by setting
- * the attribute itself to "in".
- * It is an attribute, not a class, so a re-render of the element (a band switching on) cannot undo it.
- * Without script the content simply stays visible.
- */
-function useReveal() {
-  const root = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const el = root.current;
-    if (!el || !("IntersectionObserver" in window)) return;
-    el.classList.add("rv-on");
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && (e.target.setAttribute("data-rv", "in"), io.unobserve(e.target))),
-      { rootMargin: "0px 0px -8% 0px" },
-    );
-    // Sections that load after the first screen add their own [data-rv] later, so new ones are picked up as they arrive.
-    const seen = new WeakSet<Element>();
-    const scan = () =>
-      el.querySelectorAll("[data-rv]").forEach((n) => {
-        if (!seen.has(n)) {
-          seen.add(n);
-          io.observe(n);
-        }
-      });
-    scan();
-    const mo = new MutationObserver(scan);
-    mo.observe(el, { childList: true, subtree: true });
-    return () => {
-      io.disconnect();
-      mo.disconnect();
-    };
-  }, []);
-  return root;
 }
 
 /** What the app is, for someone who has not signed in. Signing in lands on the Hub. */

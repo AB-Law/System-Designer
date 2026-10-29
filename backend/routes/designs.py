@@ -20,6 +20,13 @@ class DesignIn(BaseModel):
     ifEmpty: bool = False
 
 
+@router.get("")
+def list_designs(user: CurrentUser, conn: sqlite3.Connection = Depends(get_db)) -> list[dict]:
+    """Every design this account has saved, newest first, so the home page can show them all from one request."""
+    rows = conn.execute("SELECT problem_id, doc, updated FROM designs WHERE user_id = ? ORDER BY updated DESC", (user["id"],)).fetchall()
+    return [{"problemId": r["problem_id"], "doc": json.loads(r["doc"]), "updated": r["updated"]} for r in rows]
+
+
 @router.get("/{problem_id}")
 def get_design(problem_id: str, user: CurrentUser, conn: sqlite3.Connection = Depends(get_db)) -> dict:
     r = conn.execute("SELECT doc, updated FROM designs WHERE user_id = ? AND problem_id = ?", (user["id"], pid(problem_id))).fetchone()
