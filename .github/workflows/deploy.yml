@@ -44,7 +44,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.image }}
           # repository variable ENABLED_MODULES, for example "design,cv"; unset keeps production on Design Canvas only
-          build-args: ENABLED_MODULES=${{ vars.ENABLED_MODULES || 'design' }}
+          # repository variable SITE_URL, the public origin with no trailing slash, for example "https://designcanvas.example"
+          build-args: |
+            ENABLED_MODULES=${{ vars.ENABLED_MODULES || 'design' }}
+            SITE_URL=${{ vars.SITE_URL }}
 
       - name: Deploy to Azure Container Apps
         uses: azure/container-apps-deploy-action@v1

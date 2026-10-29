@@ -20,4 +20,3 @@ system_design_full_data.json
 !README.md
 # the lessons are Markdown that the frontend build bundles (import.meta.glob); without this the deployed site has none
 !app/content/lessons/*.md
-app/scripts
