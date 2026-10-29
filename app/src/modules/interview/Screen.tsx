@@ -16,7 +16,8 @@ export default function Screen({ rest }: { rest: string }) {
   const route = parse(rest);
   return (
     <div className="iv-module">
-      <h2 className="iv-title">Interview</h2>
+      <h1 className="iv-title">Interview</h1>
+      <p className="module-lede">Mock interviews for a role, run in character, with feedback on every answer.</p>
       <Tabs
         label="Interview sections"
         tabs={TABS}

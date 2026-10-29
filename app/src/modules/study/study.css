@@ -131,7 +131,7 @@
   min-height: 220px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(160deg, var(--panel) 0%, var(--bg-2) 100%);
+  background: var(--panel);
   padding: 28px 24px;
   display: grid;
   place-items: center;
@@ -142,8 +142,6 @@
 .st-flip-label {
   color: var(--faint);
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   margin-bottom: 10px;
 }
 .st-flip-text {
@@ -201,4 +199,43 @@
   border: 1px solid var(--line-soft);
   white-space: pre-wrap;
   font-size: 13.5px;
+}
+
+/* the map's chrome follows the app's dark surfaces instead of the library's white defaults */
+.st-map-canvas .react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.st-map-canvas .react-flow__controls-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  fill: var(--text);
+  color: var(--text);
+}
+.st-map-canvas .react-flow__controls-button:hover {
+  background: var(--raise);
+}
+.st-map-canvas .react-flow__minimap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.st-map-canvas .react-flow__node {
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.3;
+}
+@media (max-width: 840px) {
+  .st-map-canvas .react-flow__minimap {
+    display: none;
+  }
+  .st-map-canvas {
+    height: 70vh;
+  }
 }

@@ -1,6 +1,6 @@
 {
-  "bytes": 1034364,
-  "gzip": 318920,
-  "recorded": "2026-10-27",
-  "note": "Phase 0.1 baseline, index-*.js after npm run build on feature/modular-platform"
+  "bytes": 355173,
+  "gzip": 115797,
+  "recorded": "2026-10-29",
+  "note": "index-*.js after the landing's live hero system, living fragments and hooks; the pinned scene and pictures are lazy chunks"
 }

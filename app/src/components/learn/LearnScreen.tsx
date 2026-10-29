@@ -45,7 +45,6 @@ function LessonList({ lessons, missing }: { lessons: Lesson[]; missing: string |
   return (
     <>
       <header className="learn-head">
-        <p className="home-kicker">Lessons</p>
         <h1>Learn the building blocks</h1>
         <p className="muted">
           Short lessons with something to try on every page. They are optional: every practice problem is open whether or not you read one.

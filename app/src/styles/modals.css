@@ -55,8 +55,6 @@
 .m-head small {
   display: block;
   font: 600 10px var(--body);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 .big {
   font: 400 56px/1 var(--display);
@@ -141,8 +139,6 @@
   text-align: left;
   padding: 10px 6px;
   font: 600 10px var(--body);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 .tbl th:nth-child(n + 2),

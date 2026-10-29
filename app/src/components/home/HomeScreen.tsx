@@ -76,7 +76,6 @@ export function HomeScreen() {
       <div className="home-in">
         <header className="home-hero">
           <div>
-            <p className="home-kicker">System design practice</p>
             <h1>Build it, break it, learn why.</h1>
             <p className="home-sub">
               Drag blocks onto a canvas, connect them, and run the simulator against real traffic, spikes and failures. Each problem tells

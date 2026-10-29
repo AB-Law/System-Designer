@@ -17,17 +17,14 @@
   align-items: center;
   gap: 24px;
   padding: 0 20px;
-  background: linear-gradient(180deg, #0e0d10, var(--bg));
-  border-bottom: 1px solid var(--line);
-  position: relative;
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
-.topbar::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 -1px 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold-lo), transparent);
-  opacity: 0.6;
+/* every screen except the workbench shares the page's outer margins, so the bar lines up with the content beneath it */
+.topbar.topbar-page {
+  padding-inline: max(clamp(16px, 4vw, 56px), calc((100% - 1360px) / 2));
 }
 .brand {
   font: 400 26px/1 var(--display);
@@ -103,12 +100,12 @@
   color: var(--muted);
 }
 .btn.primary {
-  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  background: var(--gold);
   border-color: var(--gold-hi);
   color: #1a1405;
 }
 .btn.primary:hover {
-  background: linear-gradient(180deg, #f3deA0, var(--gold-hi));
+  background: var(--gold-hi);
 }
 .btn.success {
   background: var(--green-deep);

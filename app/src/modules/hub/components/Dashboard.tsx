@@ -6,7 +6,7 @@ import { go } from "../route";
 import type { Summary } from "../types";
 import { RecentActivity, StreakChip } from "./ActivityCards";
 import { FitCard } from "./FitCard";
-import { HubHero } from "./HubHero";
+import { HubTiles, NextMove } from "./HubHero";
 import { ModuleCards } from "./ModuleCards";
 import { NextActions } from "./NextActions";
 import { ReadinessGrid } from "./ReadinessGrid";
@@ -46,10 +46,8 @@ export function Dashboard() {
       <header className="hub-head">
         <div>
           <div className="hub-label">Preparing for</div>
-          <h2 className="hub-title">
-            {target ? target.title : "What are you preparing for?"}
-            {target?.company && <span className="hub-muted"> at {target.company}</span>}
-          </h2>
+          <h1 className="hub-title">{target ? target.title : "What are you preparing for?"}</h1>
+          {target?.company && <p className="hub-company">at {target.company}</p>}
         </div>
         <div className="hub-head-side">
           <StreakChip streak={summary.streak} />
@@ -70,17 +68,28 @@ export function Dashboard() {
         </EmptyState>
       )}
 
-      <HubHero summary={summary} />
       <SetupCard steps={summary.setup} onChange={() => void load()} />
-      <ResumeCard activity={summary.activity} />
+      <HubTiles summary={summary} />
 
-      <div className="hub-cols">
-        <NextActions actions={summary.actions} />
-        {summary.modules.includes("cv") && <FitCard fit={summary.fit} target={target} />}
+      <div className="hub-board">
+        <div className="hub-span-8">
+          <NextMove summary={summary} />
+        </div>
+        <div className="hub-span-4">{summary.modules.includes("cv") && <FitCard fit={summary.fit} target={target} />}</div>
+        <div className="hub-span-7">
+          <NextActions actions={summary.actions} />
+        </div>
+        <div className="hub-span-5 hub-side">
+          <ResumeCard activity={summary.activity} />
+          <RecentActivity items={summary.activity} />
+        </div>
+        <div className="hub-span-12">
+          <ReadinessGrid topics={summary.readiness} track={summary.track} modules={summary.modules} />
+        </div>
+        <div className="hub-span-12">
+          <ModuleCards />
+        </div>
       </div>
-      <ReadinessGrid topics={summary.readiness} track={summary.track} modules={summary.modules} />
-      <ModuleCards />
-      <RecentActivity items={summary.activity} />
     </div>
   );
 }

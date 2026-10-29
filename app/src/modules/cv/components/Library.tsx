@@ -3,6 +3,7 @@ import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
+import { StatTiles } from "../../../ui/StatTiles";
 import { cvApi } from "../api";
 import { qualityTone, when } from "../format";
 import { downloadJson } from "../../../shared/download";
@@ -39,6 +40,29 @@ export function Library() {
 
   return (
     <div className="cv-stack">
+      {cvs && cvs.length > 0 && (
+        <StatTiles
+          label="Your CVs"
+          tiles={[
+            {
+              label: "CVs",
+              value: String(cvs.length),
+              caption: cvs.some((c) => c.active) ? "One is active for scoring" : "None is active yet",
+            },
+            (() => {
+              const q = cvs.find((c) => c.active)?.latest?.parseQuality;
+              return {
+                label: "Read quality",
+                value: q === undefined ? "–" : String(q),
+                unit: q === undefined ? undefined : "/ 100",
+                caption: "How well the active CV was read",
+                hero: true,
+              };
+            })(),
+            { label: "Versions", value: String(cvs.reduce((n, c) => n + c.versionCount, 0)), caption: "Saved across all your CVs" },
+          ]}
+        />
+      )}
       <CvUpload onUploaded={(cv) => void onUploaded(cv)} />
 
       {error && <p className="ui-error">{error}</p>}

@@ -34,7 +34,7 @@ export function TopBar() {
   const groups = (["easy", "medium", "hard"] as const).map((d) => ({ d, items: problems.filter((p) => p.difficulty === d) }));
 
   return (
-    <header className="topbar">
+    <header className={"topbar" + (workbench ? "" : " topbar-page")}>
       <button
         type="button"
         className="brand"

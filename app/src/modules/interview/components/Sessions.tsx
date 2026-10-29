@@ -3,6 +3,7 @@ import { attempt } from "../../../shared/async";
 import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
+import { StatTiles } from "../../../ui/StatTiles";
 import { EmptyState } from "../../../ui/EmptyState";
 import { interviewApi } from "../api";
 import { ScoreRing } from "../../../ui/ScoreRing";
@@ -139,9 +140,32 @@ export function Sessions() {
       </div>
     );
   }
+  const scored = sessions.filter((s) => s.score !== null).sort((a, b) => a.created - b.created);
+  const latest = scored.length ? scored[scored.length - 1].score : null;
+  const best = scored.length ? Math.max(...scored.map((s) => s.score as number)) : null;
+  const roles = groupByRole(sessions);
   return (
     <div className="iv-stack">
-      {groupByRole(sessions).map((g) => (
+      <StatTiles
+        label="Your practice"
+        tiles={[
+          { label: "Interviews", value: String(sessions.length), caption: `Across ${roles.length} role${roles.length === 1 ? "" : "s"}` },
+          {
+            label: "Latest score",
+            value: latest === null ? "–" : String(latest),
+            unit: latest === null ? undefined : "/ 100",
+            caption: latest === null ? "Finish an interview to see one" : "From your most recent finished round",
+            hero: true,
+          },
+          {
+            label: "Best score",
+            value: best === null ? "–" : String(best),
+            unit: best === null ? undefined : "/ 100",
+            caption: "Across every finished round",
+          },
+        ]}
+      />
+      {roles.map((g) => (
         <RoleCard key={g.roleId} group={g} onDelete={(id) => void removeSession(id)} onDeleteRole={(role) => void removeRole(role)} />
       ))}
       <YourData onDeleted={() => void load()} />

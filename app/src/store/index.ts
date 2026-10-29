@@ -161,30 +161,35 @@ export const useStore = create<State>((set, get) => {
     primerOpen: false,
     primerProblemId: null,
     celebrate: null,
+    booted: false,
 
     init: async () => {
-      const problems = await loadProblems();
-      validateRoadmap(problems);
-      set({ problems });
-      if (backend.online) {
-        // cookie session (or a one-shot legacy bearer) — 401 means guest
-        try {
-          const me = await call<{ user: User }>("/auth/me");
-          setToken("1"); // session flag only; clears any legacy bearer from localStorage
-          set({ user: me.user });
-          if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
-          await syncSubmissionsDown();
-        } catch (e) {
-          if (e instanceof ApiError && e.status === 401) setToken(null);
+      try {
+        const problems = await loadProblems();
+        validateRoadmap(problems);
+        set({ problems });
+        if (backend.online) {
+          // cookie session (or a one-shot legacy bearer) — 401 means guest
+          try {
+            const me = await call<{ user: User }>("/auth/me");
+            setToken("1"); // session flag only; clears any legacy bearer from localStorage
+            set({ user: me.user });
+            if (!location.hash) goHub(); // a signed-in visitor's home is the Hub
+            await syncSubmissionsDown();
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) setToken(null);
+          }
         }
+        // with no Hub there is nothing to choose between, so the empty address is Design (a guest on the landing page keeps it)
+        if (!location.hash && !hubOn()) history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
+        const last = lsGet<string>("dc:last", "");
+        const id = problems.find((p) => p.id === last)?.id ?? problems.find((p) => p.id === "ad_serving")?.id ?? problems[0]?.id ?? "";
+        if (id) await get().setProblem(id);
+        await get().openFromHash();
+        window.addEventListener("hashchange", () => void get().openFromHash());
+      } finally {
+        set({ booted: true });
       }
-      // with no Hub there is nothing to choose between, so the empty address is Design (a guest on the landing page keeps it)
-      if (!location.hash && !hubOn()) history.replaceState(null, "", location.pathname + location.search + DESIGN_HASH);
-      const last = lsGet<string>("dc:last", "");
-      const id = problems.find((p) => p.id === last)?.id ?? problems.find((p) => p.id === "ad_serving")?.id ?? problems[0]?.id ?? "";
-      if (id) await get().setProblem(id);
-      await get().openFromHash();
-      window.addEventListener("hashchange", () => void get().openFromHash());
     },
 
     setView: (v) => {

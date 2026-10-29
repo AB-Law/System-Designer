@@ -36,8 +36,6 @@
 }
 .tour-card small {
   font: 600 11px var(--body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 .tour-card b,

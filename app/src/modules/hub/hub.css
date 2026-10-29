@@ -27,9 +27,7 @@
 }
 .hub-label {
   color: var(--muted);
-  font: 500 11px/1.4 var(--mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 13px/1.4 var(--body);
 }
 .hub-link {
   border: 0;
@@ -516,4 +514,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.hub-company {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 16px;
 }

@@ -35,7 +35,9 @@
 
   --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* One text face for the interface; figures align through tabular-nums. Code blocks use the system monospace, which costs no download. */
+  --mono: var(--body);
+  --code: ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   color-scheme: dark;
 }
@@ -54,6 +56,7 @@ body {
   color: var(--text);
   font: 13.5px/1.5 var(--body);
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
 button,
 input,
@@ -87,3 +90,8 @@ small {
   color: var(--muted);
 }
 
+
+pre,
+code {
+  font-family: var(--code);
+}
