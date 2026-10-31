@@ -350,3 +350,26 @@
     display: none;
   }
 }
+
+/* the design workbench's actions drop to their own scrolling row on a phone instead of pushing the page wide */
+@media (max-width: 640px) {
+  .topbar:has(.btn-group) {
+    height: auto;
+    flex-wrap: wrap;
+    padding-block: 8px;
+    gap: 8px 12px;
+  }
+  .topbar .actions:has(.btn-group) {
+    order: 3;
+    flex-basis: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    justify-content: flex-start;
+  }
+  .topbar .actions:has(.btn-group) > *,
+  .topbar .actions .btn-group .btn {
+    flex: none;
+    white-space: nowrap;
+  }
+}
