@@ -4,6 +4,7 @@ import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { TAG_LABELS } from "../format";
 import type { SessionDetail, Turn } from "../types";
+import { scrollToEnd } from "../scroll";
 import { useChat } from "../useChat";
 import { VoiceControls } from "../voice/VoiceControls";
 import { VoiceSettings } from "../voice/VoiceSettings";
@@ -49,9 +50,12 @@ export function Chat({ detail, onEnd, onFinished }: Props) {
   const { state, answer, retry } = useChat(detail.id, detail.turns);
   const [draft, setDraft] = useState("");
   const [skew] = useState(() => detail.serverNow - Date.now());
-  const endRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLUListElement>(null);
   const startedAt = state.turns[0]?.created ?? detail.startedAt;
   const voiceOn = featureOn(VOICE);
+  const asked = state.turns.filter((t) => t.role === "interviewer").length;
+  const answered = state.turns.filter((t) => t.role === "candidate").length;
+  const planned = detail.plan?.length ?? 0;
 
   const canAnswer = !state.busy && !state.finished && state.turns.length > 0 && state.turns[state.turns.length - 1].role === "interviewer";
   const lastInterviewer = [...state.turns].reverse().find((t) => t.role === "interviewer")?.text ?? "";
@@ -70,12 +74,10 @@ export function Chat({ detail, onEnd, onFinished }: Props) {
     onDraft: setDraft,
   });
 
+  // The transcript is its own scroll area, so scroll it rather than the page.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [state.turns.length, state.streaming]);
-  useEffect(() => {
-    if (state.finished) onFinished();
-  }, [state.finished, onFinished]);
+    scrollToEnd(transcriptRef.current);
+  }, [state.turns.length, state.streaming, state.busy]);
 
   const send = () => {
     const text = draft.trim();
@@ -96,8 +98,18 @@ export function Chat({ detail, onEnd, onFinished }: Props) {
         </>
       }
     >
+      {asked > 0 && (
+        <div className="iv-progress">
+          <span>{planned ? `Question ${Math.min(asked, planned)} of ${planned}` : `Question ${asked}`}</span>
+          {planned > 0 && (
+            <i aria-hidden="true">
+              <i style={{ width: `${Math.min(100, (answered / planned) * 100)}%` }} />
+            </i>
+          )}
+        </div>
+      )}
       {detail.plan && <Plan plan={detail.plan} />}
-      <ul className="iv-transcript" aria-live="polite">
+      <ul className="iv-transcript" aria-live="polite" ref={transcriptRef}>
         {state.turns.map((t, i) => (
           <Bubble key={i} turn={t} />
         ))}
@@ -108,7 +120,14 @@ export function Chat({ detail, onEnd, onFinished }: Props) {
           </li>
         )}
       </ul>
-      <div ref={endRef} />
+      {state.finished && (
+        <p className="iv-hint">
+          That's the end of the interview.{" "}
+          <Button size="small" variant="primary" onClick={onFinished}>
+            See my feedback
+          </Button>
+        </p>
+      )}
       {state.error && (
         <p className="iv-warn" role="alert">
           {state.error}{" "}

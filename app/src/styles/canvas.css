@@ -431,3 +431,90 @@
     animation: none;
   }
 }
+
+/* touch: bigger handles that stay visible on a selected block, and the tap-to-link mode */
+@media (pointer: coarse) {
+  .react-flow__handle {
+    width: 22px;
+    height: 22px;
+  }
+  .bnode.sel .react-flow__handle {
+    opacity: 1;
+  }
+  .toolbar button {
+    min-width: 40px;
+    height: 40px;
+    flex: none;
+  }
+}
+.toolbar .link-btn {
+  font-size: 13px;
+  font-weight: 700;
+}
+.canvas.linking .bnode {
+  cursor: pointer;
+}
+.link-hint {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  z-index: 20;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 24px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+}
+.link-hint button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--gold);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* phone and tablet: one scrolling row of tools at the foot of the canvas, a taller canvas, a short empty-state card */
+@media (max-width: 900px) {
+  .canvas {
+    min-height: max(520px, 72svh);
+  }
+  .canvas > div.toolbar {
+    top: auto;
+    bottom: 10px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    transform: none;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .canvas > div.toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .toolbar .zoom,
+  .toolbar i {
+    flex: none;
+  }
+  .empty {
+    align-items: start;
+    padding: 16px 16px 0;
+  }
+  .empty ol {
+    font-size: 14px;
+  }
+  .empty li:nth-child(n + 4) {
+    display: none;
+  }
+  .minimap {
+    display: none;
+  }
+}

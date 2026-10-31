@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -142,6 +142,25 @@ function Inner() {
     // minZoom keeps block labels readable when a problem opens; the toolbar fit button still shows everything
     if (fitTick > 0) setTimeout(() => fitView({ padding: 0.25, minZoom: 0.6, maxZoom: 1, duration: 250 }), 80);
   }, [fitTick, fitView]);
+  // Touch screens cannot hover or hit a 9px dot, so linking can also be done by tapping two blocks in turn.
+  const [linking, setLinking] = useState(false);
+  const [linkFrom, setLinkFrom] = useState<string | null>(null);
+  const stopLinking = () => {
+    setLinking(false);
+    setLinkFrom(null);
+  };
+  const onNodeTap = (id: string) => {
+    useStore.setState({ selectedEdgeId: undefined });
+    if (!linking) return;
+    if (!linkFrom) {
+      setLinkFrom(id);
+      return;
+    }
+    if (id !== linkFrom) {
+      connect({ source: linkFrom, target: id, sourceHandle: Position.Right, targetHandle: Position.Left });
+      stopLinking();
+    }
+  };
   const selectedKind = edges.find((e) => e.id === selectedEdgeId)?.data?.kind ?? edgeMode;
 
   const onDrop = useCallback(
@@ -156,7 +175,7 @@ function Inner() {
   );
 
   return (
-    <div className="canvas" data-tour="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
+    <div className={"canvas" + (linking ? " linking" : "")} data-tour="canvas" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
       <PlaceNoticeBar />
       <LiveLayer>
         <ReactFlow
@@ -168,7 +187,7 @@ function Inner() {
           onEdgesChange={onEdgesChange}
           onConnect={connect}
           onNodeDragStart={beginDrag}
-          onNodeClick={() => useStore.setState({ selectedEdgeId: undefined })}
+          onNodeClick={(_, n) => onNodeTap(n.id)}
           onEdgeClick={(_, e) => select(undefined, e.id)}
           multiSelectionKeyCode={["Control", "Meta"]}
           selectionKeyCode="Shift"
@@ -231,10 +250,27 @@ function Inner() {
           </button>
         ))}
         <i />
+        <button
+          title="Connect two blocks by tapping them one after the other"
+          className={"link-btn" + (linking ? " active" : "")}
+          aria-pressed={linking}
+          onClick={() => (linking ? stopLinking() : setLinking(true))}
+        >
+          Link
+        </button>
+        <i />
         <button title="Clear canvas" onClick={() => nodes.length && confirm("Clear the whole canvas?") && clearAll()}>
           🗑
         </button>
       </div>
+      {linking && (
+        <div className="link-hint" role="status">
+          {linkFrom ? "Now tap the block it should connect to." : "Tap the block the connection starts from."}
+          <button type="button" onClick={stopLinking}>
+            Done
+          </button>
+        </div>
+      )}
       <ChatDock />
       {nodes.length === 0 && (
         <div className="empty">
@@ -243,7 +279,7 @@ function Inner() {
             <ol>
               <li>Drag a User block from the left onto the canvas. It is where the traffic comes from.</li>
               <li>Add blocks that handle it, such as an API Gateway and a Database.</li>
-              <li>Drag from a dot on one block to a dot on the next to connect them.</li>
+              <li>Drag from a dot on one block to a dot on the next to connect them, or on a phone press Link and tap two blocks.</li>
               <li>Press Simulate to watch the traffic, then Preview score.</li>
             </ol>
           </div>

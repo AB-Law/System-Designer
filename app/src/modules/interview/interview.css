@@ -60,7 +60,7 @@
 }
 .iv-field > span,
 .iv-field > legend {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -114,9 +114,18 @@
   border-color: var(--gold-lo);
   background: var(--gold-wash);
 }
+.iv-choice {
+  position: relative;
+}
 .iv-choice input {
   position: absolute;
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
   opacity: 0;
+  pointer-events: none;
 }
 .iv-choice:focus-within {
   outline: 2px solid var(--gold-lo);
@@ -190,7 +199,23 @@
   display: grid;
   gap: 10px;
   max-height: 50vh;
-  overflow: auto;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.iv-transcript::-webkit-scrollbar {
+  width: 6px;
+}
+.iv-transcript::-webkit-scrollbar-track {
+  background: transparent;
+}
+.iv-transcript::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
+}
+.iv-transcript::-webkit-scrollbar-button {
+  display: none;
 }
 .iv-turn {
   max-width: 82%;
@@ -205,7 +230,7 @@
   border-color: var(--gold-lo);
 }
 .iv-turn small {
-  color: var(--faint);
+  color: var(--muted);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -283,7 +308,7 @@
 .iv-module h4 {
   margin: 12px 0 4px;
   font-size: 12.5px;
-  color: var(--faint);
+  color: var(--muted);
   letter-spacing: 0.04em;
 }
 .iv-module ul {
@@ -305,7 +330,7 @@
 }
 .iv-answer summary small {
   display: block;
-  color: var(--faint);
+  color: var(--muted);
 }
 .iv-answer-score {
   font-family: var(--mono);
@@ -390,4 +415,238 @@
   border-left: 3px solid var(--gold-lo);
   background: var(--bg-2);
   font-size: 13.5px;
+}
+
+/* labels and hints a shade lighter, so they read at 4.5:1 */
+.iv-field > span,
+.iv-field > legend {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.iv-module h4 {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* new interview: the tone up front, everything else folded */
+.iv-more {
+  padding-top: 4px;
+}
+.iv-more > summary {
+  color: var(--gold-hi);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.iv-more[open] > summary {
+  margin-bottom: 12px;
+}
+.iv-wide {
+  grid-column: 1 / -1;
+}
+.iv-data {
+  color: var(--muted);
+}
+.iv-data > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-weight: 600;
+}
+.iv-data[open] > summary {
+  margin-bottom: 8px;
+}
+
+/* the debrief: score, one sentence, two next steps, the areas as a row */
+.dbf {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 28px clamp(32px, 5vw, 72px);
+  align-items: center;
+  padding: clamp(24px, 3vw, 44px);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.dbf-score {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.dbf-score b {
+  font: 400 clamp(96px, 11vw, 176px) / 0.85 var(--display);
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+.dbf-score.low b {
+  color: var(--bad);
+}
+.dbf-score.mid b {
+  color: var(--warn);
+}
+.dbf-score.good b {
+  color: var(--good);
+}
+.dbf-score span {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 8px;
+  color: var(--muted);
+  font-size: 16px;
+}
+.dbf-score em {
+  color: var(--text);
+  font-style: normal;
+  font-size: 20px;
+  font-weight: 600;
+}
+.dbf-line {
+  max-width: 36ch;
+  margin: 0 0 24px;
+  font: 400 clamp(28px, 3vw, 44px) / 1.1 var(--display);
+  letter-spacing: -0.02em;
+}
+.dbf-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.dbf-link {
+  border: 0;
+  background: none;
+  padding: 8px 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.dbf-link:hover {
+  color: var(--gold-hi);
+}
+.dbf-cats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dbf-cats li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.dbf-cats li > span {
+  color: var(--muted);
+  font-size: 15px;
+}
+.dbf-cats li > b {
+  font: 400 48px / 1 var(--display);
+  letter-spacing: -0.02em;
+}
+.dbf-cats li > i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raise);
+  overflow: hidden;
+}
+.dbf-cats li > i > i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform-origin: left;
+  animation: dbf-grow 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+}
+.dbf-cats li.good > i > i {
+  background: var(--good);
+}
+.dbf-cats li.low > i > i {
+  background: var(--warn);
+}
+.dbf-cats li > em {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  color: var(--warn);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+}
+@keyframes dbf-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.dbf-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.dbf-panel {
+  padding: 24px 28px;
+  border-radius: 14px;
+  background: var(--panel);
+}
+.iv-module .dbf-panel h4 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font: 400 28px / 1.1 var(--display);
+  letter-spacing: -0.01em;
+}
+.dbf-panel ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+@media (max-width: 900px) {
+  .dbf {
+    grid-template-columns: 1fr;
+  }
+  .dbf-cols {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dbf-cats li > i > i {
+    animation: none;
+  }
+}
+
+.iv-body > .iv-stack.dbf-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* the room: where you are, and the current question set apart */
+.iv-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.iv-progress > i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raise);
+  overflow: hidden;
+}
+.iv-progress > i > i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.iv-turn.theirs:last-child p {
+  font: 400 clamp(22px, 2.4vw, 28px) / 1.3 var(--display);
+  letter-spacing: -0.01em;
 }

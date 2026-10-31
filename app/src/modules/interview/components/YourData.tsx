@@ -1,7 +1,6 @@
 import { attempt } from "../../../shared/async";
 import { downloadJson } from "../../../shared/download";
 import { Button } from "../../../ui/Button";
-import { Card } from "../../../ui/Card";
 import { interviewApi } from "../api";
 
 export function YourData({ onDeleted }: { onDeleted: () => void }) {
@@ -14,7 +13,8 @@ export function YourData({ onDeleted }: { onDeleted: () => void }) {
     if ((await attempt(interviewApi.deleteAll, "All interview data deleted.")) !== undefined) onDeleted();
   };
   return (
-    <Card title="Your data">
+    <details className="iv-data">
+      <summary>Your data and privacy</summary>
       <p className="iv-hint">Download everything this module holds about you, or remove it all.</p>
       <div className="iv-row">
         <Button size="small" onClick={() => void download()}>
@@ -24,6 +24,6 @@ export function YourData({ onDeleted }: { onDeleted: () => void }) {
           Delete all my interview data
         </Button>
       </div>
-    </Card>
+    </details>
   );
 }

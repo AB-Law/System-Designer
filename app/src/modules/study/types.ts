@@ -13,6 +13,7 @@ export interface Deck {
   created: number;
   dueCount: number;
   cardCount?: number;
+  masteredCount?: number;
 }
 
 export interface Card {
@@ -27,6 +28,8 @@ export interface Card {
   reps: number;
   lapses: number;
   created: number;
+  /** Days until the card returns for each rating. */
+  next?: Record<Rating, number>;
 }
 
 export interface StudyStats {
@@ -34,6 +37,10 @@ export interface StudyStats {
   streak: number;
   retention: number | null;
   totalReviews: number;
+  /** Cards due on each of the next seven days (today first, overdue included). */
+  forecast?: number[];
+  /** When the next card not yet due comes back, in ms. */
+  nextDue?: number | null;
 }
 
 export interface MapSummary {

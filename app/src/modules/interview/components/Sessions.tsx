@@ -72,15 +72,18 @@ function Trend({ trend }: { trend: ScoreTrend | null }) {
 
 function RoleCard({
   group,
+  wide,
   onDelete,
   onDeleteRole,
 }: {
   group: RoleGroup;
+  wide: boolean;
   onDelete: (id: number) => void;
   onDeleteRole: (g: RoleGroup) => void;
 }) {
   return (
     <Card
+      className={wide ? "iv-wide" : ""}
       title={group.title + (group.company ? ` at ${group.company}` : "")}
       actions={
         <>
@@ -157,16 +160,19 @@ export function Sessions() {
             caption: latest === null ? "Finish an interview to see one" : "From your most recent finished round",
             hero: true,
           },
-          {
-            label: "Best score",
-            value: best === null ? "–" : String(best),
-            unit: best === null ? undefined : "/ 100",
-            caption: "Across every finished round",
-          },
+          ...(scored.length > 1 && best !== null
+            ? [{ label: "Best score", value: String(best), unit: "/ 100", caption: "Across every finished round" }]
+            : []),
         ]}
       />
       {roles.map((g) => (
-        <RoleCard key={g.roleId} group={g} onDelete={(id) => void removeSession(id)} onDeleteRole={(role) => void removeRole(role)} />
+        <RoleCard
+          wide={roles.length === 1}
+          key={g.roleId}
+          group={g}
+          onDelete={(id) => void removeSession(id)}
+          onDeleteRole={(role) => void removeRole(role)}
+        />
       ))}
       <YourData onDeleted={() => void load()} />
     </div>

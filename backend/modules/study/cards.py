@@ -143,6 +143,26 @@ def deck_stats(user_id: int, deck_id: int) -> dict[str, Any]:
     return _stats_from(int(due_today), review_rows)
 
 
+def forecast(user_id: int, at: int, days: int = 7) -> tuple[list[int], int | None]:
+    """Cards due on each of the next `days` days (today includes anything overdue), and when the next future card falls due."""
+    with open_db() as db:
+        rows = db.execute(
+            f"SELECT due FROM study_cards WHERE user_id=? AND deck_id IN {decks.READY_DECKS}",
+            (user_id, user_id),
+        ).fetchall()
+    counts = [0] * days
+    today = _day_key(at)
+    future: list[int] = []
+    for r in rows:
+        due = int(r["due"])
+        if due > at:
+            future.append(due)
+        day = max(0, (_day_key(due) - today).days)  # whole calendar days away; anything overdue is today's work
+        if day < days:
+            counts[day] += 1
+    return counts, (min(future) if future else None)
+
+
 def global_stats(user_id: int) -> dict[str, Any]:
     at = now()
     with open_db() as db:
@@ -154,7 +174,11 @@ def global_stats(user_id: int) -> dict[str, Any]:
             "SELECT rating, at FROM study_reviews WHERE user_id=? ORDER BY at",
             (user_id,),
         ).fetchall()
-    return _stats_from(int(due_today), review_rows)
+    out = _stats_from(int(due_today), review_rows)
+    counts, next_due = forecast(user_id, at)
+    out["forecast"] = counts
+    out["nextDue"] = next_due
+    return out
 
 
 def _stats_from(due_today: int, review_rows: list[Any]) -> dict[str, Any]:

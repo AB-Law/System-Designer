@@ -29,6 +29,14 @@ def _due_counts(db: Any, user_id: int, at: int) -> dict[int, int]:
     return {int(r["deck_id"]): int(r["n"]) for r in rows}
 
 
+def _mastered_counts(db: Any, user_id: int) -> dict[int, int]:
+    rows = db.execute(
+        "SELECT deck_id, COUNT(*) AS n FROM study_cards WHERE user_id=? AND interval_days>=? GROUP BY deck_id",
+        (user_id, views.MASTERED_DAYS),
+    ).fetchall()
+    return {int(r["deck_id"]): int(r["n"]) for r in rows}
+
+
 def _card_counts(db: Any, user_id: int) -> dict[int, int]:
     rows = db.execute(
         "SELECT deck_id, COUNT(*) AS n FROM study_cards WHERE user_id=? GROUP BY deck_id",
@@ -46,7 +54,10 @@ def list_decks(user_id: int) -> list[dict[str, Any]]:
         ).fetchall()
         due = _due_counts(db, user_id, at)
         cards = _card_counts(db, user_id)
-    return [views.deck(r, due_count=due.get(r["id"], 0), card_count=cards.get(r["id"], 0)) for r in rows]
+        mastered = _mastered_counts(db, user_id)
+    return [
+        views.deck(r, due_count=due.get(r["id"], 0), card_count=cards.get(r["id"], 0), mastered_count=mastered.get(r["id"], 0)) for r in rows
+    ]
 
 
 def get_deck(user_id: int, deck_id: int) -> dict[str, Any]:

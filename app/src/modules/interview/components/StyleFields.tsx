@@ -30,54 +30,59 @@ export function StyleFields({ style, hasCompany, onChange }: Props) {
           ))}
         </div>
       </fieldset>
-      <label className="iv-field">
-        <span>Length</span>
-        <select value={style.durationMin} onChange={(e) => onChange({ ...style, durationMin: Number(e.target.value) })}>
-          {DURATIONS.map((d) => (
-            <option key={d} value={d}>
-              {d} minutes
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="iv-check">
-        <input
-          type="checkbox"
-          checked={custom}
-          onChange={(e) => onChange({ ...style, counts: e.target.checked ? { behavioral: 2, technical: 2 } : {} })}
-        />
-        Choose how many questions of each kind
-      </label>
-      {custom ? (
-        <div className="iv-grid">
-          {CATEGORIES.filter((c) => c !== "company" || hasCompany).map((c) => (
-            <label key={c} className="iv-field">
-              <span>{CATEGORY_LABELS[c]}</span>
-              <input type="number" min={0} max={6} value={style.counts[c] ?? 0} onChange={(e) => setCount(c, Number(e.target.value))} />
-            </label>
-          ))}
-          {total > MAX_QUESTIONS && (
-            <p className="iv-warn">
-              That is {total} questions. The most allowed is {MAX_QUESTIONS}.
-            </p>
+      <details className="iv-more">
+        <summary>More options</summary>
+        <div className="iv-stack">
+          <label className="iv-field">
+            <span>Length</span>
+            <select value={style.durationMin} onChange={(e) => onChange({ ...style, durationMin: Number(e.target.value) })}>
+              {DURATIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} minutes
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="iv-check">
+            <input
+              type="checkbox"
+              checked={custom}
+              onChange={(e) => onChange({ ...style, counts: e.target.checked ? { behavioral: 2, technical: 2 } : {} })}
+            />
+            Choose how many questions of each kind
+          </label>
+          {custom ? (
+            <div className="iv-grid">
+              {CATEGORIES.filter((c) => c !== "company" || hasCompany).map((c) => (
+                <label key={c} className="iv-field">
+                  <span>{CATEGORY_LABELS[c]}</span>
+                  <input type="number" min={0} max={6} value={style.counts[c] ?? 0} onChange={(e) => setCount(c, Number(e.target.value))} />
+                </label>
+              ))}
+              {total > MAX_QUESTIONS && (
+                <p className="iv-warn">
+                  That is {total} questions. The most allowed is {MAX_QUESTIONS}.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="iv-hint">The mix is chosen from the role's level and the length.</p>
           )}
+          <label className="iv-check">
+            <input type="checkbox" checked={style.useCv} onChange={(e) => onChange({ ...style, useCv: e.target.checked })} />
+            Use my CV to shape the questions
+          </label>
+          <p className="iv-hint">
+            {style.useCv
+              ? "Questions can build on your active CV, and the interviewer may use your name and background. Turn this off to practise from the job description alone."
+              : "The interviewer will not see your CV. Questions come from the role, level and job description only."}
+          </p>
+          <label className="iv-check">
+            <input type="checkbox" checked={style.showPlan} onChange={(e) => onChange({ ...style, showPlan: e.target.checked })} />
+            Show me the planned questions first (less realistic)
+          </label>
         </div>
-      ) : (
-        <p className="iv-hint">The mix is chosen from the role's level and the length.</p>
-      )}
-      <label className="iv-check">
-        <input type="checkbox" checked={style.useCv} onChange={(e) => onChange({ ...style, useCv: e.target.checked })} />
-        Use my CV to shape the questions
-      </label>
-      <p className="iv-hint">
-        {style.useCv
-          ? "Questions can build on your active CV, and the interviewer may use your name and background. Turn this off to practise from the job description alone."
-          : "The interviewer will not see your CV. Questions come from the role, level and job description only."}
-      </p>
-      <label className="iv-check">
-        <input type="checkbox" checked={style.showPlan} onChange={(e) => onChange({ ...style, showPlan: e.target.checked })} />
-        Show me the planned questions first (less realistic)
-      </label>
+      </details>
     </div>
   );
 }
