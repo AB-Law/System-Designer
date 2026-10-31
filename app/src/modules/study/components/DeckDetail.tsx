@@ -108,9 +108,28 @@ export function DeckDetail({ deckId }: { deckId: number }) {
         {deck.status === "failed" && <p className="st-hint">Generation failed. Delete this deck or add cards by hand.</p>}
       </Card>
 
+      {!cards.length ? (
+        <EmptyState title={generating ? "Generating…" : "No cards yet"}>
+          {generating ? "Draft cards will appear here when the job finishes." : "Add a question and answer below to start reviewing."}
+        </EmptyState>
+      ) : (
+        <ul className="st-cards">
+          {cards.map((c) => (
+            <li key={c.id} className="st-card-row">
+              <div className="st-row">
+                <strong>{c.front}</strong>
+                <Button size="small" variant="ghost" onClick={() => void remove(c.id)}>
+                  Delete
+                </Button>
+              </div>
+              <div className="st-muted">{c.back}</div>
+            </li>
+          ))}
+        </ul>
+      )}
       {!generating && (
         <Card
-          title={reviewing ? "Edit drafts" : "Add card"}
+          title={reviewing ? "Add a card" : "Add a card"}
           actions={
             <Button variant="primary" disabled={busy || !front.trim() || !back.trim()} onClick={() => void add()}>
               Add
@@ -135,26 +154,6 @@ export function DeckDetail({ deckId }: { deckId: number }) {
             </label>
           </div>
         </Card>
-      )}
-
-      {!cards.length ? (
-        <EmptyState title={generating ? "Generating…" : "No cards yet"}>
-          {generating ? "Draft cards will appear here when the job finishes." : "Add a question and answer above to start reviewing."}
-        </EmptyState>
-      ) : (
-        <ul className="st-cards">
-          {cards.map((c) => (
-            <li key={c.id} className="st-card-row">
-              <div className="st-row">
-                <strong>{c.front}</strong>
-                <Button size="small" variant="ghost" onClick={() => void remove(c.id)}>
-                  Delete
-                </Button>
-              </div>
-              <div className="st-muted">{c.back}</div>
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );

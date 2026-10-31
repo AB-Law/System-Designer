@@ -7,6 +7,7 @@ import { MapView } from "./components/MapView";
 import { ReviewSession } from "./components/ReviewSession";
 import { go, parse, tabOf } from "./route";
 import "./study.css";
+import "./study-woah.css";
 
 export default function Screen({ rest }: { rest: string }) {
   const route = parse(rest);

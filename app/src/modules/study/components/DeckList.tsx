@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { attempt, useAction } from "../../../shared/async";
-import { Badge } from "../../../ui/Badge";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
 import { EmptyState } from "../../../ui/EmptyState";
@@ -11,32 +10,83 @@ import { StudyHero } from "./StudyHero";
 
 type Mode = "blank" | "topic" | "glossary" | "lesson" | "jd" | "interview_weakness" | "document";
 
-function DeckRow({ deck, onDelete }: { deck: Deck; onDelete: (id: number) => void }) {
-  const statusTone = deck.status === "failed" ? "bad" : deck.status === "review" || deck.status === "generating" ? "warn" : "neutral";
+const SOURCES: { id: Mode; label: string; hint: string }[] = [
+  { id: "blank", label: "Blank", hint: "Add cards yourself" },
+  { id: "topic", label: "From a topic", hint: "AI writes the cards" },
+  { id: "glossary", label: "Design glossary", hint: "No AI call" },
+  { id: "lesson", label: "Design lesson", hint: "Cards from one lesson" },
+  { id: "jd", label: "Job description", hint: "Paste a posting" },
+  { id: "interview_weakness", label: "Interview gaps", hint: "From your feedback" },
+  { id: "document", label: "Interview id", hint: "One past interview" },
+];
+
+const SOURCE_LABEL: Record<string, string> = {
+  manual: "Hand-made",
+  topic: "From a topic",
+  glossary: "Glossary",
+  lesson: "Design lesson",
+  jd: "Job description",
+  interview_weakness: "Interview gaps",
+  document: "Interview",
+};
+
+/** A ring that fills as more of the deck's cards settle into long intervals. */
+function Mastery({ mastered, total }: { mastered: number; total: number }) {
+  const pct = total > 0 ? Math.round((mastered / total) * 100) : 0;
   return (
-    <li className="st-deck">
-      <div>
-        <button type="button" className="st-link" onClick={() => go({ name: "deck", deckId: deck.id })}>
+    <div
+      className="st-ring"
+      role="img"
+      aria-label={`${mastered} of ${total} cards learned`}
+      style={{ "--st-fill": pct } as React.CSSProperties}
+    >
+      <b>{pct}%</b>
+      <span>learned</span>
+    </div>
+  );
+}
+
+function DeckTile({ deck, onDelete }: { deck: Deck; onDelete: (id: number) => void }) {
+  const ready = deck.status === "ready";
+  const total = deck.cardCount ?? 0;
+  return (
+    <li className={"st-tile" + (deck.dueCount > 0 && ready ? " has-due" : "")}>
+      <div className="st-tile-head">
+        <button type="button" className="st-tile-name" onClick={() => go({ name: "deck", deckId: deck.id })}>
           {deck.name}
         </button>
-        <div className="st-muted">
-          {deck.cardCount ?? 0} cards
+        <span className="st-muted">
+          {SOURCE_LABEL[deck.sourceKind] ?? deck.sourceKind}
           {deck.parentId != null ? " · nested" : ""}
-          {deck.sourceKind !== "manual" ? ` · ${deck.sourceKind}` : ""}
-        </div>
+        </span>
       </div>
-      <Badge tone={statusTone}>{deck.status === "ready" ? `${deck.dueCount} due` : deck.status}</Badge>
-      <Button
-        size="small"
-        variant="primary"
-        disabled={deck.status !== "ready" || !deck.dueCount}
-        onClick={() => go({ name: "review", deckId: deck.id })}
-      >
-        Review
-      </Button>
-      <Button size="small" variant="ghost" aria-label={`Delete ${deck.name}`} onClick={() => onDelete(deck.id)}>
-        Delete
-      </Button>
+      {ready ? (
+        <div className="st-tile-body">
+          <Mastery mastered={deck.masteredCount ?? 0} total={total} />
+          <div className="st-tile-due">
+            <b>{deck.dueCount}</b>
+            <span>due · {total} cards</span>
+          </div>
+        </div>
+      ) : (
+        <p className={"st-tile-status " + deck.status}>
+          {deck.status === "generating" ? "Writing cards…" : deck.status === "review" ? "Drafts waiting for you" : "Generation failed"}
+        </p>
+      )}
+      <div className="st-row">
+        {ready ? (
+          <Button size="small" variant="primary" disabled={!deck.dueCount} onClick={() => go({ name: "review", deckId: deck.id })}>
+            {deck.dueCount ? `Review ${deck.dueCount}` : "All caught up"}
+          </Button>
+        ) : (
+          <Button size="small" variant="primary" onClick={() => go({ name: "deck", deckId: deck.id })}>
+            Open
+          </Button>
+        )}
+        <Button size="small" variant="ghost" aria-label={`Delete ${deck.name}`} onClick={() => onDelete(deck.id)}>
+          Delete
+        </Button>
+      </div>
     </li>
   );
 }
@@ -129,9 +179,9 @@ export function DeckList() {
           Create a blank deck, generate from a topic, or pull cards from Design lessons and the glossary.
         </EmptyState>
       ) : (
-        <ul className="st-decks">
+        <ul className="st-shelf">
           {decks.map((d) => (
-            <DeckRow key={d.id} deck={d} onDelete={(id) => void remove(id)} />
+            <DeckTile key={d.id} deck={d} onDelete={(id) => void remove(id)} />
           ))}
         </ul>
       )}
@@ -147,18 +197,16 @@ export function DeckList() {
           }
         >
           <div className="st-stack">
-            <label className="st-field">
-              <span className="st-muted">Source</span>
-              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-                <option value="blank">Blank (add cards yourself)</option>
-                <option value="topic">AI from a topic</option>
-                <option value="glossary">Design glossary</option>
-                <option value="lesson">Design lesson</option>
-                <option value="jd">Pasted job description</option>
-                <option value="interview_weakness">Interview weaknesses</option>
-                <option value="document">Interview document id</option>
-              </select>
-            </label>
+            <fieldset className="st-sources">
+              <legend className="st-muted">Where should the cards come from?</legend>
+              {SOURCES.map((s) => (
+                <label key={s.id} className={"st-source" + (mode === s.id ? " on" : "")}>
+                  <input type="radio" name="st-source" checked={mode === s.id} onChange={() => setMode(s.id)} />
+                  <b>{s.label}</b>
+                  <span>{s.hint}</span>
+                </label>
+              ))}
+            </fieldset>
             {mode === "blank" && (
               <label className="st-field">
                 <span className="st-muted">Name</span>

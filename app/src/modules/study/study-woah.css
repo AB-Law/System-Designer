@@ -147,3 +147,276 @@
     transition: none;
   }
 }
+
+/* review: a bigger card, ratings that say what they do */
+.st-review {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+.st-review > * {
+  width: min(100%, 680px);
+}
+.st-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.st-top .st-progress {
+  flex: 1;
+  width: auto;
+}
+.st-count {
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.st-flip3d,
+.st-flip-in {
+  min-height: clamp(280px, 42vh, 380px);
+}
+.st-flip-text {
+  font: 400 clamp(26px, 3.4vw, 36px) / 1.25 var(--display);
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.st-flip-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.st-rates {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.st-rates .btn {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding: 12px 8px;
+  height: auto;
+}
+.st-rate-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.st-rate-name kbd {
+  font: inherit;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.st-rate-when {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.st-streak {
+  margin: 0;
+  color: var(--muted);
+}
+.st-streak b {
+  font: 400 32px var(--display);
+  color: var(--gold-hi);
+  margin-right: 6px;
+}
+
+/* the week ahead */
+.st-outlook {
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: var(--panel);
+}
+.st-outlook h2 {
+  margin: 0 0 14px;
+  font: 400 24px var(--display);
+}
+.st-outlook ol {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-outlook li {
+  display: grid;
+  grid-template-rows: auto 72px auto;
+  gap: 6px;
+  justify-items: center;
+}
+.st-outlook li > b {
+  font-weight: 600;
+  font-size: 15px;
+}
+.st-outlook li > i {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 44px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.st-outlook li > i > i {
+  display: block;
+  width: 100%;
+  background: var(--raise);
+  transform-origin: bottom;
+  animation: st-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.st-outlook li.today > i > i {
+  background: var(--gold);
+}
+.st-outlook li > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+@keyframes st-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+@media (max-width: 560px) {
+  .st-rates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-outlook li > i > i {
+    animation: none;
+  }
+}
+
+/* the deck shelf */
+.st-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.st-tile {
+  display: grid;
+  gap: 16px;
+  align-content: space-between;
+  padding: 20px 22px;
+  border-radius: 16px;
+  background: var(--panel);
+  transition: background 0.2s;
+}
+.st-tile.has-due {
+  background: linear-gradient(160deg, var(--panel-2), var(--panel));
+  box-shadow: inset 0 0 0 1px var(--gold-lo);
+}
+.st-tile-head {
+  display: grid;
+  gap: 4px;
+}
+.st-tile-name {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--text);
+  font: 400 24px / 1.15 var(--display);
+  text-align: left;
+  cursor: pointer;
+}
+.st-tile-name:hover {
+  color: var(--gold-hi);
+}
+.st-tile-body {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.st-tile-due {
+  display: grid;
+}
+.st-tile-due b {
+  font: 400 44px / 1 var(--display);
+  letter-spacing: -0.02em;
+}
+.st-tile-due span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.st-tile-status {
+  margin: 0;
+  color: var(--muted);
+}
+.st-tile-status.failed {
+  color: var(--bad);
+}
+.st-tile-status.review,
+.st-tile-status.generating {
+  color: var(--warn);
+}
+.st-ring {
+  --st-fill: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  width: 76px;
+  height: 76px;
+  flex: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, var(--panel) 80%, transparent 82%), conic-gradient(var(--good) calc(var(--st-fill) * 1%), var(--raise) 0);
+}
+.st-ring b {
+  font-size: 16px;
+  line-height: 1;
+}
+.st-ring span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* new deck: every source in view */
+.st-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.st-sources legend {
+  padding: 0 0 8px;
+}
+.st-source {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  cursor: pointer;
+}
+.st-source input {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.st-source b {
+  font-size: 15px;
+}
+.st-source span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.st-source.on {
+  box-shadow: inset 0 0 0 2px var(--gold);
+  background: var(--raise);
+}
+.st-source:has(input:focus-visible) {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}

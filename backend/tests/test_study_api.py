@@ -336,3 +336,38 @@ def test_packaged_lessons_match_the_apps_lessons() -> None:
     for f in sorted(copy.glob("module-*.md")):
         assert f.read_text(encoding="utf-8").replace("\r\n", "\n") == (src / f.name).read_text(encoding="utf-8").replace("\r\n", "\n"), f.name
     assert {f.name for f in copy.glob("module-*.md")} == {f.name for f in src.glob("module-*.md")}
+
+
+def test_due_cards_say_what_each_rating_will_do(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    deck = alice.post("/api/study/decks", json={"name": "Caching"}).json()
+    alice.post(f"/api/study/decks/{deck['id']}/cards", json={"kind": "basic", "front": "What is a cache?", "back": "Fast store"})
+    card = alice.get("/api/study/decks/due").json()[0]
+    # a new card: again and hard and good all come back tomorrow, easy in four days
+    assert card["next"] == {"again": 1, "hard": 1, "good": 1, "easy": 4}
+    after = alice.post(f"/api/study/cards/{card['id']}/review", json={"rating": "good"}).json()
+    # the second good review lands six days out
+    assert after["next"]["good"] == 6
+
+
+def test_stats_forecast_the_week_and_name_the_next_due_time(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    deck = alice.post("/api/study/decks", json={"name": "Caching"}).json()
+    for n in range(3):
+        alice.post(f"/api/study/decks/{deck['id']}/cards", json={"kind": "basic", "front": f"Q{n}", "back": "A"})
+    stats = alice.get("/api/study/decks/stats").json()
+    assert stats["forecast"] == [3, 0, 0, 0, 0, 0, 0] and stats["nextDue"] is None
+    card = alice.get("/api/study/decks/due").json()[0]
+    alice.post(f"/api/study/cards/{card['id']}/review", json={"rating": "good"})
+    stats = alice.get("/api/study/decks/stats").json()
+    assert stats["dueToday"] == 2
+    assert stats["forecast"][0] == 2 and stats["forecast"][1] == 1
+    assert isinstance(stats["nextDue"], int)
+
+
+def test_decks_report_how_many_cards_are_learned(clients: tuple[TestClient, TestClient]) -> None:
+    alice, _ = clients
+    deck = alice.post("/api/study/decks", json={"name": "Caching"}).json()
+    alice.post(f"/api/study/decks/{deck['id']}/cards", json={"kind": "basic", "front": "Q", "back": "A"})
+    listed = alice.get("/api/study/decks").json()
+    assert listed[0]["masteredCount"] == 0
